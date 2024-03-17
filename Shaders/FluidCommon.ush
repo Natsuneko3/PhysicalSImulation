@@ -1,0 +1,194 @@
+// Copyright Epic Games, Inc. All Rights Reserved.
+#include "/Engine/Public/Platform.ush"
+
+Texture2D SimGridSRV;
+Texture2D PressureGridSRV;
+
+RWTexture2D<float4> SimGridUAV;
+RWTexture2D<float> PressureGridUAV;
+
+SamplerState WarpSampler;
+float VorticityMult;
+float3 GridSize;
+int IterationIndex;
+int Time;
+float dt ;
+float NoiseFrequency;
+float NoiseIntensity;
+int AdvectionDensity;
+float dx;
+float VelocityDissipate;
+float DensityDissipate;
+float GravityScale;
+// Shared memory for FFT
+
+#define Pi 3.1415926
+// common FFT functions
+// complex conjugate
+
+
+float2 ComplexCon(float2 Z)
+{
+	return float2(Z.x, -Z.y);
+}
+
+float2 ComplexMultEqs(float2 ZA, float2 ZB)
+{ 
+	float2 _Tmp = ZA;
+	return float2(ZA.x * ZB.x - ZA.y * ZB.y, ZA.x * ZB.y + ZA.y * ZB.x);
+}
+
+// Laplacian [ f_{i+1, j} + f_{i-1,1} + f_{i,j+1} + f_{i,j-1} - 4 ] / (dx * dx)
+//
+// for the mode f_{nx, ny) =  Sin(Pi kx nx / M) Sin (Pi ky ny / M)
+//  
+// the eignevalue is  -(4/ (dx*dx) ) ( Sin^2(Pi/2  kx/M ) + Sin^2(Pi/2 ky/M) )
+//     can also write this as
+//                    (2/dx*dx) ( Cos(Pi kx/M ) + Cos(Pi ky/M) - 2)
+
+float EigenValue(int kx_, int ky_, int Mx, int My, float dx)
+{
+	return ( -4 * (pow( sin( Pi * float(kx_) / float(2 * Mx) )/dx, 2) +  pow( sin( Pi * float(ky_) / float(2 * My) )/dx, 2)));
+}
+
+float GetDivergence(RWTexture2D<float4> InTexture,int2 DispatchThreadId,float dx)
+{
+	int2 UVs[4] = {DispatchThreadId +int2(0,1),
+		DispatchThreadId+0.5 + int2(0,-1),
+		DispatchThreadId+0.5 + int2(-1,0),
+		DispatchThreadId +0.5+ int2(1,0)};
+
+
+	float UpVelocity = InTexture.Load(UVs[0]).y;
+	float DownVelocity  = InTexture.Load(UVs[1]).y;
+	float LeftVelocity  = InTexture.Load(UVs[2]).x;
+	float RightUpVelocity = InTexture.Load(UVs[3]).x;
+
+	return  (RightUpVelocity - LeftVelocity + UpVelocity - DownVelocity) /(2.0 *dx);
+}
+
+
+float GetDivergence(RWTexture2D<float> InTexture,int2 DispatchThreadId,float dx)
+{
+	int2 UVs[4] = {DispatchThreadId +int2(0,1),
+		DispatchThreadId+0.5 + int2(0,-1),
+		DispatchThreadId+0.5 + int2(-1,0),
+		DispatchThreadId +0.5+ int2(1,0)};
+
+
+	 const float UpVelocity = InTexture.Load(UVs[0]);
+	const float DownVelocity  = InTexture.Load(UVs[1]);
+	const float LeftVelocity  = InTexture.Load(UVs[2]);
+	const float RightUpVelocity = InTexture.Load(UVs[3]);
+
+	return  (RightUpVelocity - LeftVelocity + (UpVelocity - DownVelocity)  ) /(2 * dx);
+}
+
+float2 GetGradient(RWTexture2D<float4> InTexture,int2 DispatchThreadId,float dx)
+{
+	int2 UVs[4] = {DispatchThreadId+0.5 +int2(0,1),
+		DispatchThreadId +0.5+ int2(0,-1),
+		DispatchThreadId+0.5 + int2(-1,0),
+		DispatchThreadId +0.5+ int2(1,0)};
+
+
+	float2 UpVelocity = InTexture.Load(UVs[0]).xy;
+	float2 DownVelocity  = InTexture.Load(UVs[1]).xy;
+	float2 LeftVelocity  = InTexture.Load(UVs[2]).xy;
+	float2 RightUpVelocity = InTexture.Load(UVs[3]).xy;
+
+	return  float2(RightUpVelocity.x - LeftVelocity.x , UpVelocity.y - DownVelocity.y  ) /(2 * dx);
+}
+
+float2 GetGradient(RWTexture2D<float> InTexture,int2 DispatchThreadId,float dx)
+{
+	int2 UVs[4] = {DispatchThreadId+0.5 +int2(0,1),
+		DispatchThreadId +0.5+ int2(0,-1),
+		DispatchThreadId +0.5+ int2(-1,0),
+		DispatchThreadId +0.5+ int2(1,0)};
+
+
+	const float UpVelocity = InTexture.Load(UVs[0]);
+	const float DownVelocity  = InTexture.Load(UVs[1]);
+	const float LeftVelocity  = InTexture.Load(UVs[2]);
+	const float RightUpVelocity = InTexture.Load(UVs[3]);
+
+	return  float2(RightUpVelocity - LeftVelocity , UpVelocity - DownVelocity  ) /(2 * dx);
+}
+
+float2 GetCurl(RWTexture2D<float4> InTexture,int2 DispatchThreadId,float dx)
+{
+	int2 UVs[4] = {DispatchThreadId+0.5 +int2(0,1),
+		DispatchThreadId +0.5+ int2(0,-1),
+		DispatchThreadId+0.5 + int2(-1,0),
+		DispatchThreadId +0.5+ int2(1,0)};
+
+
+	float2 UpVelocity = InTexture.Load(UVs[0]).xy;
+	float2 DownVelocity  = InTexture.Load(UVs[1]).xy;
+	float2 LeftVelocity  = InTexture.Load(UVs[2]).xy;
+	float2 RightUpVelocity = InTexture.Load(UVs[3]).xy;
+
+	return (RightUpVelocity.x - LeftVelocity.x - UpVelocity.y + DownVelocity.y )/(2 * dx);
+}
+
+float3 random3(float3 c) {
+	float j = 4096.0*sin(dot(c,float3(17.0, 59.4, 15.0)));
+	float3 r;
+	r.z = frac(512.0*j);
+	j *= .125;
+	r.x = frac(512.0*j);
+	j *= .125;
+	r.y = frac(512.0*j);
+	return r-0.5;
+}
+
+
+
+float simplex3d(float3 p) {
+	/* 1. find current tetrahedron T and it's four vertices */
+	/* s, s+i1, s+i2, s+1.0 - absolute skewed (integer) coordinates of T vertices */
+	/* x, x1, x2, x3 - unskewed coordinates of p relative to each of T vertices*/
+	 
+	/* calculate s and x */
+	const float F3 =  0.3333333;
+	const float G3 =  0.1666667;
+	float3 s = floor(p + dot(p, float3(F3.xxx)));
+	float3 x = p - s + dot(s, float3(G3.xxx));
+	 
+	/* calculate i1 and i2 */
+	float3 e = step(float3(0,0,0), x - x.yzx);
+	float3 i1 = e*(1.0 - e.zxy);
+	float3 i2 = 1.0 - e.zxy*(1.0 - e);
+	 	
+	/* x1, x2, x3 */
+	float3 x1 = x - i1 + G3;
+	float3 x2 = x - i2 + 2.0*G3;
+	float3 x3 = x - 1.0 + 3.0*G3;
+	 
+	/* 2. find four surflets and store them in d */
+	float4 w, d;
+	 
+	/* calculate surflet weights */
+	w.x = dot(x, x);
+	w.y = dot(x1, x1);
+	w.z = dot(x2, x2);
+	w.w = dot(x3, x3);
+	 
+	/* w fades from 0.6 at the center of the surflet to 0.0 at the margin */
+	w = max(0.6 - w, 0.0);
+	 
+	/* calculate surflet components */
+	d.x = dot(random3(s), x);
+	d.y = dot(random3(s + i1), x1);
+	d.z = dot(random3(s + i2), x2);
+	d.w = dot(random3(s + 1.0), x3);
+	 
+	/* multiply d by w^4 */
+	w *= w;
+	w *= w;
+	d *= w;
+	 
+	/* 3. return the sum of the four surflets */
+	return dot(d, 52.0);
+}

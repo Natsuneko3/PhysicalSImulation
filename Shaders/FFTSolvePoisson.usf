@@ -1,0 +1,356 @@
+﻿#include "FluidCommon.ush"
+
+int bIsInverse;
+int bTransformX;
+RWTexture2D<float> FFTSolvePoissonSRV;
+groupshared float2 FFTGroupShared[2*THREADGROUP_SIZEX];
+[numthreads(THREADGROUP_SIZEX, 1, 1)]
+void MainCS(uint3 DispatchThreadId : SV_DispatchThreadID,uint3 GroupThreadId : SV_GroupThreadID,uint GroupID:SV_GroupID)
+{
+	//FFTSolverPressure(GroupThreadId.x,true, bIsInverse.x);
+
+	// discrete sine transform using FFT.
+	//
+	//   defined as :
+	//               F_k = Sum_{n=1}^{M-1} f_n Sin(Pi k n / M)
+	//
+	//               f_n = (2/M) Sum_{k=1}^{M-1} F_k Sin(Pi k n / M)
+	//
+	//
+	//  Requirement. Lenght of input is M-1, where M is a power of two.
+	//
+	//   Dispatch:
+	//      with M/2 threads.
+	//   Grid2D:
+	//     The grid2d must have a channel with name "Real"
+
+
+	// Idea.  Input. Real Array of  length M -1
+	//            {f_i}  with i in [1, M-1]
+	//         i.e. {f_i} = { f1, f2, .. f_{M-1} }.
+	//  Step 1)
+	//     odd extension is applied creating {g_i} with i in [0,2M-1]
+	//     i.e. {g_i} = { 0, f1, f2.. f_{M-1}, 0, -f_{M-1}...-f2 -f1 }
+	//
+	//  Step 2)
+	//    pack pairs of terms in {g_i} as complex array {h_i} of length M
+	//     {h_i} = {g_{2i} + i g_{2 i +1 }
+	//
+	//  Step 3)
+	//    FFT the complex array {h_i}
+	//
+	//   H_k = FFT(h_i)
+	//
+	//  Step 4)
+	//   unpack the H_k to get G_k
+	//   G_k = (H_k + Conjugate(H_{M-k}) - i/2 (H_k - Conjugate(H_{M-k))Exp(i pi k / M)
+	//
+	//  Step 5)
+	//   construct coefficeints of Sin Transform from
+	//    F^{sin}_k = -i/2 F_k.
+	//   Note: this is purely real, so F_k is pure imaginary.
+	//         also F^sin_0 = 0.
+	//
+	//  Step 6)
+	//    store output as real array lenght M-1
+	//   { F^sin_1, F^sin_2 ... F^sin_{M-1} }
+
+
+	int2 NumCells = GridSize.xy ;
+	int ScanlineIdx = GroupID.x;
+	int ThreadIdx = GroupThreadId.x ;
+	bool bPoissonSolver = true;
+
+	int Mx = bTransformX ? NumCells.x  : NumCells.y;
+	int NumCols = Mx / 2; // requires a dispatch such that NumCols = THREADGROUP_SIZE
+
+	int My = bTransformX ? NumCells.y  : NumCells.x;
+
+
+	// constants.
+	float TwoPi = 2.0 * Pi;
+
+
+
+
+
+
+	// This assumes we have already done the sin-transform in Y
+	// and now we are doing it in X - to be followed by inv in Y inv in X
+	bool bApplyPoissonConvolution = (bPoissonSolver) && (bTransformX) && (bIsInverse == false);
+
+
+	bool bCorrectDim = (Mx / 2 == THREADGROUP_SIZEX);
+	bool bValidSetUp = bCorrectDim;
+
+	float GridSpaceDX = dx;
+	float RScale = 1. / GridSpaceDX;
+	float WScale = (GridSpaceDX * GridSpaceDX) * 1. / RScale;
+
+	bool bFirstRead = ((bTransformX == false) && (bIsInverse == false));
+	bool bLastWrite = ((bTransformX == false) && (bIsInverse == true));
+
+
+	if (bValidSetUp)
+	{
+		// local scratch of complex numbers. ( V.x+ I V.y is a complex number)
+		float2 V[2];
+		// load data into scratch. "j" is threadid
+		//    V[0] = h_j
+		//    V[1] = h_{M/2 +j}
+		{
+			// load V[0] = h_j
+			//           = float2(g_{2j}, g_{2j +1})
+			//           = float2(data[2j-1], data[2j])   // offset in data
+			//
+			//      V[1] = h_{M/2 + j}
+			//           = float2(g_{M + 2j}, g_{M + 2j + 1})
+			//           = -float2(g_{M-2j},  g_{M-2j-1} )        // odd sym.
+			//           = -float2( data[M-2j-1], data[M-2j -2])  // offset in data
+			// loads the data, extended as odd, and packs it into M complex numbers.
+			{
+				int j = ThreadIdx; // j in [0, M/2-1]
+
+				// holds h_j
+				int2 pxl = int2(2 * j - 1, ScanlineIdx);
+				int2 off = int2(1, 0);
+
+				// holds h_{M/2 +j}
+				int2 pxl2 = int2(Mx - 2 * j - 1, ScanlineIdx);
+
+				if (bTransformX == false)
+				{
+					pxl.xy = pxl.yx;
+					off.xy = off.yx;
+					pxl2.xy = pxl2.yx;
+				}
+
+				// boundary are zero, i.e. data[-1], and data[M].
+				if (j == 0)
+				{
+					V[0].x = 0; // g_0 = f_0 = 0
+					V[1].x = 0; // g_m = 0
+				}
+				else
+				{
+					// g_{2j} ( = f_2j )
+					V[0].x = PressureGridUAV.Load(pxl);
+					// g_{M-2j}
+					V[1].x = PressureGridUAV.Load(pxl2);
+				}
+				// g_{2j + 1}
+				V[0].y = PressureGridUAV.Load(pxl + off);
+				// g_{M - 2j - 1}
+				V[1].y = PressureGridUAV.Load(pxl2- off);
+
+				// make values odd
+				// g_{M + 2j} = -g_{M-2j}
+				// g_{M + 2j+1} = -g_{M-2j-1}
+				V[1] *= -1.;
+			}
+		}
+
+		if (bFirstRead)
+		{
+			V[0] *= RScale;
+			V[1] *= RScale;
+		}
+
+
+		// Scale.  The forward and inverse scale should have the product 2/Mx
+		// note, this scale was chosen because the pressure values were so high
+		// that doing two forward transforms (e.g. x and y) would generate garbage
+		// most likely by exceeding the max value for the grid storage.
+		{
+			float Scale = rsqrt(float(NumCols));
+			V[0] *= Scale;
+			V[1] *= Scale;
+		}
+
+
+		// compute FFT
+		// This is a sequence of Radix-2 FFTs and data exchanges.
+		{
+			int IdxS = ThreadIdx;
+
+
+			for (int Ns = 1; Ns < Mx; Ns *= 2)
+			{
+				//IdxD = Expand(ThreadIdx, Ns, RADIX);
+				int IdxD = (ThreadIdx / Ns) * Ns * 2 + (ThreadIdx % Ns);
+
+				// Apply the Twiddle
+				float Theta = TwoPi * float(ThreadIdx % Ns) / float(Ns * 2);
+				{
+					float2 Twiddle;
+					sincos(Theta, Twiddle.y, Twiddle.x);
+
+					V[1] = ComplexMultEqs(V[1], Twiddle);
+				}
+
+				// Radix(2) FFT
+				{
+					float2 Vo = V[0];
+					V[0] = Vo + V[1];
+					V[1] = Vo - V[1];
+				}
+
+
+				// Exchange data with other threads
+				{
+					GroupMemoryBarrierWithGroupSync();
+					// write to group shared
+					for (int r = 0, j = IdxD; r < 2; ++r, j += Ns)
+					{
+						FFTGroupShared[j] = V[r];
+					}
+					GroupMemoryBarrierWithGroupSync();
+
+					// read from group shared
+					for (int r = 0, j = IdxS; r < 2; ++r, j += NumCols)
+					{
+						V[r] = FFTGroupShared[j];
+					}
+				}
+			} // end loop
+		} // end FFT
+
+
+		// group shared memory now hold H[0]...H[M-1].
+		// note: H[M] = H[0]
+		// and in the local scratch:
+		//   H_j       = V[0]
+		//   H_{j+M/2} = V[1]
+
+		if (ThreadIdx == 0)
+		{
+			// Use this thread to write F^sin_{M/2}
+			int k = NumCols; // =  M/2
+			int2 GridIdx = int2(k - 1, ScanlineIdx);
+
+			if (bTransformX == false)
+			{
+				GridIdx.xy = GridIdx.yx;
+			}
+
+			// unpacking this frequency has a simplified form.
+			// G_{M/2} = H_{M/2}
+			// F^Sin_k = -i/2 G_{k}
+			float Val = 0.5 * V[1].y;
+
+			if (bApplyPoissonConvolution)
+			{
+				int kx = k;
+				int ky = ScanlineIdx + 1;
+
+				Val /= EigenValue(kx, ky, Mx, My,  dx);
+			}
+
+			if (bLastWrite)
+			{
+				Val *= WScale;
+			}
+
+			PressureGridUAV[GridIdx] = Val;
+		}
+
+		// Need to rebuild the FSin_k coefficients.
+		//
+		// F_k = (1/2) (H_k + Conjugate(H_{M-k)) + (1/2i) ( H_k - Conjugate(H_{M-k}) * Exp(i pi k/M)
+		// FSin_k = (1/2i) F_k
+		// note F_k is pure imaginary.  FSin_k is pure real.  FSin_0 = 0
+
+
+		// Recall; number of threads = M / 2.  Each thread should write 2 slots.
+		// read H_{M-k} from group shared.
+		{
+			int j = (ThreadIdx != 0) ? Mx - ThreadIdx : 0; // H_{M} = H_{0}
+			V[1] = FFTGroupShared[j];
+		}
+
+		// unpack the F_{k} and F_{M-k} coefficients of the transform of the
+		// odd extension of the original data.
+		// threadIdx should be [0,M/2-1]
+		float2 Fk;
+		float2 FMminusk;
+		{
+			int k = ThreadIdx;
+			float2 Apart = V[0] + ComplexCon(V[1]);
+
+			float2 Bpart; // i ( V[0] - ComplexCon(V[1])) Exp(i pi k / M)
+
+			{
+				Bpart = V[0] - ComplexCon(V[1]);
+				float2 Twiddle;
+				float Angle = Pi * float(k) / float(Mx);
+				sincos(Angle, Twiddle.y, Twiddle.x);
+				Bpart = ComplexMultEqs(Bpart, Twiddle);
+				Bpart = float2(-Bpart.y, Bpart.x);
+			}
+
+			Fk = 0.5 * (Apart - Bpart);
+			FMminusk = 0.5 * (ComplexCon(Apart) + ComplexCon(Bpart));
+		}
+
+		float FsinK = 0.5 * Fk.y;
+		float FsinMmK = 0.5 * FMminusk.y;
+
+		// Also due to symmetry, F^sin_0 will be zero.  We don't record it.
+
+		// Copy the results to the output buffer, But shift the data
+		// so [0] holds F^sin_1,  [1] holds F^sin_2.. etc
+
+		// write F^sin_k
+		if (ThreadIdx != 0)
+		{
+			int k = ThreadIdx;
+			int2 GridIdx = int2(k - 1, ScanlineIdx);
+
+			if (bTransformX == false)
+			{
+				GridIdx.xy = GridIdx.yx;
+			}
+
+			if (bApplyPoissonConvolution)
+			{
+				int kx = k;
+				int ky = ScanlineIdx + 1;
+
+				FsinK /= EigenValue(kx, ky, Mx, My,  dx);
+			}
+
+			if (bLastWrite)
+			{
+				FsinK *= WScale;
+			}
+
+			PressureGridUAV[GridIdx] = FsinK;
+		}
+
+		// write F^sin_{M-k}
+		{
+			int MminusK = Mx - ThreadIdx;
+			int2 GridIdx = int2(MminusK - 1, ScanlineIdx);
+
+			if (bTransformX == false)
+			{
+				GridIdx.xy = GridIdx.yx;
+			}
+
+			if (bApplyPoissonConvolution)
+			{
+				int kx = MminusK;
+				int ky = ScanlineIdx + 1;
+
+				FsinMmK /= EigenValue(kx, ky, Mx, My,  dx);
+			}
+
+			if (bLastWrite)
+			{
+				FsinMmK *= WScale;
+			}
+
+			PressureGridUAV[GridIdx] =FsinMmK;
+		}
+	}
+}
