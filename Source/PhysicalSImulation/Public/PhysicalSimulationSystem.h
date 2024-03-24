@@ -9,7 +9,13 @@
 
 #include "PhysicalSimulationSystem.generated.h"
 
-
+UENUM()
+enum class ESimulatorType : uint8
+{
+	PlaneSmokeFluid = 0,
+	CubeSmokeFluid = 1,
+	Water = 2
+};
 
 DEFINE_LOG_CATEGORY_STATIC(LogSimulation, Log, All);
 UCLASS(Blueprintable, meta=(BlueprintSpawnableComponent))
@@ -22,56 +28,66 @@ public:
 	UPhysicalSimulationComponent();
 	~UPhysicalSimulationComponent();
 
-	UPROPERTY(EditAnywhere,meta=(ClampMin = "8.0",UIMin = "8.0"))
+	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation",meta=(ClampMin = "8.0",UIMin = "8.0"))
 	FIntVector GridSize = FIntVector(512,512,1);
 	
-	UPROPERTY(EditAnywhere,meta=(DisplayName="Simualtion"))
+	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation",meta=(DisplayName="Simualtion"))
 	bool bSimulation;
-	
-	UPROPERTY(EditAnywhere,meta=(DisplayName="Vorticity Scale"))
+
+	UPROPERTY(EditAnywhere,Category = "Materials",meta=(DisplayName="Simulator Material"))
+	TSoftObjectPtr<UMaterialInterface> Material;
+
+	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation")
+	ESimulatorType SimulatorType = ESimulatorType::PlaneSmokeFluid;
+
+	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation",meta=(DisplayName="Vorticity Scale"))
 	float VorticityMult = 500;
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation")
 	float NoiseFrequency = 250;
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation")
 	float NoiseIntensity = 1;
 
-	UPROPERTY(EditAnywhere)
-	float DensityDissipate = 1;
+	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation")
+	float DensityDissipate = 0.5;
 
-	UPROPERTY(EditAnywhere)
-	float VelocityDissipate = 1;
+	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation")
+	float VelocityDissipate = 0.1;
 
-	UPROPERTY(EditAnywhere)
-	float GravityScale = 1;
-	UFUNCTION(BlueprintCallable)
+	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation")
+	float GravityScale = 20;
+
+	UFUNCTION(BlueprintCallable,Category = "PhysicalSimulation")
 	void DoSimulation();
 	
-	UFUNCTION(BlueprintCallable)
+	UFUNCTION(BlueprintCallable,Category = "PhysicalSimulation")
 	void Initial();
 
-	UFUNCTION(BlueprintCallable)
-	void InitialRenderTaget();
 
-	UPROPERTY(BlueprintReadOnly)
+	UPROPERTY(BlueprintReadOnly,Category = "PhysicalSimulation")
 	UTextureRenderTarget* SimulationTexture;
 
-	UPROPERTY(BlueprintReadOnly)
+	UPROPERTY(BlueprintReadOnly,Category = "PhysicalSimulation")
 	UTextureRenderTarget* PressureTexture;
 	
 	
 protected:
 	
 	virtual void BeginPlay() override;
-	
+
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+
 	void SetupSolverParameter();
+
 	FSolverParameter SolverParameter;
 	FPhysicalSolver* PhysicalSolver;
 	FVector3f LastOnwerPosition;
 	FVector3f CenterOnwerPosition;
-	
+private:
+	void CreateSolver();
+	void Create3DRenderTarget();
+	void Create2DRenderTarget();
 	
 };

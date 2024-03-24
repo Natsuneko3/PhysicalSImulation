@@ -4,17 +4,24 @@
 #include "Physical2DFluidSolver.h"
 #include "RenderGraphBuilder.h"
 #include "RenderGraphUtils.h"
-
+#include "Engine/TextureRenderTargetVolume.h"
 
 
 // Sets default values
 UPhysicalSimulationComponent::UPhysicalSimulationComponent()
 {
+
 	PrimaryComponentTick.bCanEverTick = true;
 	bTickInEditor = true;
 	CenterOnwerPosition = FVector3f(0);
 	LastOnwerPosition = FVector3f(0);
+	if(!GetStaticMesh())
+	{
+		SetStaticMesh(LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Plane.Plane")));
+	}
+
 	Initial();
+
 }
 
 UPhysicalSimulationComponent::~UPhysicalSimulationComponent()
@@ -30,14 +37,12 @@ void UPhysicalSimulationComponent::DoSimulation()
 	
 	if(!SimulationTexture || !PressureTexture )
 	{
-		InitialRenderTaget();
+		Initial();
 	}
-	
-	
+
 		ENQUEUE_RENDER_COMMAND(ActorPhysicalSimulation)([this](FRHICommandListImmediate& RHICmdList)
 	{
-	
-		
+
 		FRDGBuilder GraphBuilder(RHICmdList);
 			TArray<FRDGTextureRef> OutputArray;
 			TRefCountPtr<IPooledRenderTarget> PreViewTextureRT = CreateRenderTarget(SimulationTexture->GetResource()->GetTextureRHI(), TEXT("PreViewTexture"));
@@ -54,9 +59,7 @@ void UPhysicalSimulationComponent::DoSimulation()
 
 			PhysicalSolver->SetParameter(SolverParameter);
 			PhysicalSolver->Update_RenderThread(GraphBuilder,OutputArray,Context);
-			
-			//
-			
+
 		GraphBuilder.Execute();
 	});
 
@@ -67,36 +70,18 @@ void UPhysicalSimulationComponent::DoSimulation()
 void UPhysicalSimulationComponent::Initial()
 {
 
-	InitialRenderTaget();
-	PhysicalSolver = MakeShareable(new FPhysical2DFluidSolver).Object;
-
+	CreateSolver();
+	if(Material)
+	{
+		UMaterialInstanceDynamic* MID =  CreateDynamicMaterialInstance(0,Material.Get());
+		MID->SetTextureParameterValue(TEXT("RT"),SimulationTexture);
+		//GetStaticMesh()->SetMaterial(0,MID);
+	}
 
 	//SetupSolverParameter();
 }
 
-void UPhysicalSimulationComponent::InitialRenderTaget()
-{
-	UTextureRenderTarget2D* NewRenderTarget2D = NewObject<UTextureRenderTarget2D>();
-	check(NewRenderTarget2D);
-	NewRenderTarget2D->RenderTargetFormat = RTF_RGBA16f;
-	NewRenderTarget2D->ClearColor = FLinearColor::Black;
-	NewRenderTarget2D->bAutoGenerateMips = true;
-	NewRenderTarget2D->bCanCreateUAV = true;
-	NewRenderTarget2D->InitAutoFormat(GridSize.X, GridSize.Y);
-	NewRenderTarget2D->UpdateResourceImmediate(true);
 
-	UTextureRenderTarget2D* NewPressureRenderTarget2D = NewObject<UTextureRenderTarget2D>();
-	check(NewPressureRenderTarget2D);
-	NewPressureRenderTarget2D->RenderTargetFormat = RTF_R16f;
-	NewPressureRenderTarget2D->ClearColor = FLinearColor::Black;
-	NewPressureRenderTarget2D->bAutoGenerateMips = true;
-	NewPressureRenderTarget2D->bCanCreateUAV = true;
-	NewPressureRenderTarget2D->InitAutoFormat(GridSize.X, GridSize.Y);
-	NewPressureRenderTarget2D->UpdateResourceImmediate(true);
-
-	PressureTexture = NewPressureRenderTarget2D;
-	SimulationTexture = NewRenderTarget2D;
-}
 
 // Called when the game starts or when spawned
 void UPhysicalSimulationComponent::BeginPlay()
@@ -123,9 +108,9 @@ void UPhysicalSimulationComponent::PostEditChangeProperty(FPropertyChangedEvent&
 {
 	Super::PostEditChangeProperty(PropertyChangedEvent);
 	
-	UE_LOG(LogTemp,Log,TEXT("CHange name:%s"),*PropertyChangedEvent.GetPropertyName().ToString());
+	//UE_LOG(LogTemp,Log,TEXT("CHange name:%s"),*PropertyChangedEvent.GetPropertyName().ToString());
 
-	//Initial();
+	Initial();
 	
 }
 
@@ -140,7 +125,7 @@ void UPhysicalSimulationComponent::SetupSolverParameter()
 	FSceneView* View =  GEngine->GameViewportCalcSceneView(&ViewFamily);
 	FSceneView* View = GEngine->GameViewport.*/
 	FSolverBaseParameter SolverBase ;
-	SolverBase.dt = GetWorld()->GetDeltaSeconds() * 2;
+	SolverBase.dt = GetWorld()->GetDeltaSeconds();
 	SolverBase.dx = 1.0;//1.0 / (float)GridSize.X;
 	SolverBase.GridSize = FVector3f( GridSize);
 	SolverBase.Time = 0;
@@ -161,5 +146,58 @@ void UPhysicalSimulationComponent::SetupSolverParameter()
 	SolverParameter.FluidParameter.GravityScale = GravityScale;
 	SolverParameter.FluidParameter.UseFFT = true;
 
+}
+
+void UPhysicalSimulationComponent::CreateSolver()
+{
+	switch (SimulatorType)
+	{
+	case ESimulatorType::PlaneSmokeFluid:
+		PhysicalSolver = MakeShareable(new FPhysical2DFluidSolver).Object;
+		Create2DRenderTarget();
+		return;
+
+	case ESimulatorType::CubeSmokeFluid:
+		Create3DRenderTarget();
+		return;
+	case ESimulatorType::Water:
+		Create3DRenderTarget();
+	}
+}
+
+void UPhysicalSimulationComponent::Create3DRenderTarget()
+{
+	UTextureRenderTargetVolume* VolumeRT = NewObject<UTextureRenderTargetVolume>();
+	VolumeRT->InitAutoFormat(GridSize.X,GridSize.Y,GridSize.Z);
+	VolumeRT->OverrideFormat = PF_FloatRGB;
+	VolumeRT->ClearColor = FLinearColor::Black;
+	VolumeRT->bCanCreateUAV = true;
+	VolumeRT->UpdateResourceImmediate(true);
+	SimulationTexture = VolumeRT;
+}
+
+void UPhysicalSimulationComponent::Create2DRenderTarget()
+{
+
+	UTextureRenderTarget2D* NewRenderTarget2D = NewObject<UTextureRenderTarget2D>();
+	check(NewRenderTarget2D);
+	NewRenderTarget2D->RenderTargetFormat = RTF_RGBA16f;
+	NewRenderTarget2D->ClearColor = FLinearColor::Black;
+	NewRenderTarget2D->bAutoGenerateMips = true;
+	NewRenderTarget2D->bCanCreateUAV = true;
+	NewRenderTarget2D->InitAutoFormat(GridSize.X, GridSize.Y);
+	NewRenderTarget2D->UpdateResourceImmediate(true);
+
+	UTextureRenderTarget2D* NewPressureRenderTarget2D = NewObject<UTextureRenderTarget2D>();
+	check(NewPressureRenderTarget2D);
+	NewPressureRenderTarget2D->RenderTargetFormat = RTF_R16f;
+	NewPressureRenderTarget2D->ClearColor = FLinearColor::Black;
+	NewPressureRenderTarget2D->bAutoGenerateMips = true;
+	NewPressureRenderTarget2D->bCanCreateUAV = true;
+	NewPressureRenderTarget2D->InitAutoFormat(GridSize.X, GridSize.Y);
+	NewPressureRenderTarget2D->UpdateResourceImmediate(true);
+
+	PressureTexture = NewPressureRenderTarget2D;
+	SimulationTexture = NewRenderTarget2D;
 }
 
