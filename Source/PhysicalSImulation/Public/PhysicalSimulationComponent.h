@@ -7,7 +7,7 @@
 #include "GameFramework/Actor.h"
 #include "Physical2DFluidSolver.h"
 
-#include "PhysicalSimulationSystem.generated.h"
+#include "PhysicalSimulationComponent.generated.h"
 
 UENUM()
 enum class ESimulatorType : uint8
@@ -82,7 +82,7 @@ protected:
 	void SetupSolverParameter();
 
 	FSolverParameter SolverParameter;
-	FPhysicalSolver* PhysicalSolver;
+	FPhysicalSolverBase* PhysicalSolver;
 	FVector3f LastOnwerPosition;
 	FVector3f CenterOnwerPosition;
 private:

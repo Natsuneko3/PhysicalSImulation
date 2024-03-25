@@ -6,7 +6,7 @@
 
 
 
-class FPhysical2DFluidSolver :public FPhysicalSolver
+class FPhysical2DFluidSolver :public FPhysicalSolverBase
 {
 public:
 	FPhysical2DFluidSolver();

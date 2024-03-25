@@ -1,6 +1,6 @@
 // Copyright Natsu Neko, Inc. All Rights Reserved.
 
-#include "PhysicalSimulationSystem.h"
+#include "PhysicalSimulationComponent.h"
 #include "Physical2DFluidSolver.h"
 #include "RenderGraphBuilder.h"
 #include "RenderGraphUtils.h"
@@ -55,8 +55,9 @@ void UPhysicalSimulationComponent::DoSimulation()
 			OutputArray.Add(OutPreRT);
 			FPhysicalSolverContext Context;
 			Context.FeatureLevel = GetWorld()->Scene->GetFeatureLevel();
-			Context.OwnerActor = GetOwner();
-
+			Context.WorldVelocity = FVector3f( GetOwner()->GetVelocity());
+			Context.WorldPosition = FVector3f( GetOwner()->GetActorLocation());
+			Context.SolverParameter = SolverParameter;
 			PhysicalSolver->SetParameter(SolverParameter);
 			PhysicalSolver->Update_RenderThread(GraphBuilder,OutputArray,Context);
 

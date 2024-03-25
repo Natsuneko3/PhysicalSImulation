@@ -188,8 +188,8 @@ void FPhysical2DFluidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder, TArr
 		InPassParameters->SimGridUAV = SimUAV? SimUAV : GraphBuilder.CreateUAV(OutTextureArray[0]);
 		InPassParameters->PressureGridUAV = PressureUAV? PressureUAV : GraphBuilder.CreateUAV(OutTextureArray[1]);
 		InPassParameters->bUseFFTPressure = bUseFFT;
-		InPassParameters->WorldVelocity = FVector3f( Context.OwnerActor->GetVelocity());
-		InPassParameters->WorldPosition = FVector3f( Context.OwnerActor->GetActorLocation());
+		InPassParameters->WorldVelocity =Context.WorldVelocity;
+		InPassParameters->WorldPosition =Context.WorldPosition;
 
 		
 	};

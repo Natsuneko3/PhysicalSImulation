@@ -17,7 +17,7 @@ SHADER_PARAMETER(float,dx)
 
 
 SHADER_PARAMETER_SAMPLER(SamplerState, WarpSampler)
-//SHADER_PARAMETER_STRUCT_REF(FViewUniformShaderParameters, View)
+SHADER_PARAMETER_STRUCT_REF(FViewUniformShaderParameters, View)
 
 END_SHADER_PARAMETER_STRUCT()
 
@@ -43,9 +43,11 @@ struct FSolverParameter
 struct FPhysicalSolverContext
 {
 	ERHIFeatureLevel::Type FeatureLevel;
-	AActor* OwnerActor;
+	FVector3f WorldVelocity;
+	FVector3f WorldPosition;
+	FSolverParameter SolverParameter;
 };
-class FPhysicalSolver
+class FPhysicalSolverBase
 {
 
 public:
