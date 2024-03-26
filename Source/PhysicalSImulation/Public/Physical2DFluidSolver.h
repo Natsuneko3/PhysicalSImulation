@@ -19,8 +19,10 @@ public:
 	bool bIsInitial = false;
 
 	FFluidParameter SolverParameter;
-
 	FIntPoint GridSize;
 	int32 Frame;
+private:
+	FRDGTextureRef SimulatorRT;
+	FRDGTextureRef PressureRT;
 
 };

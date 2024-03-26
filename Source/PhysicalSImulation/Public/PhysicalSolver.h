@@ -32,6 +32,13 @@ BEGIN_SHADER_PARAMETER_STRUCT(FFluidParameter, PHYSICALSIMULATION_API)
 SHADER_PARAMETER(int,UseFFT)
 END_SHADER_PARAMETER_STRUCT()
 
+UENUM()
+enum class ESimulatorType : uint8
+{
+	PlaneSmokeFluid = 0,
+	CubeSmokeFluid = 1,
+	Water = 2
+};
 
 struct FSolverParameter
 {
@@ -42,10 +49,19 @@ struct FSolverParameter
 
 struct FPhysicalSolverContext
 {
+	FPhysicalSolverContext()
+	{
+		WorldVelocity = FVector3f(0);
+		WorldPosition = FVector3f(0);
+	};
+
 	ERHIFeatureLevel::Type FeatureLevel;
 	FVector3f WorldVelocity;
 	FVector3f WorldPosition;
 	FSolverParameter SolverParameter;
+	UStaticMesh* BoundingMesh;
+	UMaterialInterface* MeshMaterial;
+	ESimulatorType SimulatorType;
 };
 class FPhysicalSolverBase
 {

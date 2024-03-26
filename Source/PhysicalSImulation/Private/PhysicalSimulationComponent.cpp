@@ -4,6 +4,7 @@
 #include "Physical2DFluidSolver.h"
 #include "RenderGraphBuilder.h"
 #include "RenderGraphUtils.h"
+#include "SceneViewExtension.h"
 #include "Engine/TextureRenderTargetVolume.h"
 
 
@@ -15,12 +16,13 @@ UPhysicalSimulationComponent::UPhysicalSimulationComponent()
 	bTickInEditor = true;
 	CenterOnwerPosition = FVector3f(0);
 	LastOnwerPosition = FVector3f(0);
+
 	if(!GetStaticMesh())
 	{
 		SetStaticMesh(LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Plane.Plane")));
 	}
 
-	Initial();
+	//Initial();
 
 }
 
@@ -53,13 +55,9 @@ void UPhysicalSimulationComponent::DoSimulation()
 	
 			OutputArray.Add(OutRT);
 			OutputArray.Add(OutPreRT);
-			FPhysicalSolverContext Context;
-			Context.FeatureLevel = GetWorld()->Scene->GetFeatureLevel();
-			Context.WorldVelocity = FVector3f( GetOwner()->GetVelocity());
-			Context.WorldPosition = FVector3f( GetOwner()->GetActorLocation());
-			Context.SolverParameter = SolverParameter;
+
 			PhysicalSolver->SetParameter(SolverParameter);
-			PhysicalSolver->Update_RenderThread(GraphBuilder,OutputArray,Context);
+			PhysicalSolver->Update_RenderThread(GraphBuilder,OutputArray,PhysicalSolverContext);
 
 		GraphBuilder.Execute();
 	});
@@ -72,13 +70,26 @@ void UPhysicalSimulationComponent::Initial()
 {
 
 	CreateSolver();
+	if(PhysicalSolverViewExtension)
+	{
+		PhysicalSolverViewExtension.Reset();
+	}
+
+
+	PhysicalSolverContext.FeatureLevel = GetWorld()->Scene->GetFeatureLevel();
+	PhysicalSolverContext.WorldVelocity = FVector3f( GetOwner()->GetVelocity());
+	PhysicalSolverContext.WorldPosition = FVector3f( GetOwner()->GetActorLocation());
+	PhysicalSolverContext.SolverParameter = SolverParameter;
+	PhysicalSolverContext.BoundingMesh = GetStaticMesh().Get();
+	PhysicalSolverContext.MeshMaterial = Material.Get();
 	if(Material)
 	{
 		UMaterialInstanceDynamic* MID =  CreateDynamicMaterialInstance(0,Material.Get());
 		MID->SetTextureParameterValue(TEXT("RT"),SimulationTexture);
-		//GetStaticMesh()->SetMaterial(0,MID);
-	}
+		GetStaticMesh()->SetMaterial(0,MID);
 
+	}
+	//PhysicalSolverViewExtension = FSceneViewExtensions::NewExtension<FPhysicalSolverViewExtension>(PhysicalSolver,PhysicalSolverContext);
 	//SetupSolverParameter();
 }
 
@@ -101,7 +112,7 @@ void UPhysicalSimulationComponent::TickComponent(float DeltaTime, ELevelTick Tic
 	{
 		LastOnwerPosition = CenterOnwerPosition;
 		CenterOnwerPosition = FVector3f(GetOwner()->GetActorLocation());
-		DoSimulation();
+		//DoSimulation();
 	}
 }
 

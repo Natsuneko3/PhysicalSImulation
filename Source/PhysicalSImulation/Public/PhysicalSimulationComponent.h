@@ -5,17 +5,11 @@
 #include "CoreMinimal.h"
 #include "Engine/TextureRenderTarget2D.h"
 #include "GameFramework/Actor.h"
-#include "Physical2DFluidSolver.h"
 
+#include "PhysicalSolverViewExtension.h"
 #include "PhysicalSimulationComponent.generated.h"
 
-UENUM()
-enum class ESimulatorType : uint8
-{
-	PlaneSmokeFluid = 0,
-	CubeSmokeFluid = 1,
-	Water = 2
-};
+
 
 DEFINE_LOG_CATEGORY_STATIC(LogSimulation, Log, All);
 UCLASS(Blueprintable, meta=(BlueprintSpawnableComponent))
@@ -89,5 +83,7 @@ private:
 	void CreateSolver();
 	void Create3DRenderTarget();
 	void Create2DRenderTarget();
+	TSharedPtr<FPhysicalSolverViewExtension> PhysicalSolverViewExtension;
+	FPhysicalSolverContext PhysicalSolverContext;
 	
 };

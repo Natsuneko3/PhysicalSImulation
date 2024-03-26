@@ -143,6 +143,7 @@ void FPhysical2DFluidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder, TArr
 			OutTextureArray.Add(nullptr);
 		}
 	}
+
 	FRDGTextureDesc SimGridDesc = FRDGTextureDesc::Create2D(OutTextureArray[0]->Desc.Extent,PF_FloatRGBA,FClearValueBinding::Black, TexCreate_ShaderResource | TexCreate_UAV | TexCreate_RenderTargetable);
 	FRDGTextureRef SimulationTexture =  GraphBuilder.CreateTexture(SimGridDesc,TEXT("SimGrid"),ERDGTextureFlags::MultiFrame);
 	FRDGTextureDesc PressureGridDesc =  FRDGTextureDesc::Create2D(OutTextureArray[1]->Desc.Extent,PF_R16F,FClearValueBinding::Black, TexCreate_ShaderResource | TexCreate_UAV | TexCreate_RenderTargetable);
@@ -217,12 +218,14 @@ void FPhysical2DFluidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder, TArr
 	{
 
 		F2DFluidCS::FParameters* PassParameters = GraphBuilder.AllocParameters<F2DFluidCS::FParameters>();
-		if(RHIGetInterfaceType() <ERHIInterfaceType::D3D12)
+		GraphBuilder.RHICmdList.Transition(FRHITransitionInfo(SimulationTexture->GetRHI(), ERHIAccess::UAVCompute, ERHIAccess::SRVCompute));
+
+		/*if(RHIGetInterfaceType() <ERHIInterfaceType::D3D12)
 		{
 			AddCopyTexturePass(GraphBuilder,OutTextureArray[0],SimulationTexture);
 			SimSRV = GraphBuilder.CreateSRV(SimulationTexture);
 			PressureSRV = GraphBuilder.CreateSRV(PressureTexture);
-		}
+		}*/
 
 
 		SetParameter(PassParameters,false,0, SimUAV, PressureUAV, SimSRV, PressureSRV,Advection);
@@ -367,12 +370,14 @@ void FPhysical2DFluidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder, TArr
 
 		F2DFluidCS::FParameters* PassParameters = GraphBuilder.AllocParameters<F2DFluidCS::FParameters>();
 
-		if(RHIGetInterfaceType() <ERHIInterfaceType::D3D12)
+		GraphBuilder.RHICmdList.Transition(FRHITransitionInfo(SimulationTexture->GetRHI(), ERHIAccess::UAVCompute, ERHIAccess::SRVCompute));
+
+		/*if(RHIGetInterfaceType() <ERHIInterfaceType::D3D12)
 		{
 			AddCopyTexturePass(GraphBuilder,OutTextureArray[0],SimulationTexture);
 			SimSRV = GraphBuilder.CreateSRV(SimulationTexture);
 			PressureSRV = GraphBuilder.CreateSRV(PressureTexture);
-		}
+		}*/
 
 		SetParameter(PassParameters,true,0, SimUAV, PressureUAV, SimSRV, PressureSRV,Advection);
 
