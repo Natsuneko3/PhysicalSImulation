@@ -3,7 +3,6 @@
 #include "CommonRenderResources.h"
 #include "Physical2DFluidSolver.h"
 #include "RenderGraphBuilder.h"
-#include "Renderer/Private/SceneRendering.h"
 
 FPhysicalSolverViewExtension::FPhysicalSolverViewExtension(const FAutoRegister& AutoRegister, FPhysicalSolverContext* InContext):
 	FSceneViewExtensionBase(AutoRegister),
@@ -19,6 +18,7 @@ FPhysicalSolverViewExtension::FPhysicalSolverViewExtension(const FAutoRegister& 
 	case ESimulatorType::Water:
 		break;
 	}
+	Initial();
 }
 
 void FPhysicalSolverViewExtension::BeginRenderViewFamily(FSceneViewFamily& InViewFamily)
@@ -30,29 +30,6 @@ void FPhysicalSolverViewExtension::PreRenderViewFamily_RenderThread(FRDGBuilder&
 	FSceneViewExtensionBase::PreRenderViewFamily_RenderThread(GraphBuilder, InViewFamily);
 }
 
-void FPhysicalSolverViewExtension::AddSceneProxy(FPhysicalSolverSceneProxy* Proxy)
-{
-	ENQUEUE_RENDER_COMMAND(FAddVdbProxyCommand)(
-		[this, Proxy](FRHICommandListImmediate& RHICmdList)
-		{
-			check(SceneProxies.Find(Proxy) == INDEX_NONE);
-			SceneProxies.Emplace(Proxy);
-		});
-
-}
-
-void FPhysicalSolverViewExtension::RemoveSceneProxy(FPhysicalSolverSceneProxy* Proxy)
-{
-	ENQUEUE_RENDER_COMMAND(FRemoveVdbProxyCommand)(
-		[this, Proxy](FRHICommandListImmediate& RHICmdList)
-		{
-			auto Idx = SceneProxies.Find(Proxy);
-			if (Idx != INDEX_NONE)
-			{
-				SceneProxies.Remove(Proxy);
-			}
-		});
-}
 
 void FPhysicalSolverViewExtension::Initial()
 {

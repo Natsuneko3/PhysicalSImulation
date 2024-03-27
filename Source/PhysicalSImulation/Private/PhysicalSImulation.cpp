@@ -8,7 +8,7 @@ void FPhysicalSImulationModule::StartupModule()
 {
 	// This code will execute after your module is loaded into memory; the exact timing is specified in the .uplugin file per-module
 
-	const FString PluginShaderDir = FPaths::Combine(FPaths::ProjectPluginsDir(), TEXT("/PhysicalSImulation/Shaders"));
+	const FString PluginShaderDir = FPaths::Combine(FPaths::EnginePluginsDir(), TEXT("/PhysicalSImulation/Shaders"));
 	AddShaderSourceDirectoryMapping(TEXT("/PluginShader"), PluginShaderDir);
 }
 

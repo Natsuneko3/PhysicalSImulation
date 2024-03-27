@@ -2,7 +2,7 @@
 
 #include "PhysicalSimulationComponent.h"
 #include "Physical2DFluidSolver.h"
-#include "PhysicalSolverSceneProxy.h"
+
 #include "RenderGraphBuilder.h"
 #include "RenderGraphUtils.h"
 #include "SceneViewExtension.h"
@@ -78,7 +78,7 @@ void UPhysicalSimulationComponent::Initial()
 	SetupSolverParameter();
 
 
-	PhysicalSolverViewExtension = FSceneViewExtensions::NewExtension<FPhysicalSolverViewExtension>(PhysicalSolverContext);
+	PhysicalSolverViewExtension = FSceneViewExtensions::NewExtension<FPhysicalSolverViewExtension>(&PhysicalSolverContext);
 	PhysicalSolverViewExtension.Get()->PhysicalSolver->InitialedDelegate.AddLambda([this]()
 	{
 		if(Material)

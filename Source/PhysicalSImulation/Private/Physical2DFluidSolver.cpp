@@ -140,6 +140,8 @@ void FPhysical2DFluidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder, FPhy
 	 =  GraphBuilder.CreateTexture(SimGridDesc,TEXT("SimGrid"),ERDGTextureFlags::MultiFrame);
 	FRDGTextureDesc PressureGridDesc =  FRDGTextureDesc::Create2D(GridSize,PF_R16F,FClearValueBinding::Black, TexCreate_ShaderResource | TexCreate_UAV | TexCreate_RenderTargetable);
 	 =  GraphBuilder.CreateTexture(PressureGridDesc,TEXT("PressureGrid"),ERDGTextureFlags::MultiFrame);*/
+	SimulatorTextureRT = CreateRenderTarget(OutTextures[0]->GetResource()->GetTextureRHI(), TEXT("DensityTexture"));
+	PressureTextureRT = CreateRenderTarget(OutTextures[1]->GetResource()->GetTextureRHI(), TEXT("PressureTexture"));
 
 	FRDGTextureRef SimulationTexture= GraphBuilder.RegisterExternalTexture(SimulatorTextureRT);
 	FRDGTextureRef PressureTexture = GraphBuilder.RegisterExternalTexture(PressureTextureRT);
@@ -412,6 +414,7 @@ void FPhysical2DFluidSolver::Initial()
 	NewRenderTarget2D->InitAutoFormat(GridSize.X, GridSize.Y);
 	NewRenderTarget2D->UpdateResourceImmediate(true);
 
+
 	UTextureRenderTarget2D* NewPressureRenderTarget2D = NewObject<UTextureRenderTarget2D>();
 	check(NewPressureRenderTarget2D);
 	NewPressureRenderTarget2D->RenderTargetFormat = RTF_R16f;
@@ -420,12 +423,13 @@ void FPhysical2DFluidSolver::Initial()
 	NewPressureRenderTarget2D->bCanCreateUAV = true;
 	NewPressureRenderTarget2D->InitAutoFormat(GridSize.X, GridSize.Y);
 	NewPressureRenderTarget2D->UpdateResourceImmediate(true);
+	
 
 	OutTextures.Empty();
 	OutTextures.Add(NewRenderTarget2D);
 	OutTextures.Add(NewPressureRenderTarget2D);
-	TRefCountPtr<IPooledRenderTarget> PressureTextureRT = CreateRenderTarget(OutTextures[1]->GetResource()->GetTextureRHI(), TEXT("PressureTexture"));
-	TRefCountPtr<IPooledRenderTarget> DensityRT = CreateRenderTarget(OutTextures[0]->GetResource()->GetTextureRHI(), TEXT("DensityTexture"));
+
+
 
 	InitialedDelegate.Broadcast();
 }

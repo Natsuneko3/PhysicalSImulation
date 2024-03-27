@@ -69,7 +69,11 @@ public:
 	virtual void SetParameter(FSolverParameter InParameter){}
 	virtual void Initial(){}
 	virtual void Update_RenderThread(FRDGBuilder& GraphBuilder,FPhysicalSolverContext* Context){}
-	virtual TArray<UTextureRenderTarget*> GetOutputTextures(){}
+	virtual TArray<UTextureRenderTarget*> GetOutputTextures()
+	{
+		TArray<UTextureRenderTarget*> Textures;
+		return Textures;
+	}
 	FPhysicalSolverInitialed InitialedDelegate;
 	
 };

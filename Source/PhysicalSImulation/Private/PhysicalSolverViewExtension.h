@@ -1,7 +1,6 @@
 ﻿#pragma once
 #include "Physical2DFluidSolver.h"
 #include "PhysicalSolver.h"
-#include "PhysicalSolverSceneProxy.h"
 #include "SceneViewExtension.h"
 
 class FPhysicalSolverViewExtension : public FSceneViewExtensionBase
@@ -20,8 +19,7 @@ public:
     virtual bool IsActiveThisFrame_Internal(const FSceneViewExtensionContext& Context) const { return true; }
     //~ End ISceneViewExtension Interface
 
-	void AddSceneProxy(FPhysicalSolverSceneProxy* Proxy);
-	void RemoveSceneProxy(FPhysicalSolverSceneProxy* Proxy);
+
 
 	void Initial();
 	void InitDelegate();
@@ -32,7 +30,7 @@ public:
 
 private:
 	FPostOpaqueRenderDelegate RenderDelegate;
-	TArray<FPhysicalSolverSceneProxy*> SceneProxies;
+	//TArray<FPhysicalSolverSceneProxy*> SceneProxies;
 
 	FPhysicalSolverContext* SolverContext;
 	FDelegateHandle RenderDelegateHandle;
