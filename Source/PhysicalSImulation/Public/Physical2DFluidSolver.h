@@ -4,8 +4,6 @@
 //#include "Physical2DFluid.generated.h"
 
 
-
-
 class FPhysical2DFluidSolver :public FPhysicalSolverBase
 {
 public:
@@ -13,16 +11,20 @@ public:
 
 	virtual void SetParameter(FSolverParameter InParameter) override;
 
-	virtual void Update_RenderThread(FRDGBuilder& GraphBuilder, TArray<FRDGTextureRef>& OutTextureArray,FPhysicalSolverContext Context) override;
+	virtual void Update_RenderThread(FRDGBuilder& GraphBuilder,FPhysicalSolverContext* Context) override;
 
-	virtual void Initial(FRDGBuilder& GraphBuilder,FSolverParameter InParameter) override;
+	virtual void Initial() override;
+	virtual TArray<UTextureRenderTarget*> GetOutputTextures() override{return OutTextures;};
+
 	bool bIsInitial = false;
 
 	FFluidParameter SolverParameter;
 	FIntPoint GridSize;
 	int32 Frame;
 private:
-	FRDGTextureRef SimulatorRT;
-	FRDGTextureRef PressureRT;
+	TRefCountPtr<IPooledRenderTarget> SimulatorTextureRT;
+	TRefCountPtr<IPooledRenderTarget> PressureTextureRT;
+
+	TArray<UTextureRenderTarget*> OutTextures;
 
 };

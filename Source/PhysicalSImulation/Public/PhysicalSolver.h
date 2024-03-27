@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Engine/TextureRenderTarget.h"
 #include "UObject/Object.h"
 //#include "PhysicalSolver.generated.h"
 
@@ -14,11 +15,8 @@ SHADER_PARAMETER(FVector3f,GridSize)
 SHADER_PARAMETER(int32,Time)
 SHADER_PARAMETER(float,dt)
 SHADER_PARAMETER(float,dx)
-
-
 SHADER_PARAMETER_SAMPLER(SamplerState, WarpSampler)
 SHADER_PARAMETER_STRUCT_REF(FViewUniformShaderParameters, View)
-
 END_SHADER_PARAMETER_STRUCT()
 
 BEGIN_SHADER_PARAMETER_STRUCT(FFluidParameter, PHYSICALSIMULATION_API)
@@ -32,6 +30,7 @@ BEGIN_SHADER_PARAMETER_STRUCT(FFluidParameter, PHYSICALSIMULATION_API)
 SHADER_PARAMETER(int,UseFFT)
 END_SHADER_PARAMETER_STRUCT()
 
+DECLARE_MULTICAST_DELEGATE(FPhysicalSolverInitialed);
 UENUM()
 enum class ESimulatorType : uint8
 {
@@ -42,9 +41,7 @@ enum class ESimulatorType : uint8
 
 struct FSolverParameter
 {
-	
 	FFluidParameter FluidParameter;
-	
 };
 
 struct FPhysicalSolverContext
@@ -62,13 +59,17 @@ struct FPhysicalSolverContext
 	UStaticMesh* BoundingMesh;
 	UMaterialInterface* MeshMaterial;
 	ESimulatorType SimulatorType;
+
 };
+
 class FPhysicalSolverBase
 {
 
 public:
 	virtual void SetParameter(FSolverParameter InParameter){}
-	virtual void Initial(FRDGBuilder& GraphBuilder,FSolverParameter InParameter){}
-	virtual void Update_RenderThread(FRDGBuilder& GraphBuilder,TArray<FRDGTextureRef>& OutTextureArray,FPhysicalSolverContext Context){}
+	virtual void Initial(){}
+	virtual void Update_RenderThread(FRDGBuilder& GraphBuilder,FPhysicalSolverContext* Context){}
+	virtual TArray<UTextureRenderTarget*> GetOutputTextures(){}
+	FPhysicalSolverInitialed InitialedDelegate;
 	
 };

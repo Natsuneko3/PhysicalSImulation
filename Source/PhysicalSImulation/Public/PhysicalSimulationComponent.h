@@ -28,7 +28,10 @@ public:
 	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation",meta=(DisplayName="Simualtion"))
 	bool bSimulation;
 
-	UPROPERTY(EditAnywhere,Category = "Materials",meta=(DisplayName="Simulator Material"))
+	/*UPROPERTY(EditAnywhere,Category = "SimulatorMesh",meta=(DisplayName="Mesh"))
+	TSoftObjectPtr<UStaticMesh> StaticMesh;*/
+
+	UPROPERTY(EditAnywhere,Category = "Materials")
 	TSoftObjectPtr<UMaterialInterface> Material;
 
 	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation")
@@ -65,7 +68,7 @@ public:
 	UPROPERTY(BlueprintReadOnly,Category = "PhysicalSimulation")
 	UTextureRenderTarget* PressureTexture;
 	
-	
+	FSolverParameter SolverParameter;
 protected:
 	
 	virtual void BeginPlay() override;
@@ -73,9 +76,11 @@ protected:
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 
+	//virtual FPrimitiveSceneProxy* CreateSceneProxy() override;
+
 	void SetupSolverParameter();
 
-	FSolverParameter SolverParameter;
+
 	FPhysicalSolverBase* PhysicalSolver;
 	FVector3f LastOnwerPosition;
 	FVector3f CenterOnwerPosition;
