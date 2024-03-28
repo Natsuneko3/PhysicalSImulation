@@ -163,7 +163,10 @@ void FPhysical2DFluidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder, FPhy
 		FRDGTextureDesc SimGridDesc = FRDGTextureDesc::Create2D(GridSize,PF_R16F,FClearValueBinding::Black, TexCreate_ShaderResource | TexCreate_UAV | TexCreate_RenderTargetable);
 		PressureTexture =  GraphBuilder.CreateTexture(SimGridDesc,TEXT("PressureTexture"),ERDGTextureFlags::MultiFrame);
 	}*/
-
+	if(!Context->OutputTextures[0]->GetResource())
+	{
+		return;
+	}
 	SimulationTexture = RegisterExternalTexture(GraphBuilder,Context->OutputTextures[0]->GetResource()->GetTextureRHI(),TEXT("SimulationTexture"));
 	PressureTexture = RegisterExternalTexture(GraphBuilder,Context->OutputTextures[1]->GetResource()->GetTextureRHI(),TEXT("SimulationTexture"));
 	Frame++;
