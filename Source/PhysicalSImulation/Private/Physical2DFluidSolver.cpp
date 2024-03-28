@@ -46,10 +46,6 @@ public:
 	}
 };
 
-
-
-
-
 class F2DFluidCS : public FGlobalShader
 {
 public:
@@ -122,12 +118,12 @@ FPhysical2DFluidSolver::FPhysical2DFluidSolver()
 	GridSize = FIntPoint(127);
 }
 
-void FPhysical2DFluidSolver::SetParameter(FSolverParameter InParameter)
+void FPhysical2DFluidSolver::SetParameter(FSolverParameter* InParameter)
 {
-	GridSize =  FIntPoint(InParameter.FluidParameter.SolverBaseParameter.GridSize.X,
-		InParameter.FluidParameter.SolverBaseParameter.GridSize.Y) - 1;
-	
-	SolverParameter = InParameter.FluidParameter;
+	GridSize =  FIntPoint(InParameter->FluidParameter.SolverBaseParameter.GridSize.X,
+		InParameter->FluidParameter.SolverBaseParameter.GridSize.Y) - 1;
+
+	SolverParameter = &InParameter->FluidParameter;
 }
 
 void FPhysical2DFluidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder, FPhysicalSolverContext* Context)
@@ -135,24 +131,51 @@ void FPhysical2DFluidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder, FPhy
 	DECLARE_GPU_STAT(PlaneFluidSolver)
 	RDG_EVENT_SCOPE(GraphBuilder, "PlaneFluidSolver");
 	RDG_GPU_STAT_SCOPE(GraphBuilder, PlaneFluidSolver);
+	if(!SimulatorTextureRT&&!PressureTextureRT)
+	{
 
+	}
 	/*FRDGTextureDesc SimGridDesc = FRDGTextureDesc::Create2D(GridSize,PF_FloatRGBA,FClearValueBinding::Black, TexCreate_ShaderResource | TexCreate_UAV | TexCreate_RenderTargetable);
 	 =  GraphBuilder.CreateTexture(SimGridDesc,TEXT("SimGrid"),ERDGTextureFlags::MultiFrame);
 	FRDGTextureDesc PressureGridDesc =  FRDGTextureDesc::Create2D(GridSize,PF_R16F,FClearValueBinding::Black, TexCreate_ShaderResource | TexCreate_UAV | TexCreate_RenderTargetable);
 	 =  GraphBuilder.CreateTexture(PressureGridDesc,TEXT("PressureGrid"),ERDGTextureFlags::MultiFrame);*/
-	SimulatorTextureRT = CreateRenderTarget(OutTextures[0]->GetResource()->GetTextureRHI(), TEXT("DensityTexture"));
-	PressureTextureRT = CreateRenderTarget(OutTextures[1]->GetResource()->GetTextureRHI(), TEXT("PressureTexture"));
+	FRDGTextureRef SimulationTexture;
+	FRDGTextureRef PressureTexture;
 
-	FRDGTextureRef SimulationTexture= GraphBuilder.RegisterExternalTexture(SimulatorTextureRT);
-	FRDGTextureRef PressureTexture = GraphBuilder.RegisterExternalTexture(PressureTextureRT);
+	/*if(0)//Context->OutputTextures[0]&&Context->OutputTextures[0]->GetResource()&&Context->OutputTextures[0]->GetResource()->GetTextureRHI())
+	{
+		SimulatorTextureRT = CreateRenderTarget(Context->OutputTextures[0]->GetResource()->GetTextureRHI(), TEXT("DensityTexture"));
+		SimulationTexture= GraphBuilder.RegisterExternalTexture(SimulatorTextureRT);
+	}
+	else
+	{
+		FRDGTextureDesc SimGridDesc = FRDGTextureDesc::Create2D(GridSize,PF_FloatRGBA,FClearValueBinding::Black, TexCreate_ShaderResource | TexCreate_UAV | TexCreate_RenderTargetable);
+		SimulationTexture =  GraphBuilder.CreateTexture(SimGridDesc,TEXT("DensityTexture"),ERDGTextureFlags::MultiFrame);
+	}
+	
+	if(0)//Context->OutputTextures[1]&&Context->OutputTextures[1]->GetResource()&&Context->OutputTextures[1]->GetResource()->GetTextureRHI())
+	{
+		PressureTextureRT = CreateRenderTarget(Context->OutputTextures[1]->GetResource()->GetTextureRHI(), TEXT("PressureTexture"));
+		PressureTexture = GraphBuilder.RegisterExternalTexture(PressureTextureRT);
+	}
+	else
+	{
+		FRDGTextureDesc SimGridDesc = FRDGTextureDesc::Create2D(GridSize,PF_R16F,FClearValueBinding::Black, TexCreate_ShaderResource | TexCreate_UAV | TexCreate_RenderTargetable);
+		PressureTexture =  GraphBuilder.CreateTexture(SimGridDesc,TEXT("PressureTexture"),ERDGTextureFlags::MultiFrame);
+	}*/
 
+	SimulationTexture = RegisterExternalTexture(GraphBuilder,Context->OutputTextures[0]->GetResource()->GetTextureRHI(),TEXT("SimulationTexture"));
+	PressureTexture = RegisterExternalTexture(GraphBuilder,Context->OutputTextures[1]->GetResource()->GetTextureRHI(),TEXT("SimulationTexture"));
 	Frame++;
-	SolverParameter.SolverBaseParameter.Time = Frame;
+	SolverParameter->SolverBaseParameter.Time = Frame;
 	//TODO:Need Change shader map based of platforms
 	auto ShaderMap = GetGlobalShaderMap(Context->FeatureLevel);
-	
-	// FRDGTextureDesc TempDesc =  FRDGTextureDesc::Create2D(GridSize,PF_FloatRGBA,FClearValueBinding::Black, TexCreate_ShaderResource | TexCreate_UAV | TexCreate_RenderTargetable);
-	// FRDGTextureRef TempGrid =  GraphBuilder.CreateTexture(TempDesc,TEXT("TempGrid"),ERDGTextureFlags::None);
+
+	FRDGTextureDesc TempDesc =  FRDGTextureDesc::Create2D(GridSize,PF_FloatRGBA,FClearValueBinding::Black, TexCreate_ShaderResource | TexCreate_UAV | TexCreate_RenderTargetable);
+	FRDGTextureRef TempGrid =  GraphBuilder.CreateTexture(TempDesc,TEXT("TempGrid"),ERDGTextureFlags::None);
+
+	/*AddClearRenderTargetPass(GraphBuilder,SimulationTexture);
+	AddClearRenderTargetPass(GraphBuilder,PressureTexture);*/
 
 
 	FRDGTextureUAVRef SimUAV =  GraphBuilder.CreateUAV(SimulationTexture);
@@ -160,13 +183,15 @@ void FPhysical2DFluidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder, FPhy
 
 	FRDGTextureSRVRef SimSRV = nullptr;
 	FRDGTextureSRVRef PressureSRV = nullptr;
+	SimSRV = GraphBuilder.CreateSRV(SimulationTexture);
+	PressureSRV = GraphBuilder.CreateSRV(PressureTexture);
 	//AddClearRenderTargetPass(GraphBuilder,PressureTexture);
 	
 	auto SetParameter = [this,&GraphBuilder,Context](F2DFluidCS::FParameters* InPassParameters,bool bAdvectionDensity,int IterationIndex
 		,FRDGTextureUAVRef SimUAV,FRDGTextureUAVRef PressureUAV,FRDGTextureSRVRef SimSRV,FRDGTextureSRVRef PressureSRV,int ShaderType)
 	{
 		
-		InPassParameters->FluidParameter = SolverParameter;
+		InPassParameters->FluidParameter = *SolverParameter;
 		InPassParameters->AdvectionDensity = bAdvectionDensity;
 		InPassParameters->IterationIndex = IterationIndex;
 		InPassParameters->FluidShaderType = ShaderType  ;
@@ -206,14 +231,14 @@ void FPhysical2DFluidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder, FPhy
 	{
 
 		F2DFluidCS::FParameters* PassParameters = GraphBuilder.AllocParameters<F2DFluidCS::FParameters>();
-		GraphBuilder.RHICmdList.Transition(FRHITransitionInfo(SimulationTexture->GetRHI(), ERHIAccess::UAVCompute, ERHIAccess::SRVCompute));
+		//GraphBuilder.RHICmdList.Transition(FRHITransitionInfo(SimulationTexture->GetRHI(), ERHIAccess::UAVCompute, ERHIAccess::SRVCompute));
 
-		/*if(RHIGetInterfaceType() <ERHIInterfaceType::D3D12)
+		if(RHIGetInterfaceType() <ERHIInterfaceType::D3D12)
 		{
-			AddCopyTexturePass(GraphBuilder,OutTextureArray[0],SimulationTexture);
-			SimSRV = GraphBuilder.CreateSRV(SimulationTexture);
+			AddCopyTexturePass(GraphBuilder,SimulationTexture,TempGrid);
+			SimSRV = GraphBuilder.CreateSRV(TempGrid);
 			PressureSRV = GraphBuilder.CreateSRV(PressureTexture);
-		}*/
+		}
 
 
 		SetParameter(PassParameters,false,0, SimUAV, PressureUAV, SimSRV, PressureSRV,Advection);
@@ -265,7 +290,7 @@ void FPhysical2DFluidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder, FPhy
 			PassParameters->bIsInverse = false;
 			PassParameters->bTransformX = false;
 			PassParameters->PressureGridUAV = PressureUAV;
-			PassParameters->BaseParameter = SolverParameter.SolverBaseParameter;
+			PassParameters->BaseParameter = SolverParameter->SolverBaseParameter;
 
 			FComputeShaderUtils::AddPass(GraphBuilder,
 				RDG_EVENT_NAME("FFTY"),
@@ -283,7 +308,7 @@ void FPhysical2DFluidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder, FPhy
 			PassParameters->bIsInverse = false;
 			PassParameters->bTransformX = true;
 			PassParameters->PressureGridUAV = PressureUAV;
-			PassParameters->BaseParameter = SolverParameter.SolverBaseParameter;
+			PassParameters->BaseParameter = SolverParameter->SolverBaseParameter;
 
 			FComputeShaderUtils::AddPass(GraphBuilder,
 				RDG_EVENT_NAME("FFTX"),
@@ -300,7 +325,7 @@ void FPhysical2DFluidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder, FPhy
 			PassParameters->bIsInverse = true;
 			PassParameters->bTransformX = true;
 			PassParameters->PressureGridUAV = PressureUAV;
-			PassParameters->BaseParameter = SolverParameter.SolverBaseParameter;
+			PassParameters->BaseParameter = SolverParameter->SolverBaseParameter;
 
 			FComputeShaderUtils::AddPass(GraphBuilder,
 				RDG_EVENT_NAME("InvFFTX"),
@@ -317,7 +342,7 @@ void FPhysical2DFluidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder, FPhy
 			PassParameters->bIsInverse = true;
 			PassParameters->bTransformX = false;
 			PassParameters->PressureGridUAV = PressureUAV;
-			PassParameters->BaseParameter = SolverParameter.SolverBaseParameter;
+			PassParameters->BaseParameter = SolverParameter->SolverBaseParameter;
 
 			FComputeShaderUtils::AddPass(GraphBuilder,
 				RDG_EVENT_NAME("InvFFTY"),
@@ -358,14 +383,14 @@ void FPhysical2DFluidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder, FPhy
 
 		F2DFluidCS::FParameters* PassParameters = GraphBuilder.AllocParameters<F2DFluidCS::FParameters>();
 
-		GraphBuilder.RHICmdList.Transition(FRHITransitionInfo(SimulationTexture->GetRHI(), ERHIAccess::UAVCompute, ERHIAccess::SRVCompute));
+		//GraphBuilder.RHICmdList.Transition(FRHITransitionInfo(SimulationTexture->GetRHI(), ERHIAccess::UAVCompute, ERHIAccess::SRVCompute));
 
-		/*if(RHIGetInterfaceType() <ERHIInterfaceType::D3D12)
+		if(RHIGetInterfaceType() <ERHIInterfaceType::D3D12)
 		{
-			AddCopyTexturePass(GraphBuilder,OutTextureArray[0],SimulationTexture);
-			SimSRV = GraphBuilder.CreateSRV(SimulationTexture);
+			AddCopyTexturePass(GraphBuilder,SimulationTexture,TempGrid);
+			SimSRV = GraphBuilder.CreateSRV(TempGrid);
 			PressureSRV = GraphBuilder.CreateSRV(PressureTexture);
-		}*/
+		}
 
 		SetParameter(PassParameters,true,0, SimUAV, PressureUAV, SimSRV, PressureSRV,Advection);
 
@@ -402,35 +427,20 @@ void FPhysical2DFluidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder, FPhy
 	
 }
 
-void FPhysical2DFluidSolver::Initial()
+void FPhysical2DFluidSolver::Initial(FPhysicalSolverContext* Context)
 {
 	Frame = 0;
-	UTextureRenderTarget2D* NewRenderTarget2D = NewObject<UTextureRenderTarget2D>();
-	check(NewRenderTarget2D);
-	NewRenderTarget2D->RenderTargetFormat = RTF_RGBA16f;
-	NewRenderTarget2D->ClearColor = FLinearColor::Black;
-	NewRenderTarget2D->bAutoGenerateMips = true;
-	NewRenderTarget2D->bCanCreateUAV = true;
-	NewRenderTarget2D->InitAutoFormat(GridSize.X, GridSize.Y);
-	NewRenderTarget2D->UpdateResourceImmediate(true);
+	GridSize =  FIntPoint(Context->SolverParameter->FluidParameter.SolverBaseParameter.GridSize.X,
+		Context->SolverParameter->FluidParameter.SolverBaseParameter.GridSize.Y) - 1;
 
+	ENQUEUE_RENDER_COMMAND(InitVdbRendering)(
+		[this, Context](FRHICommandListImmediate& RHICmdList)
+		{
+			SimulatorTextureRT = CreateRenderTarget(Context->OutputTextures[0]->GetResource()->GetTextureRHI(), TEXT("DensityTexture"));
+			PressureTextureRT = CreateRenderTarget(Context->OutputTextures[1]->GetResource()->GetTextureRHI(), TEXT("PressureTexture"));
+		});
 
-	UTextureRenderTarget2D* NewPressureRenderTarget2D = NewObject<UTextureRenderTarget2D>();
-	check(NewPressureRenderTarget2D);
-	NewPressureRenderTarget2D->RenderTargetFormat = RTF_R16f;
-	NewPressureRenderTarget2D->ClearColor = FLinearColor::Black;
-	NewPressureRenderTarget2D->bAutoGenerateMips = true;
-	NewPressureRenderTarget2D->bCanCreateUAV = true;
-	NewPressureRenderTarget2D->InitAutoFormat(GridSize.X, GridSize.Y);
-	NewPressureRenderTarget2D->UpdateResourceImmediate(true);
-	
-
-	OutTextures.Empty();
-	OutTextures.Add(NewRenderTarget2D);
-	OutTextures.Add(NewPressureRenderTarget2D);
-
-
-
+	SolverParameter = &Context->SolverParameter->FluidParameter;
 	InitialedDelegate.Broadcast();
 }
 

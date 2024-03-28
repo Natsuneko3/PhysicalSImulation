@@ -62,33 +62,35 @@ void UPhysicalSimulationComponent::DoSimulation()
 
 void UPhysicalSimulationComponent::Initial()
 {
-	CreateSolver();
+	OutputTextures.Empty();
+	CreateSolverTextures();
 	if (PhysicalSolverViewExtension)
 	{
 		PhysicalSolverViewExtension.Reset();
 	}
 
-
+	SetupSolverParameter();
 	PhysicalSolverContext.FeatureLevel = GetWorld()->Scene->GetFeatureLevel();
 	PhysicalSolverContext.WorldVelocity = FVector3f(GetOwner()->GetVelocity());
 	PhysicalSolverContext.WorldPosition = FVector3f(GetOwner()->GetActorLocation());
-	PhysicalSolverContext.SolverParameter = SolverParameter;
-	PhysicalSolverContext.BoundingMesh = GetStaticMesh().Get();
-	PhysicalSolverContext.MeshMaterial = Material.Get();
-	SetupSolverParameter();
+	PhysicalSolverContext.SolverParameter = &SolverParameter;
+	PhysicalSolverContext.OutputTextures = OutputTextures;
 
 
 	PhysicalSolverViewExtension = FSceneViewExtensions::NewExtension<FPhysicalSolverViewExtension>(&PhysicalSolverContext);
+	PhysicalSolverViewExtension->Initial();
+	if(Material)
+	{
+		UMaterialInstanceDynamic* MID =  CreateDynamicMaterialInstance(0,Material.Get());
+		MID->SetTextureParameterValue(TEXT("RT"),OutputTextures[0]);
+		GetStaticMesh()->SetMaterial(0,MID);
+	}
+
 	PhysicalSolverViewExtension.Get()->PhysicalSolver->InitialedDelegate.AddLambda([this]()
 	{
-		if(Material)
-		{
-			UMaterialInstanceDynamic* MID =  CreateDynamicMaterialInstance(0,Material.Get());
-			TArray<UTextureRenderTarget*> RTs = PhysicalSolverViewExtension.Get()->GetOutPutTextures();
-			MID->SetTextureParameterValue(TEXT("RT"),RTs[0]);
-			GetStaticMesh()->SetMaterial(0,MID);
-		}
+
 	});
+
 
 	//SetupSolverParameter();
 }
@@ -118,7 +120,7 @@ void UPhysicalSimulationComponent::PostEditChangeProperty(FPropertyChangedEvent&
 
 	//UE_LOG(LogTemp,Log,TEXT("CHange name:%s"),*PropertyChangedEvent.GetPropertyName().ToString());
 
-	Initial();
+	//Initial();
 }
 
 /*FPrimitiveSceneProxy* UPhysicalSimulationComponent::CreateSceneProxy()
@@ -128,14 +130,7 @@ void UPhysicalSimulationComponent::PostEditChangeProperty(FPropertyChangedEvent&
 
 void UPhysicalSimulationComponent::SetupSolverParameter()
 {
-	/*FSceneViewFamilyContext ViewFamily(FSceneViewFamily::ConstructionValues(
-			GetWorld()->GetGameViewport()->Viewport,
-			GetWorld()->Scene,
-			GetWorld()->GetGameViewport()->EngineShowFlags));*/
-	// this View is deleted by the FSceneViewFamilyContext destructor
-	/*FViewInfo
-	FSceneView* View =  GEngine->GameViewportCalcSceneView(&ViewFamily);
-	FSceneView* View = GEngine->GameViewport.*/
+
 	FSolverBaseParameter SolverBase;
 	SolverBase.dt = GetWorld()->GetDeltaSeconds();
 	SolverBase.dx = 1.0; //1.0 / (float)GridSize.X;
@@ -143,12 +138,7 @@ void UPhysicalSimulationComponent::SetupSolverParameter()
 	SolverBase.Time = 0;
 	UTexture2D* NoiseTexture = LoadObject<UTexture2D>(nullptr,TEXT("/SpeedTreeImporter/SpeedTree9/game_wind_noise.game_wind_noise"));
 	SolverBase.WarpSampler = TStaticSamplerState<SF_Bilinear, AM_Wrap, AM_Wrap, AM_Wrap>::GetRHI();
-	//SolverBase.View
-	//SolverBase.NoiseTexture = NoiseTexture->TextureReference.TextureReferenceRHI;
 
-	//SolverBase.View = GetViewFamilyInfo()//GetWorld()->Scene->GetRenderScene()
-
-	//SolverParameter = FSolverParameter();
 	SolverParameter.FluidParameter.SolverBaseParameter = SolverBase;
 	SolverParameter.FluidParameter.VorticityMult = VorticityMult;
 	SolverParameter.FluidParameter.NoiseFrequency = NoiseFrequency;
@@ -159,20 +149,20 @@ void UPhysicalSimulationComponent::SetupSolverParameter()
 	SolverParameter.FluidParameter.UseFFT = true;
 }
 
-void UPhysicalSimulationComponent::CreateSolver()
+void UPhysicalSimulationComponent::CreateSolverTextures()
 {
 	switch (SimulatorType)
 	{
 	case ESimulatorType::PlaneSmokeFluid:
-		PhysicalSolver = MakeShareable(new FPhysical2DFluidSolver).Object;
 		Create2DRenderTarget();
-		return;
+		break;
 
 	case ESimulatorType::CubeSmokeFluid:
 		Create3DRenderTarget();
-		return;
+		break;
 	case ESimulatorType::Water:
 		Create3DRenderTarget();
+		break;
 	}
 }
 
@@ -192,7 +182,7 @@ void UPhysicalSimulationComponent::Create2DRenderTarget()
 	UTextureRenderTarget2D* NewRenderTarget2D = NewObject<UTextureRenderTarget2D>();
 	check(NewRenderTarget2D);
 	NewRenderTarget2D->RenderTargetFormat = RTF_RGBA16f;
-	NewRenderTarget2D->ClearColor = FLinearColor::Black;
+	NewRenderTarget2D->ClearColor = FLinearColor::Red;
 	NewRenderTarget2D->bAutoGenerateMips = true;
 	NewRenderTarget2D->bCanCreateUAV = true;
 	NewRenderTarget2D->InitAutoFormat(GridSize.X, GridSize.Y);
@@ -201,12 +191,12 @@ void UPhysicalSimulationComponent::Create2DRenderTarget()
 	UTextureRenderTarget2D* NewPressureRenderTarget2D = NewObject<UTextureRenderTarget2D>();
 	check(NewPressureRenderTarget2D);
 	NewPressureRenderTarget2D->RenderTargetFormat = RTF_R16f;
-	NewPressureRenderTarget2D->ClearColor = FLinearColor::Black;
+	NewPressureRenderTarget2D->ClearColor = FLinearColor::Red;
 	NewPressureRenderTarget2D->bAutoGenerateMips = true;
 	NewPressureRenderTarget2D->bCanCreateUAV = true;
 	NewPressureRenderTarget2D->InitAutoFormat(GridSize.X, GridSize.Y);
 	NewPressureRenderTarget2D->UpdateResourceImmediate(true);
 
-	PressureTexture = NewPressureRenderTarget2D;
-	SimulationTexture = NewRenderTarget2D;
+	OutputTextures.Add(NewRenderTarget2D);
+	OutputTextures.Add(NewPressureRenderTarget2D);
 }

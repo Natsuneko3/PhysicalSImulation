@@ -25,7 +25,7 @@ public:
 	void InitDelegate();
 	void ReleaseDelegate();
 	void Render_RenderThread(FPostOpaqueRenderParameters& Parameters);
-	TArray<UTextureRenderTarget*> GetOutPutTextures();
+
 	FPhysicalSolverBase* PhysicalSolver;
 
 private:

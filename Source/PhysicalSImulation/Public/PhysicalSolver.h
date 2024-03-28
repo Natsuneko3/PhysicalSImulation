@@ -55,25 +55,18 @@ struct FPhysicalSolverContext
 	ERHIFeatureLevel::Type FeatureLevel;
 	FVector3f WorldVelocity;
 	FVector3f WorldPosition;
-	FSolverParameter SolverParameter;
-	UStaticMesh* BoundingMesh;
-	UMaterialInterface* MeshMaterial;
+	FSolverParameter* SolverParameter;
 	ESimulatorType SimulatorType;
-
+	TArray<UTextureRenderTarget*> OutputTextures;
 };
 
 class FPhysicalSolverBase
 {
 
 public:
-	virtual void SetParameter(FSolverParameter InParameter){}
-	virtual void Initial(){}
+	virtual void SetParameter(FSolverParameter* InParameter){}
+	virtual void Initial(FPhysicalSolverContext* Context){}
 	virtual void Update_RenderThread(FRDGBuilder& GraphBuilder,FPhysicalSolverContext* Context){}
-	virtual TArray<UTextureRenderTarget*> GetOutputTextures()
-	{
-		TArray<UTextureRenderTarget*> Textures;
-		return Textures;
-	}
 	FPhysicalSolverInitialed InitialedDelegate;
 	
 };

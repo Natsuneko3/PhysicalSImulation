@@ -85,10 +85,11 @@ protected:
 	FVector3f LastOnwerPosition;
 	FVector3f CenterOnwerPosition;
 private:
-	void CreateSolver();
+	void CreateSolverTextures();
 	void Create3DRenderTarget();
 	void Create2DRenderTarget();
 	TSharedPtr<FPhysicalSolverViewExtension> PhysicalSolverViewExtension;
 	FPhysicalSolverContext PhysicalSolverContext;
+	TArray<UTextureRenderTarget*> OutputTextures;
 	
 };

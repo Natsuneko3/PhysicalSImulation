@@ -18,11 +18,12 @@ FPhysicalSolverViewExtension::FPhysicalSolverViewExtension(const FAutoRegister& 
 	case ESimulatorType::Water:
 		break;
 	}
-	Initial();
+
 }
 
 void FPhysicalSolverViewExtension::BeginRenderViewFamily(FSceneViewFamily& InViewFamily)
 {
+
 }
 
 void FPhysicalSolverViewExtension::PreRenderViewFamily_RenderThread(FRDGBuilder& GraphBuilder, FSceneViewFamily& InViewFamily)
@@ -33,8 +34,8 @@ void FPhysicalSolverViewExtension::PreRenderViewFamily_RenderThread(FRDGBuilder&
 
 void FPhysicalSolverViewExtension::Initial()
 {
+	PhysicalSolver->Initial(SolverContext);
 	InitDelegate();
-	PhysicalSolver->Initial();
 }
 
 void FPhysicalSolverViewExtension::InitDelegate()
@@ -71,13 +72,8 @@ void FPhysicalSolverViewExtension::Render_RenderThread(FPostOpaqueRenderParamete
 {
 	FRDGBuilder& GraphBuilder = *Parameters.GraphBuilder;
 	const FSceneView* View = static_cast<FSceneView*>(Parameters.Uid);
-	SolverContext->SolverParameter.FluidParameter.SolverBaseParameter.View = View->ViewUniformBuffer;
+	SolverContext->SolverParameter->FluidParameter.SolverBaseParameter.View = View->ViewUniformBuffer;
 	PhysicalSolver->SetParameter(SolverContext->SolverParameter);
 	PhysicalSolver->Update_RenderThread(GraphBuilder,SolverContext);
-}
-
-TArray<UTextureRenderTarget*> FPhysicalSolverViewExtension::GetOutPutTextures()
-{
-	return PhysicalSolver->GetOutputTextures();
 }
 
