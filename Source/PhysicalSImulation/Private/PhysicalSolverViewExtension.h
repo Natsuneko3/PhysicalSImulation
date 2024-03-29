@@ -27,14 +27,16 @@ public:
 	void Render_RenderThread(FPostOpaqueRenderParameters& Parameters);
 	void UpdateParameters(FPhysicalSolverContext* Context);
 
-	FPhysicalSolverBase* PhysicalSolver;
+
+	FPhysicalSolverContext* SolverContext;
 
 private:
 	FPostOpaqueRenderDelegate RenderDelegate;
 	//TArray<FPhysicalSolverSceneProxy*> SceneProxies;
 
-	FPhysicalSolverContext* SolverContext;
+	FPhysicalSolverBase* PhysicalSolver;
 	FDelegateHandle RenderDelegateHandle;
 	TArray<UTextureRenderTarget*> OutPutTextures;
+	bool bInitialed;
 
 };

@@ -50,7 +50,7 @@ struct FPhysicalSolverContext
 	{
 		WorldVelocity = FVector3f(0);
 		WorldPosition = FVector3f(0);
-		SimulatorType = ESimulatorType::Water;
+		SimulatorType = ESimulatorType::PlaneSmokeFluid;
 		bSimulation = false;
 	};
 

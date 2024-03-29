@@ -410,11 +410,6 @@ void FPhysical2DFluidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder, FPhy
 void FPhysical2DFluidSolver::Initial(FPhysicalSolverContext* Context)
 {
 	Frame = 0;
-	// ENQUEUE_RENDER_COMMAND(InitVdbRendering)(
-	// 	[this, Context](FRHICommandListImmediate& RHICmdList)
-	// 	{
-	//
-	// 	});
 	SetParameter(Context->SolverParameter);
 	InitialedDelegate.Broadcast();
 }

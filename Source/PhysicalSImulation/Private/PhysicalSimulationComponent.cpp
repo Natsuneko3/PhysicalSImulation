@@ -25,6 +25,7 @@ UPhysicalSimulationComponent::UPhysicalSimulationComponent()
 	{
 		Initial();
 	}
+
 }
 
 UPhysicalSimulationComponent::~UPhysicalSimulationComponent()
@@ -64,21 +65,11 @@ void UPhysicalSimulationComponent::DoSimulation()
 
 void UPhysicalSimulationComponent::Initial()
 {
-
+	PhysicalSolverContext = MakeShareable(new FPhysicalSolverContext).Object;
 	CreateSolverTextures();
-	if(GetOwner())
-	{
-		SetupSolverParameter();
-		PhysicalSolverContext.WorldVelocity = FVector3f(GetOwner()->GetVelocity());
-		PhysicalSolverContext.WorldPosition = FVector3f(GetOwner()->GetActorLocation());
-	}
-
-	PhysicalSolverContext.SimulatorType = SimulatorType;
-	PhysicalSolverContext.SolverParameter = &SolverParameter;
-	PhysicalSolverContext.OutputTextures = OutputTextures;
-
+	UpdateSolverContext();
 	PhysicalSolverViewExtension = FSceneViewExtensions::NewExtension<FPhysicalSolverViewExtension>();
-	PhysicalSolverViewExtension->Initial(&PhysicalSolverContext);
+	PhysicalSolverViewExtension->Initial(PhysicalSolverContext);
 	if(Material)
 	{
 		UMaterialInstanceDynamic* MID =  CreateDynamicMaterialInstance(0,Material.Get());
@@ -102,21 +93,9 @@ void UPhysicalSimulationComponent::BeginPlay()
 void UPhysicalSimulationComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-	if (bSimulation)
-	{
-		// LastOnwerPosition = CenterOnwerPosition;
-		// CenterOnwerPosition = FVector3f(GetOwner()->GetActorLocation());
-		SetupSolverParameter();
-		if(GetOwner())
-		{
-			PhysicalSolverContext.WorldVelocity = FVector3f(GetOwner()->GetVelocity());
-			PhysicalSolverContext.WorldPosition = FVector3f(GetOwner()->GetActorLocation());
-		}
-		PhysicalSolverContext.bSimulation = bSimulation;
-		PhysicalSolverContext.SimulatorType = SimulatorType;
-		PhysicalSolverContext.SolverParameter = &SolverParameter;
-		PhysicalSolverContext.OutputTextures = OutputTextures;
-	}
+	PhysicalSolverContext->bSimulation = false;
+	
+	UpdateSolverContext();
 }
 
 void UPhysicalSimulationComponent::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
@@ -125,20 +104,19 @@ void UPhysicalSimulationComponent::PostEditChangeProperty(FPropertyChangedEvent&
 
 }
 
-/*FPrimitiveSceneProxy* UPhysicalSimulationComponent::CreateSceneProxy()
-{
-	return new FPhysicalSolverSceneProxy(this);
-}*/
-
 void UPhysicalSimulationComponent::SetupSolverParameter()
 {
-
-	if(!GetWorld())
-	{
-		return;
-	}
+	UWorld* World = GetWorld();
 	FSolverBaseParameter SolverBase;
-	SolverBase.dt = GetWorld()->GetDeltaSeconds();
+
+	if(World == nullptr)
+	{
+		SolverBase.dt = 0.002;
+	}else
+	{
+		SolverBase.dt =  GetWorld()->GetDeltaSeconds();
+	}
+
 	SolverBase.dx = 1.0; //1.0 / (float)GridSize.X;
 	SolverBase.GridSize = FVector3f(GridSize);
 	SolverBase.Time = 0;
@@ -155,9 +133,28 @@ void UPhysicalSimulationComponent::SetupSolverParameter()
 	SolverParameter.FluidParameter.UseFFT = true;
 }
 
+void UPhysicalSimulationComponent::UpdateSolverContext()
+{
+	UWorld* World = GetWorld();
+
+	SetupSolverParameter();
+	if(GetOwner())
+	{
+		PhysicalSolverContext->WorldVelocity = FVector3f(GetOwner()->GetVelocity());
+		PhysicalSolverContext->WorldPosition = FVector3f(GetOwner()->GetActorLocation());
+	}
+
+	PhysicalSolverContext->bSimulation = bSimulation;
+	PhysicalSolverContext->SimulatorType = SimulatorType;
+	PhysicalSolverContext->SolverParameter = &SolverParameter;
+	PhysicalSolverContext->OutputTextures = OutputTextures;
+
+	PhysicalSolverViewExtension->SolverContext = PhysicalSolverContext;
+}
+
 void UPhysicalSimulationComponent::CreateSolverTextures()
 {
-	OutputTextures.Empty();
+
 	switch (SimulatorType)
 	{
 	case ESimulatorType::PlaneSmokeFluid:
@@ -175,6 +172,7 @@ void UPhysicalSimulationComponent::CreateSolverTextures()
 
 void UPhysicalSimulationComponent::Create3DRenderTarget()
 {
+	OutputTextures.Empty();
 	UTextureRenderTargetVolume* VolumeRT = NewObject<UTextureRenderTargetVolume>();
 	VolumeRT->InitAutoFormat(GridSize.X, GridSize.Y, GridSize.Z);
 	VolumeRT->OverrideFormat = PF_FloatRGB;
@@ -186,6 +184,7 @@ void UPhysicalSimulationComponent::Create3DRenderTarget()
 
 void UPhysicalSimulationComponent::Create2DRenderTarget()
 {
+	OutputTextures.Empty();
 	UTextureRenderTarget2D* NewRenderTarget2D = NewObject<UTextureRenderTarget2D>();
 	check(NewRenderTarget2D);
 	NewRenderTarget2D->RenderTargetFormat = RTF_RGBA16f;
