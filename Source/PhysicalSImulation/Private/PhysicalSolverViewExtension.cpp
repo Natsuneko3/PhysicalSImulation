@@ -4,10 +4,25 @@
 #include "Physical2DFluidSolver.h"
 #include "RenderGraphBuilder.h"
 
-FPhysicalSolverViewExtension::FPhysicalSolverViewExtension(const FAutoRegister& AutoRegister, FPhysicalSolverContext* InContext):
-	FSceneViewExtensionBase(AutoRegister),
-	SolverContext(InContext)
+FPhysicalSolverViewExtension::FPhysicalSolverViewExtension(const FAutoRegister& AutoRegister):
+	FSceneViewExtensionBase(AutoRegister)
 {
+
+}
+
+void FPhysicalSolverViewExtension::BeginRenderViewFamily(FSceneViewFamily& InViewFamily)
+{
+}
+
+void FPhysicalSolverViewExtension::PreRenderViewFamily_RenderThread(FRDGBuilder& GraphBuilder, FSceneViewFamily& InViewFamily)
+{
+	FSceneViewExtensionBase::PreRenderViewFamily_RenderThread(GraphBuilder, InViewFamily);
+}
+
+
+void FPhysicalSolverViewExtension::Initial(FPhysicalSolverContext* InContext)
+{
+	SolverContext = InContext;
 	switch (InContext->SimulatorType)
 	{
 	case ESimulatorType::PlaneSmokeFluid:
@@ -18,24 +33,9 @@ FPhysicalSolverViewExtension::FPhysicalSolverViewExtension(const FAutoRegister& 
 	case ESimulatorType::Water:
 		break;
 	}
-
-}
-
-void FPhysicalSolverViewExtension::BeginRenderViewFamily(FSceneViewFamily& InViewFamily)
-{
-
-}
-
-void FPhysicalSolverViewExtension::PreRenderViewFamily_RenderThread(FRDGBuilder& GraphBuilder, FSceneViewFamily& InViewFamily)
-{
-	FSceneViewExtensionBase::PreRenderViewFamily_RenderThread(GraphBuilder, InViewFamily);
-}
-
-
-void FPhysicalSolverViewExtension::Initial()
-{
 	PhysicalSolver->Initial(SolverContext);
 	InitDelegate();
+
 }
 
 void FPhysicalSolverViewExtension::InitDelegate()
@@ -48,7 +48,6 @@ void FPhysicalSolverViewExtension::InitDelegate()
 		{
 			RenderDelegate.BindRaw(this, &FPhysicalSolverViewExtension::Render_RenderThread);
 			RenderDelegateHandle = RendererModule->RegisterPostOpaqueRenderDelegate(RenderDelegate);
-
 		}
 	}
 }
@@ -70,10 +69,15 @@ void FPhysicalSolverViewExtension::ReleaseDelegate()
 
 void FPhysicalSolverViewExtension::Render_RenderThread(FPostOpaqueRenderParameters& Parameters)
 {
-	FRDGBuilder& GraphBuilder = *Parameters.GraphBuilder;
-	const FSceneView* View = static_cast<FSceneView*>(Parameters.Uid);
-	SolverContext->SolverParameter->FluidParameter.SolverBaseParameter.View = View->ViewUniformBuffer;
-	PhysicalSolver->SetParameter(SolverContext->SolverParameter);
-	PhysicalSolver->Update_RenderThread(GraphBuilder,SolverContext);
-}
+	if (SolverContext != nullptr && SolverContext->bSimulation)
+	{
+		FRDGBuilder& GraphBuilder = *Parameters.GraphBuilder;
+		const FSceneView* View = static_cast<FSceneView*>(Parameters.Uid);
 
+		SolverContext->SolverParameter->FluidParameter.SolverBaseParameter.View = View->ViewUniformBuffer;
+		SolverContext->FeatureLevel = View->FeatureLevel;
+
+		PhysicalSolver->SetParameter(SolverContext->SolverParameter);
+		PhysicalSolver->Update_RenderThread(GraphBuilder, SolverContext);
+	}
+}

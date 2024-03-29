@@ -50,6 +50,8 @@ struct FPhysicalSolverContext
 	{
 		WorldVelocity = FVector3f(0);
 		WorldPosition = FVector3f(0);
+		SimulatorType = ESimulatorType::Water;
+		bSimulation = false;
 	};
 
 	ERHIFeatureLevel::Type FeatureLevel;
@@ -58,6 +60,7 @@ struct FPhysicalSolverContext
 	FSolverParameter* SolverParameter;
 	ESimulatorType SimulatorType;
 	TArray<UTextureRenderTarget*> OutputTextures;
+	bool bSimulation;
 };
 
 class FPhysicalSolverBase

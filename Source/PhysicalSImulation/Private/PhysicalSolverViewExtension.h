@@ -6,7 +6,7 @@
 class FPhysicalSolverViewExtension : public FSceneViewExtensionBase
 {
 public:
-	FPhysicalSolverViewExtension(const FAutoRegister& AutoRegister,FPhysicalSolverContext* InContext);
+	FPhysicalSolverViewExtension(const FAutoRegister& AutoRegister);
 
 public:
 	//~ Begin ISceneViewExtension Interface
@@ -21,10 +21,11 @@ public:
 
 
 
-	void Initial();
+	void Initial(FPhysicalSolverContext* InContext);
 	void InitDelegate();
 	void ReleaseDelegate();
 	void Render_RenderThread(FPostOpaqueRenderParameters& Parameters);
+	void UpdateParameters(FPhysicalSolverContext* Context);
 
 	FPhysicalSolverBase* PhysicalSolver;
 

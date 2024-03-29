@@ -82,8 +82,8 @@ protected:
 
 
 	FPhysicalSolverBase* PhysicalSolver;
-	FVector3f LastOnwerPosition;
-	FVector3f CenterOnwerPosition;
+	/*FVector3f LastOnwerPosition;
+	FVector3f CenterOnwerPosition;*/
 private:
 	void CreateSolverTextures();
 	void Create3DRenderTarget();

@@ -14,15 +14,17 @@ UPhysicalSimulationComponent::UPhysicalSimulationComponent()
 {
 	PrimaryComponentTick.bCanEverTick = true;
 	bTickInEditor = true;
-	CenterOnwerPosition = FVector3f(0);
-	LastOnwerPosition = FVector3f(0);
-
+	// CenterOnwerPosition = FVector3f(0);
+	// LastOnwerPosition = FVector3f(0);
 	if (!GetStaticMesh())
 	{
 		SetStaticMesh(LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Plane.Plane")));
 	}
 
-	//Initial();
+	if (!HasAnyFlags(RF_ClassDefaultObject))
+	{
+		Initial();
+	}
 }
 
 UPhysicalSimulationComponent::~UPhysicalSimulationComponent()
@@ -62,35 +64,28 @@ void UPhysicalSimulationComponent::DoSimulation()
 
 void UPhysicalSimulationComponent::Initial()
 {
-	OutputTextures.Empty();
+
 	CreateSolverTextures();
-	if (PhysicalSolverViewExtension)
+	if(GetOwner())
 	{
-		PhysicalSolverViewExtension.Reset();
+		SetupSolverParameter();
+		PhysicalSolverContext.WorldVelocity = FVector3f(GetOwner()->GetVelocity());
+		PhysicalSolverContext.WorldPosition = FVector3f(GetOwner()->GetActorLocation());
 	}
 
-	SetupSolverParameter();
-	PhysicalSolverContext.FeatureLevel = GetWorld()->Scene->GetFeatureLevel();
-	PhysicalSolverContext.WorldVelocity = FVector3f(GetOwner()->GetVelocity());
-	PhysicalSolverContext.WorldPosition = FVector3f(GetOwner()->GetActorLocation());
+	PhysicalSolverContext.SimulatorType = SimulatorType;
 	PhysicalSolverContext.SolverParameter = &SolverParameter;
 	PhysicalSolverContext.OutputTextures = OutputTextures;
 
-
-	PhysicalSolverViewExtension = FSceneViewExtensions::NewExtension<FPhysicalSolverViewExtension>(&PhysicalSolverContext);
-	PhysicalSolverViewExtension->Initial();
+	PhysicalSolverViewExtension = FSceneViewExtensions::NewExtension<FPhysicalSolverViewExtension>();
+	PhysicalSolverViewExtension->Initial(&PhysicalSolverContext);
 	if(Material)
 	{
 		UMaterialInstanceDynamic* MID =  CreateDynamicMaterialInstance(0,Material.Get());
 		MID->SetTextureParameterValue(TEXT("RT"),OutputTextures[0]);
+		MID->SetTextureParameterValue(TEXT("RT2"),OutputTextures[1]);
 		GetStaticMesh()->SetMaterial(0,MID);
 	}
-
-	PhysicalSolverViewExtension.Get()->PhysicalSolver->InitialedDelegate.AddLambda([this]()
-	{
-
-	});
-
 
 	//SetupSolverParameter();
 }
@@ -100,6 +95,7 @@ void UPhysicalSimulationComponent::Initial()
 void UPhysicalSimulationComponent::BeginPlay()
 {
 	Super::BeginPlay();
+
 	//DoSimulation();
 }
 
@@ -108,9 +104,18 @@ void UPhysicalSimulationComponent::TickComponent(float DeltaTime, ELevelTick Tic
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 	if (bSimulation)
 	{
-		LastOnwerPosition = CenterOnwerPosition;
-		CenterOnwerPosition = FVector3f(GetOwner()->GetActorLocation());
-		//DoSimulation();
+		// LastOnwerPosition = CenterOnwerPosition;
+		// CenterOnwerPosition = FVector3f(GetOwner()->GetActorLocation());
+		SetupSolverParameter();
+		if(GetOwner())
+		{
+			PhysicalSolverContext.WorldVelocity = FVector3f(GetOwner()->GetVelocity());
+			PhysicalSolverContext.WorldPosition = FVector3f(GetOwner()->GetActorLocation());
+		}
+		PhysicalSolverContext.bSimulation = bSimulation;
+		PhysicalSolverContext.SimulatorType = SimulatorType;
+		PhysicalSolverContext.SolverParameter = &SolverParameter;
+		PhysicalSolverContext.OutputTextures = OutputTextures;
 	}
 }
 
@@ -118,9 +123,6 @@ void UPhysicalSimulationComponent::PostEditChangeProperty(FPropertyChangedEvent&
 {
 	Super::PostEditChangeProperty(PropertyChangedEvent);
 
-	//UE_LOG(LogTemp,Log,TEXT("CHange name:%s"),*PropertyChangedEvent.GetPropertyName().ToString());
-
-	//Initial();
 }
 
 /*FPrimitiveSceneProxy* UPhysicalSimulationComponent::CreateSceneProxy()
@@ -131,6 +133,10 @@ void UPhysicalSimulationComponent::PostEditChangeProperty(FPropertyChangedEvent&
 void UPhysicalSimulationComponent::SetupSolverParameter()
 {
 
+	if(!GetWorld())
+	{
+		return;
+	}
 	FSolverBaseParameter SolverBase;
 	SolverBase.dt = GetWorld()->GetDeltaSeconds();
 	SolverBase.dx = 1.0; //1.0 / (float)GridSize.X;
@@ -151,6 +157,7 @@ void UPhysicalSimulationComponent::SetupSolverParameter()
 
 void UPhysicalSimulationComponent::CreateSolverTextures()
 {
+	OutputTextures.Empty();
 	switch (SimulatorType)
 	{
 	case ESimulatorType::PlaneSmokeFluid:
