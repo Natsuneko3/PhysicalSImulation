@@ -11,7 +11,6 @@
 
 
 
-DEFINE_LOG_CATEGORY_STATIC(LogSimulation, Log, All);
 UCLASS(Blueprintable, meta=(BlueprintSpawnableComponent))
 class PHYSICALSIMULATION_API UPhysicalSimulationComponent : public UStaticMeshComponent
 {
@@ -31,7 +30,7 @@ public:
 	/*UPROPERTY(EditAnywhere,Category = "SimulatorMesh",meta=(DisplayName="Mesh"))
 	TSoftObjectPtr<UStaticMesh> StaticMesh;*/
 
-	UPROPERTY(EditAnywhere,Category = "Materials")
+	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation ")
 	TSoftObjectPtr<UMaterialInterface> Material;
 
 	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation")
@@ -47,28 +46,26 @@ public:
 	float NoiseIntensity = 1;
 
 	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation")
-	float DensityDissipate = 0.5;
+	float DensityDissipate = 0.2;
 
 	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation")
-	float VelocityDissipate = 0.1;
+	float VelocityDissipate = 0.5;
 
 	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation")
 	float GravityScale = 20;
 
 	UFUNCTION(BlueprintCallable,Category = "PhysicalSimulation")
-	void DoSimulation();
-	
-	UFUNCTION(BlueprintCallable,Category = "PhysicalSimulation")
 	void Initial();
 
 
-	UPROPERTY(BlueprintReadOnly,Category = "PhysicalSimulation")
+	/*UPROPERTY(BlueprintReadOnly,Category = "PhysicalSimulation")
 	UTextureRenderTarget* SimulationTexture;
 
 	UPROPERTY(BlueprintReadOnly,Category = "PhysicalSimulation")
-	UTextureRenderTarget* PressureTexture;
+	UTextureRenderTarget* PressureTexture;*/
 	
 	FSolverParameter SolverParameter;
+
 protected:
 	
 	virtual void BeginPlay() override;
@@ -76,22 +73,24 @@ protected:
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 
+
 	//virtual FPrimitiveSceneProxy* CreateSceneProxy() override;
 
 	void SetupSolverParameter();
 
 
-	FPhysicalSolverBase* PhysicalSolver;
 	/*FVector3f LastOnwerPosition;
 	FVector3f CenterOnwerPosition;*/
 private:
+	FPhysicalSolverContext PhysicalSolverContext;
 	void UpdateSolverContext();
 	void CreateSolverTextures();
 	void Create3DRenderTarget();
 	void Create2DRenderTarget();
 	TSharedPtr<FPhysicalSolverViewExtension> PhysicalSolverViewExtension;
-	FPhysicalSolverContext* PhysicalSolverContext;
+
 	TArray<UTextureRenderTarget*> OutputTextures;
+	bool bInitialed;
 
 	
 };

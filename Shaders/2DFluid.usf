@@ -1,4 +1,5 @@
 #include "/Engine/Private/Common.ush"
+#include "/Engine/Private/ShaderPrint.ush"
 #include "FluidCommon.ush"
 
 #define G 98
@@ -14,13 +15,12 @@ SamplerState SimSampler;
 void ComputeDivergence(uint2 DispatchThreadId : SV_DispatchThreadID)
 {
 	float4 SimValue = SimGridUAV.Load(int3(DispatchThreadId, 0));
-	float Divergence = GetDivergence(SimGridUAV,int2(DispatchThreadId),dx);
+	float Divergence = GetDivergence(SimGridUAV, int2(DispatchThreadId), dx);
 	PressureGridUAV[DispatchThreadId] = Divergence / dt;
 	/*SimValue.a = Divergence;
 	SimGridUAV[DispatchThreadId] = SimValue;*/
-
-
 }
+
 void IteratePressure(uint2 DispatchThreadId : SV_DispatchThreadID)
 {
 	float4 SimValue = SimGridUAV.Load(int3(DispatchThreadId, 0));
@@ -43,7 +43,7 @@ void IteratePressure(uint2 DispatchThreadId : SV_DispatchThreadID)
 
 	float Divergence = (RightUpVelocity.x - LeftVelocity.x + (UpVelocity.y - DownVelocity.y)) / (2 * dx); //GetDivergence(SimGridUAV,DispatchThreadId,dx);//
 
-	float Density = 1;//SimValue.z;
+	float Density = 1; //SimValue.z;
 
 	float P_up = PressureGridUAV.Load(UVs[0]);
 	float P_down = PressureGridUAV.Load(UVs[1]);
@@ -86,65 +86,58 @@ void IteratePressure(uint2 DispatchThreadId : SV_DispatchThreadID)
 void Advection(uint2 DispatchThreadId : SV_DispatchThreadID, uint2 GroupThreadId)
 {
 	float4 SimValue = SimGridUAV.Load(int3(DispatchThreadId, 0));
-AllMemoryBarrierWithGroupSync();
-
-
 	if (AdvectionDensity)
 	{
 		float2 GradPressure = GetGradient(PressureGridUAV, int2(DispatchThreadId), dx);
 
 		int2 UVs[4] = {
-			DispatchThreadId+0.5 + int2(0, 1)*2,
-			DispatchThreadId +0.5+ int2(0, -1)*2,
-			DispatchThreadId+0.5 + int2(-1, 0)*2,
-			DispatchThreadId +0.5+ int2(1, 0)*2
+			DispatchThreadId + 0.5 + int2(0, 1) * 2,
+			DispatchThreadId + 0.5 + int2(0, -1) * 2,
+			DispatchThreadId + 0.5 + int2(-1, 0) * 2,
+			DispatchThreadId + 0.5 + int2(1, 0) * 2
 		};
 		float4 Usim = SimGridUAV.Load(UVs[0]);
 		float4 Dsim = SimGridUAV.Load(UVs[1]);
 		float4 Rsim = SimGridUAV.Load(UVs[2]);
 		float4 Lsim = SimGridUAV.Load(UVs[3]);
 
-		float2 Velocity =SimValue.xy - GradPressure * dt;
+		float2 Velocity = SimValue.xy - GradPressure * dt;
 
-		if(Usim.a == 1 )
+		if (Usim.a == 1)
 		{
 			Velocity.xy = Usim.xy;
 			SimValue.xy = Usim.xy;
 		}
-		if(Dsim.a == 1)
+		if (Dsim.a == 1)
 		{
 			Velocity.xy = Dsim.xy;
 			SimValue.xy = Dsim.xy;
 		}
-		if( Lsim.a == 1)
+		if (Lsim.a == 1)
 		{
-			Velocity.xy =Lsim.xy;
+			Velocity.xy = Lsim.xy;
 			SimValue.xy = Lsim.xy;
 		}
-		if(Rsim.a == 1 )
+		if (Rsim.a == 1)
 		{
-			Velocity.xy =Rsim.xy;
+			Velocity.xy = Rsim.xy;
 			SimValue.xy = Rsim.xy;
 		}
-		float2 ReadIndex = float2(DispatchThreadId + 0.5) - Velocity *(dt/dx);
+		float2 ReadIndex = float2(DispatchThreadId + 0.5) - Velocity*float2(1.5,1) * (dt / dx);
 
-
-
-
-
-		float Density = SimGridSRV.SampleLevel(SimSampler, float3(ReadIndex / GridSize.xy , 0),0).z; //
+		float Density = SimGridSRV.SampleLevel(SimSampler, float3(ReadIndex / GridSize.xy, 0), 0).z; //
 		//GroupMemoryBarrierWithGroupSync();
-		SimValue.z = clamp(Density / (dt * DensityDissipate + 1) - dt*0.1*DensityDissipate,0,100);
+		SimValue.z = clamp(Density / (dt * DensityDissipate + 1) - dt * 0.1 * DensityDissipate, 0, 100);
 
 		SimGridUAV[DispatchThreadId] = SimValue;
 	}
 	else
 	{
 		int2 UVs[4] = {
-			DispatchThreadId+0.5 + int2(0, 1),
-			DispatchThreadId +0.5+ int2(0, -1),
-			DispatchThreadId+0.5 + int2(-1, 0),
-			DispatchThreadId +0.5+ int2(1, 0)
+			DispatchThreadId + 0.5 + int2(0, 1),
+			DispatchThreadId + 0.5 + int2(0, -1),
+			DispatchThreadId + 0.5 + int2(-1, 0),
+			DispatchThreadId + 0.5 + int2(1, 0)
 		};
 		float4 Usim = SimGridUAV.Load(UVs[0]);
 		float4 Dsim = SimGridUAV.Load(UVs[1]);
@@ -152,33 +145,32 @@ AllMemoryBarrierWithGroupSync();
 		float4 Lsim = SimGridUAV.Load(UVs[3]);
 
 
-		float2 ReadIndex = float2(DispatchThreadId+0.5) - SimValue.xy  * (dt/dx);
+		float2 ReadIndex = float2(DispatchThreadId + 0.5) - SimValue.xy * (dt / dx);
 
-		float4 Advection =  SimGridSRV.SampleLevel(SimSampler,  float3(ReadIndex / GridSize.xy , 0),0);
+		float4 Advection = SimGridSRV.SampleLevel(SimSampler, float3(ReadIndex / GridSize.xy, 0), 0);
 
-		SimValue.x = clamp(Advection.x / (dt * VelocityDissipate + 1) - dt * 0.1 * VelocityDissipate,-1000,1000);
-		SimValue.y = clamp(Advection.y / (dt * VelocityDissipate + 1) - dt * 0.1 * VelocityDissipate,-1000,1000);
+		SimValue.x = clamp(Advection.x / (dt * VelocityDissipate + 1) - dt * 0.1 * VelocityDissipate, -1000, 1000);
+		SimValue.y = clamp(Advection.y / (dt * VelocityDissipate + 1) - dt * 0.1 * VelocityDissipate, -1000, 1000);
 
 
-		if(Usim.a == 1 )
+		if (Usim.a == 1)
 		{
-			SimValue.xy =Usim.xy;// lerp(SimValue.xy,Usim.xy,0.5);
+			SimValue.xy = Usim.xy; // lerp(SimValue.xy,Usim.xy,0.5);
 		}
-		if(Dsim.a == 1)
+		if (Dsim.a == 1)
 		{
-			SimValue.xy =Dsim.xy;//lerp(SimValue.xy,Dsim.xy,0.5);
+			SimValue.xy = Dsim.xy; //lerp(SimValue.xy,Dsim.xy,0.5);
 		}
-		if( Lsim.a == 1)
+		if (Lsim.a == 1)
 		{
-			SimValue.xy =Lsim.xy;//lerp(SimValue.xy,Lsim.xy,0.5);
+			SimValue.xy = Lsim.xy; //lerp(SimValue.xy,Lsim.xy,0.5);
 		}
-		if(Rsim.a == 1 )
+		if (Rsim.a == 1)
 		{
-			SimValue.xy = Rsim.xy;//lerp(SimValue.xy,Rsim.xy,0.5);
+			SimValue.xy = Rsim.xy; //lerp(SimValue.xy,Rsim.xy,0.5);
 		}
 		SimGridUAV[DispatchThreadId] = SimValue;
 		PressureGridUAV[DispatchThreadId] = 0;
-
 	}
 }
 
@@ -193,15 +185,17 @@ void PreVelocity(uint2 DispatchThreadId : SV_DispatchThreadID, uint2 GroupThread
 
 	float noiseScale = .05 * NoiseFrequency;
 	float noiseIntensity = NoiseIntensity;
-	float noiseX = simplex3d(float3(DispatchThreadId.xy,Time*0.1)*noiseScale);//NoiseTexture.SampleLevel(WarpSampler, (DispatchThreadId.xy + float2(-Time, 0.2) * 0.2) / GridSize.xy * noiseScale, 0).x * 2 - 1 ;
-	float noiseY = simplex3d(float3(DispatchThreadId.xy,Time*0.05)*noiseScale);//(NoiseTexture.SampleLevel(WarpSampler, (DispatchThreadId.xy +  float2(0, -Time) * 0.1) / GridSize.xy * noiseScale, 0).y * 2 - 1) ;
+	float noiseX = simplex3d(float3(DispatchThreadId.xy, Time * 0.1) * noiseScale);
+	//NoiseTexture.SampleLevel(WarpSampler, (DispatchThreadId.xy + float2(-Time, 0.2) * 0.2) / GridSize.xy * noiseScale, 0).x * 2 - 1 ;
+	float noiseY = simplex3d(float3(DispatchThreadId.xy, Time * 0.05) * noiseScale);
+	//(NoiseTexture.SampleLevel(WarpSampler, (DispatchThreadId.xy +  float2(0, -Time) * 0.1) / GridSize.xy * noiseScale, 0).y * 2 - 1) ;
 
-	float2 CenterPoint = float2(250.0, 50.0) ; //float2(sin(Time*0.01),cos(Time*0.01))*100 + float2(250,250);//
+	float2 CenterPoint = float2(250.0, 50.0); //float2(sin(Time*0.01),cos(Time*0.01))*100 + float2(250,250);//
 	float2 Dis = float2(DispatchThreadId) - CenterPoint;
 	if (length(Dis) < 30)
 	{
-		Density = max(saturate(noiseX * 10), Density); //RandFast(DispatchThreadId*0.2,Time);
-		Velocity = float2(noiseX*50, -noiseY*80);
+		Density = saturate(noiseX)*2; //RandFast(DispatchThreadId*0.2,Time);
+		Velocity = float2(noiseX * 50, -noiseY * 80);
 	}
 
 	float2 Grad = GetGradient(SimGridUAV, int2(DispatchThreadId), dx);
@@ -210,19 +204,19 @@ void PreVelocity(uint2 DispatchThreadId : SV_DispatchThreadID, uint2 GroupThread
 
 	if (GradCurlLength > 1e-5)
 	{
-		Force += VorticityMult * dx * Grad / GradCurlLength;//cross(float3(Grad / GradCurlLength, 0), float3(0, 0, 1)).xy;
+		Force += VorticityMult * dx * Grad / GradCurlLength; //cross(float3(Grad / GradCurlLength, 0), float3(0, 0, 1)).xy;
 	}
 
 
-	Force += float2(0,G) *  Density * GravityScale *0.05; //normalize(float2(DispatchThreadId) -  float2(250.0,250.0)) * Density*10;//float2(G,0)*Density;
+	Force += float2(0,G) * Density * GravityScale * 0.05; //normalize(float2(DispatchThreadId) -  float2(250.0,250.0)) * Density*10;//float2(G,0)*Density;
 
 
-	float2 TurbulenceForce = float2(noiseX, noiseY) ;
+	float2 TurbulenceForce = float2(noiseX, noiseY);
 	Force += TurbulenceForce * noiseIntensity;
-	Force -=  WorldVelocity.xz * float2(-1,1) * Density*0.5;
-	Velocity +=  Force * dt ;
+	Force -= WorldVelocity.xz * float2(-1, 1) * Density * 0.5;
+	Velocity += Force * dt;
 
-	float2 CollisionPoint = float2(sin(Time*0.01),cos(Time*0.01))*50+250;
+	/*float2 CollisionPoint = float2(sin(Time*0.01),cos(Time*0.01))*50+250;
 	float Collistion = length(float2(DispatchThreadId + 0.5) - CollisionPoint);
 	if (Collistion < 20)
 	{
@@ -231,7 +225,7 @@ void PreVelocity(uint2 DispatchThreadId : SV_DispatchThreadID, uint2 GroupThread
 		float2 OutVelocity = normalize(float2(DispatchThreadId + 0.5) - CollisionPoint);
 		//Velocity =  OutVelocity + float2(sin(Time*0.1),cos(Time*0.1)) - float2(sin((Time -1)*0.1),cos((Time-1)*0.1))*-1;
 		Velocity =normalize(OutVelocity)*3;
-	}
+	}*/
 
 	//Density = saturate(Density);
 	SimGridUAV[DispatchThreadId] = float4(Velocity.x, Velocity.y, Density, Boundary);
@@ -243,7 +237,7 @@ void MainCS(uint2 DispatchThreadId : SV_DispatchThreadID, uint2 GroupThreadId : 
 
 	switch (FluidShaderType)
 	{
-	case  PREVELOCITY:
+	case PREVELOCITY:
 		PreVelocity(DispatchThreadId, GroupThreadId);
 		break;
 
@@ -257,10 +251,15 @@ void MainCS(uint2 DispatchThreadId : SV_DispatchThreadID, uint2 GroupThreadId : 
 		break;
 	case COMPUTEDIVERGENCE:
 		ComputeDivergence(DispatchThreadId);
+
 		break;
 	default:
 		break;
 	}
-
-
+	if(DispatchThreadId.x == 0)
+	{
+		FShaderPrintContext Ctx = InitShaderPrintContext(true, float2(0.5, 0.1));
+		Print(Ctx, int(1111));
+		Newline(Ctx);
+	}
 }

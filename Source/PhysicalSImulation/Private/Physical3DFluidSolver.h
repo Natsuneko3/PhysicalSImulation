@@ -1,13 +1,10 @@
 #pragma once
 #include "PhysicalSolver.h"
-#include "RenderGraphResources.h"
-//#include "Physical2DFluid.generated.h"
 
-
-class FPhysical2DFluidSolver :public FPhysicalSolverBase
+class FPhysical3DFluidSolver: public FPhysicalSolverBase
 {
 public:
-	FPhysical2DFluidSolver();
+	FPhysical3DFluidSolver();
 
 	virtual void SetParameter(FSolverParameter* InParameter) override;
 
@@ -21,4 +18,5 @@ public:
 	FFluidParameter* SolverParameter;
 	FIntPoint GridSize;
 	int32 Frame;
+
 };

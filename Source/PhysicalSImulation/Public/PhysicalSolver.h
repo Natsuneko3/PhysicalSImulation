@@ -36,7 +36,7 @@ enum class ESimulatorType : uint8
 {
 	PlaneSmokeFluid = 0,
 	CubeSmokeFluid = 1,
-	Water = 2
+	Liquid = 2
 };
 
 struct FSolverParameter
@@ -51,10 +51,12 @@ struct FPhysicalSolverContext
 		WorldVelocity = FVector3f(0);
 		WorldPosition = FVector3f(0);
 		SimulatorType = ESimulatorType::PlaneSmokeFluid;
+		SpawnRate = 0.0;
 		bSimulation = false;
 	};
 
 	ERHIFeatureLevel::Type FeatureLevel;
+	float SpawnRate;
 	FVector3f WorldVelocity;
 	FVector3f WorldPosition;
 	FSolverParameter* SolverParameter;
@@ -69,7 +71,7 @@ class FPhysicalSolverBase
 public:
 	virtual void SetParameter(FSolverParameter* InParameter){}
 	virtual void Initial(FPhysicalSolverContext* Context){}
-	virtual void Update_RenderThread(FRDGBuilder& GraphBuilder,FPhysicalSolverContext* Context){}
+	virtual void Update_RenderThread(FRDGBuilder& GraphBuilder,FPhysicalSolverContext* Context,FSceneView& InView){}
 	FPhysicalSolverInitialed InitialedDelegate;
 	
 };
