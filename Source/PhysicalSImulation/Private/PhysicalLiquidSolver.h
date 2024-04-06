@@ -26,7 +26,8 @@ class FPhysicalLiquidSolver:public FPhysicalSolverBase
 	uint32 DeadParticle;
 private:
 	int32 AllocatedInstanceCounts = 0;
-	FRWBuffer ParticleBuffer;
+	FRWBuffer ParticleIDBuffer;
+	FRWBuffer ParticleAttributeBuffer;
 	FRHIGPUMemoryReadback* ParticleReadback = nullptr;
 
 	void EnqueueGPUReadback(FRHICommandListImmediate& RHICmdList);

@@ -13,8 +13,10 @@ public:
 
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
 	    SHADER_PARAMETER_STRUCT_REF(FViewUniformShaderParameters, View)
-
-		SHADER_PARAMETER_UAV(RWBuffer<float>,		ParticleBufferUAV)
+		SHADER_PARAMETER_STRUCT_INCLUDE(FSolverBaseParameter, SolverBaseParameter)
+		SHADER_PARAMETER(int, ShaderType)
+		SHADER_PARAMETER_UAV(RWBuffer<uint32>,		ParticleIDBuffer)
+	SHADER_PARAMETER_UAV(RWBuffer<float>,		ParticleAttributeBuffer)
 	END_SHADER_PARAMETER_STRUCT()
 
 	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
@@ -26,6 +28,7 @@ public:
 	{
 		OutEnvironment.SetDefine(TEXT("THREADGROUP_SIZEX"), 64);
 		OutEnvironment.SetDefine(TEXT("THREADGROUP_SIZEY"), 1);
+		OutEnvironment.SetDefine(TEXT("P2G"), 0);
 	}
 };
 IMPLEMENT_GLOBAL_SHADER(FLiquidParticleCS, "/PluginShader/MPM.usf", "MainCS", SF_Compute);
@@ -44,18 +47,19 @@ void FPhysicalLiquidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder,FPhysi
 {
 	float DeltaTime = Context->SolverParameter->FluidParameter.SolverBaseParameter.dt;
 	FRHICommandListImmediate& RHICmdList = GraphBuilder.RHICmdList;
-	//CurrentNumParticle += FMath::DivideAndRoundDown(DeltaTime,Context->SpawnRate);
+	CurrentNumParticle += FMath::DivideAndRoundDown(DeltaTime,Context->SpawnRate);
 
 	if(!AllocatedInstanceCounts)
 	{
 		AllocatedInstanceCounts = 1;
-		ParticleBuffer.Initialize(RHICmdList,TEXT("InitialParticleBuffer"),sizeof(int),CurrentNumParticle,PF_R32_FLOAT,ERHIAccess::UAVCompute, BUF_Static | BUF_SourceCopy);
+		ParticleIDBuffer.Initialize(RHICmdList,TEXT("InitialIDBuffer"),sizeof(uint32),CurrentNumParticle,PF_R32_UINT,ERHIAccess::UAVCompute);
+		ParticleAttributeBuffer.Initialize(RHICmdList,TEXT("InitialParticleBuffer"),sizeof(float),CurrentNumParticle * 6,PF_FloatRGB,ERHIAccess::UAVCompute);
 	}
 
-	if (ParticleReadback  && ParticleReadback->IsReady())
+	/*if (ParticleReadback && ParticleReadback->IsReady())
 	{
 		// last frame readback buffer
-		int* Particles = (int*)(ParticleReadback->Lock(CurrentNumParticle * sizeof(int)));
+		uint32* Particles = (uint32*)(ParticleReadback->Lock(CurrentNumParticle * sizeof(uint32)));
 		//uint32 Offset = 0;
 		for(int i = 0;i<int(CurrentNumParticle);i++)
 		{
@@ -64,25 +68,28 @@ void FPhysicalLiquidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder,FPhysi
 		}
 		UE_LOG(LogSimulation,Log,TEXT("========================"));
 		ParticleReadback->Unlock();
-	}
-	/*if(CurrentNumParticle > 0)
+	}*/
+	if(CurrentNumParticle > 0)
 	{
 		FRWBuffer NextCountBuffer;
 		int32 UsedIndexCounts[] = {int32(CurrentNumParticle)};
-		NextCountBuffer.Initialize(RHICmdList,TEXT("NextParticleBuffer"),sizeof(float),int(CurrentNumParticle),PF_R32_FLOAT,ERHIAccess::UAVCompute, BUF_Static | BUF_SourceCopy);
+		NextCountBuffer.Initialize(RHICmdList,TEXT("NextParticleBuffer"),sizeof(uint32),int(CurrentNumParticle),PF_R32_UINT,ERHIAccess::UAVCompute, BUF_Static | BUF_SourceCopy);
 
 		FRHIUnorderedAccessView* UAVs[] = { NextCountBuffer.UAV };
-		CopyUIntBufferToTargets(RHICmdList, Context->FeatureLevel, ParticleBuffer.SRV, UAVs, UsedIndexCounts, 0, 1);
+		CopyUIntBufferToTargets(RHICmdList, Context->FeatureLevel, ParticleIDBuffer.SRV, UAVs, UsedIndexCounts, 0, 1);
 		RHICmdList.Transition(FRHITransitionInfo(NextCountBuffer.UAV, ERHIAccess::UAVCompute, ERHIAccess::SRVMask | ERHIAccess::CopySrc));
-		Swap(NextCountBuffer, ParticleBuffer);
-	}*/
+		Swap(NextCountBuffer, ParticleIDBuffer);
+	}
+
 
 	FLiquidParticleCS::FParameters PassParameters; //= GraphBuilder.AllocParameters<FLiquidParticleCS::FParameters>();
 	auto ShaderMap = GetGlobalShaderMap(InView.FeatureLevel);
 	TShaderMapRef<FLiquidParticleCS> ComputeShader(ShaderMap);
 	PassParameters.View = InView.ViewUniformBuffer;
-	PassParameters.ParticleBufferUAV = ParticleBuffer.UAV;
-
+	PassParameters.ShaderType = 0;
+	PassParameters.ParticleIDBuffer = ParticleIDBuffer.UAV;
+	PassParameters.ParticleAttributeBuffer = ParticleAttributeBuffer.UAV;
+	PassParameters.SolverBaseParameter = Context->SolverParameter->FluidParameter.SolverBaseParameter;
 	/*FComputeShaderUtils::AddPass(GraphBuilder,
 									 RDG_EVENT_NAME("ParticleToCell"),
 									 ERDGPassFlags::Compute,

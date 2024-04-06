@@ -70,7 +70,7 @@ public:
 
 		SHADER_PARAMETER_STRUCT_INCLUDE(FFluidParameter, FluidParameter)
 		SHADER_PARAMETER_RDG_TEXTURE_SRV(Texture2D, SimGridSRV)
-		SHADER_PARAMETER_RDG_TEXTURE_SRV(Texture2D, PressureGridSRV)
+
 		SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D, SimGridUAV)
 		SHADER_PARAMETER_SAMPLER(SamplerState, SimSampler)
 
@@ -155,24 +155,24 @@ void FPhysical2DFluidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder,FPhys
 	FRDGTextureUAVRef PressureUAV = GraphBuilder.CreateUAV(PressureTexture);
 
 	FRDGTextureSRVRef SimSRV = nullptr;
-	FRDGTextureSRVRef PressureSRV = nullptr;
+	//FRDGTextureSRVRef PressureSRV = nullptr;
 	SimSRV = GraphBuilder.CreateSRV(SimulationTexture);
-	PressureSRV = GraphBuilder.CreateSRV(PressureTexture);
+	//PressureSRV = GraphBuilder.CreateSRV(PressureTexture);
 	//AddClearRenderTargetPass(GraphBuilder,PressureTexture);
 	ShaderPrint::FShaderPrintSetup ShaderPrintSetup(InView);
 
 	FShaderPrintData ShaderPrintData = ShaderPrint::CreateShaderPrintData(GraphBuilder, ShaderPrintSetup);
 
-	auto SetParameter = [this,&GraphBuilder,Context,ShaderPrintData](F2DFluidCS::FParameters* InPassParameters, bool bAdvectionDensity, int IterationIndex
-	                                                 , FRDGTextureUAVRef SimUAV, FRDGTextureUAVRef PressureUAV, FRDGTextureSRVRef SimSRV, FRDGTextureSRVRef PressureSRV, int ShaderType)
+	auto SetParameter = [this,&GraphBuilder,Context,ShaderPrintData,SimulationTexture](F2DFluidCS::FParameters* InPassParameters, bool bAdvectionDensity, int IterationIndex
+	                                                 , FRDGTextureUAVRef SimUAV, FRDGTextureUAVRef PressureUAV, FRDGTextureSRVRef SimSRV, int ShaderType)
 	{
 		InPassParameters->FluidParameter = *SolverParameter;
 		InPassParameters->AdvectionDensity = bAdvectionDensity;
 		InPassParameters->IterationIndex = IterationIndex;
 		InPassParameters->FluidShaderType = ShaderType;
 		//UE_LOG(LogTemp,Log,TEXT("shadertype%i"),ShaderType);
-		InPassParameters->SimGridSRV = SimSRV; //? SimSRV : GraphBuilder.CreateSRV(SimulationTexture);
-		InPassParameters->PressureGridSRV = PressureSRV; //? PressureSRV : GraphBuilder.CreateSRV(OutTextureArray[1]);
+		InPassParameters->SimGridSRV = SimSRV;//? SimSRV : GraphBuilder.CreateSRV(SimulationTexture);
+		//InPassParameters->PressureGridSRV = PressureSRV; //? PressureSRV : GraphBuilder.CreateSRV(OutTextureArray[1]);
 		InPassParameters->SimSampler = TStaticSamplerState<SF_Bilinear, AM_Clamp, AM_Clamp, AM_Clamp>::GetRHI();
 		InPassParameters->SimGridUAV = SimUAV; //? SimUAV : GraphBuilder.CreateUAV(OutTextureArray[0]);
 		InPassParameters->PressureGridUAV = PressureUAV; //? PressureUAV : GraphBuilder.CreateUAV(OutTextureArray[1]);
@@ -188,7 +188,7 @@ void FPhysical2DFluidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder,FPhys
 	{
 		F2DFluidCS::FParameters* PassParameters = GraphBuilder.AllocParameters<F2DFluidCS::FParameters>();
 
-		SetParameter(PassParameters, false, 0, SimUAV, PressureUAV, SimSRV, PressureSRV, PreVel);
+		SetParameter(PassParameters, false, 0, SimUAV, PressureUAV, SimSRV,  PreVel);
 
 		//PermutationVector.Set<F2DFluidCS::FPreVel>(true);
 		TShaderMapRef<F2DFluidCS> ComputeShader(ShaderMap);
@@ -206,22 +206,34 @@ void FPhysical2DFluidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder,FPhys
 	//Advection Velocity
 	{
 		F2DFluidCS::FParameters* PassParameters = GraphBuilder.AllocParameters<F2DFluidCS::FParameters>();
+
 		//GraphBuilder.RHICmdList.Transition(FRHITransitionInfo(SimulationTexture->GetRHI(), ERHIAccess::UAVCompute, ERHIAccess::SRVCompute));
 
-		/*if (GRHISupportsRWTextureBuffers)
+		if (GRHISupportsRWTextureBuffers)
 		{
 			AddCopyTexturePass(GraphBuilder, SimulationTexture, TempGrid);
 			SimSRV = GraphBuilder.CreateSRV(TempGrid);
-			PressureSRV = GraphBuilder.CreateSRV(PressureTexture);
-		}*/
-
-
-		SetParameter(PassParameters, false, 0, SimUAV, PressureUAV, SimSRV, PressureSRV, Advection);
-
-
-		//PermutationVector.Set<F2DFluidCS::FAdvection>(true);
+			//PressureSRV = GraphBuilder.CreateSRV(PressureTexture);
+		}
+		SetParameter(PassParameters, false, 0, SimUAV, PressureUAV, SimSRV,  Advection);
 		TShaderMapRef<F2DFluidCS> ComputeShader(ShaderMap);
 
+		/*
+		GraphBuilder.AddPass(
+						RDG_EVENT_NAME("AdvectionVelocity"),
+						PassParameters,
+						ERDGPassFlags::Compute ,
+						[this ,ComputeShader,SimUAV,PassParameters,PressureUAV,SimulationTexture](FRHICommandList& RHICmdList)
+					{
+							RHICmdList.Transition(FRHITransitionInfo(SimulationTexture->GetRHI(), ERHIAccess::UAVCompute, ERHIAccess::SRVCompute));
+							SimSRV = GraphBuilder.CreateSRV(SimulationTexture);
+
+
+							FComputeShaderUtils::Dispatch(RHICmdList,
+										 ComputeShader,
+										 *PassParameters,
+										 FComputeShaderUtils::GetGroupCount(FIntVector(GridSize.X, GridSize.Y, 1), ThreadNum));
+					});*/
 
 		FComputeShaderUtils::AddPass(GraphBuilder,
 		                             RDG_EVENT_NAME("AdvectionVelocity"),
@@ -241,9 +253,7 @@ void FPhysical2DFluidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder,FPhys
 			/*SimSRV = GraphBuilder.CreateSRV(SimulationTexture);
 			PressureSRV = GraphBuilder.CreateSRV(PressureTexture);*/
 
-			SetParameter(PassParameters, false, 0, SimUAV, PressureUAV, SimSRV, PressureSRV, ComputeDivergence);
-
-
+			SetParameter(PassParameters, false, 0, SimUAV, PressureUAV, SimSRV,  ComputeDivergence);
 			//PermutationVector.Set<F2DFluidCS::FAdvection>(true);
 			TShaderMapRef<F2DFluidCS> ComputeShader(ShaderMap);
 
@@ -332,7 +342,7 @@ void FPhysical2DFluidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder,FPhys
 		{
 			F2DFluidCS::FParameters* PassParameters = GraphBuilder.AllocParameters<F2DFluidCS::FParameters>();
 
-			SetParameter(PassParameters, false, i, SimUAV, PressureUAV, SimSRV, PressureSRV, IteratePressure);
+			SetParameter(PassParameters, false, i, SimUAV, PressureUAV, SimSRV,  IteratePressure);
 
 			F2DFluidCS::FPermutationDomain PermutationVector;
 			//PermutationVector.Set<F2DFluidCS::FIteratePressure>(true);
@@ -355,17 +365,13 @@ void FPhysical2DFluidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder,FPhys
 		F2DFluidCS::FParameters* PassParameters = GraphBuilder.AllocParameters<F2DFluidCS::FParameters>();
 
 		//GraphBuilder.RHICmdList.Transition(FRHITransitionInfo(SimulationTexture->GetRHI(), ERHIAccess::UAVCompute, ERHIAccess::SRVCompute));
-
-		/*if (GRHISupportsRWTextureBuffers)
+		if (GRHISupportsRWTextureBuffers)
 		{
 			AddCopyTexturePass(GraphBuilder, SimulationTexture, TempGrid);
 			SimSRV = GraphBuilder.CreateSRV(TempGrid);
-			PressureSRV = GraphBuilder.CreateSRV(PressureTexture);
-		}*/
+		}
 
-		SetParameter(PassParameters, true, 0, SimUAV, PressureUAV, SimSRV, PressureSRV, Advection);
-
-
+		SetParameter(PassParameters, true, 0, SimUAV, PressureUAV, SimSRV,  Advection);
 		TShaderMapRef<F2DFluidCS> ComputeShader(ShaderMap);
 
 

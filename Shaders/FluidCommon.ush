@@ -2,7 +2,6 @@
 #include "/Engine/Public/Platform.ush"
 
 Texture2D SimGridSRV;
-Texture2D PressureGridSRV;
 
 RWTexture2D<float4> SimGridUAV;
 RWTexture2D<float> PressureGridUAV;
