@@ -162,3 +162,8 @@ void FPhysicalSolverViewExtension::UpdateParameters(FPhysicalSolverContext* Cont
 {
 	SolverContext = Context;
 }
+
+void FPhysicalSolverViewExtension::Release()
+{
+	PhysicalSolver->Release();
+}

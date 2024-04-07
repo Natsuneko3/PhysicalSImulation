@@ -180,8 +180,6 @@ void FPhysical2DFluidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder,FPhys
 		InPassParameters->WorldVelocity = Context->WorldVelocity;
 		InPassParameters->WorldPosition = Context->WorldPosition;
 		ShaderPrint::SetParameters(GraphBuilder, ShaderPrintData,InPassParameters->ShaderPrintUniformBuffer);
-
-
 	};
 
 	//PreVelocitySolver
@@ -408,4 +406,9 @@ void FPhysical2DFluidSolver::Initial(FPhysicalSolverContext* Context)
 	Frame = 0;
 	SetParameter(Context->SolverParameter);
 	InitialedDelegate.Broadcast();
+}
+
+void FPhysical2DFluidSolver::Release()
+{
+	FPhysicalSolverBase::Release();
 }

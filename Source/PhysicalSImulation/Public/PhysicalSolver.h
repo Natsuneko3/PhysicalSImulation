@@ -71,6 +71,7 @@ class FPhysicalSolverBase
 public:
 	virtual void SetParameter(FSolverParameter* InParameter){}
 	virtual void Initial(FPhysicalSolverContext* Context){}
+	virtual void Release(){}
 	virtual void Update_RenderThread(FRDGBuilder& GraphBuilder,FPhysicalSolverContext* Context,FSceneView& InView){}
 	FPhysicalSolverInitialed InitialedDelegate;
 	

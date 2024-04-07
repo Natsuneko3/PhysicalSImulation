@@ -27,6 +27,7 @@ UPhysicalSimulationComponent::UPhysicalSimulationComponent()
 
 UPhysicalSimulationComponent::~UPhysicalSimulationComponent()
 {
+	PhysicalSolverViewExtension->Release();
 	PhysicalSolverViewExtension.Reset();
 }
 

@@ -1,47 +1,20 @@
 #include "/Engine/Private/Common.ush"
 #include "/Engine/Private/ShaderPrint.ush"
 #include "/Engine/Private/Random.ush"
+#include "ParticleCommon.ush"
 
-RWBuffer<uint> ParticleIDBuffer;
-RWBuffer<float> ParticleAttributeBuffer;
 // Temporary buffer where we compute the number of elements to write before each input element.
 groupshared uint GroupWriteOffsets[2*THREADGROUP_SIZEX];
 // The offset where this thread group will start writing its output.
 groupshared uint GroupWriteStart;
 
-struct ParticleContext
-{
-	float Age;
-	float3 Position;
-	float3 Velocity;
-};
+RWBuffer<uint> ParticleIDBuffer;
+
 int ShaderType;
 int Time;
 float dt;
 
-ParticleContext GetParticle(uint DispatchThreadId )
-{
-	ParticleContext Particle;
-	Particle.Age = ParticleAttributeBuffer[DispatchThreadId];
-	Particle.Position.x= ParticleAttributeBuffer[DispatchThreadId + 1];
-	Particle.Position.y= ParticleAttributeBuffer[DispatchThreadId + 2];
-	Particle.Position.z= ParticleAttributeBuffer[DispatchThreadId + 3];
 
-	Particle.Velocity.x= ParticleAttributeBuffer[DispatchThreadId + 4];
-	Particle.Velocity.y= ParticleAttributeBuffer[DispatchThreadId + 5];
-	Particle.Velocity.z= ParticleAttributeBuffer[DispatchThreadId + 6];
-	return Particle
-}
-void OutPutParticle(uint DispatchThreadId ,ParticleContext Particle)
-{
-	ParticleAttributeBuffer[DispatchThreadId] = Particle.Age;
-	ParticleAttributeBuffer[DispatchThreadId + 1] = Particle.Position.x;
-	ParticleAttributeBuffer[DispatchThreadId + 2] = Particle.Position.y;
-	ParticleAttributeBuffer[DispatchThreadId + 3] = Particle.Position.z;
-	ParticleAttributeBuffer[DispatchThreadId + 4] = Particle.Velocity.x;
-	ParticleAttributeBuffer[DispatchThreadId + 5] = Particle.Velocity.y;
-	ParticleAttributeBuffer[DispatchThreadId + 6] = Particle.Velocity.z;
-}
 ParticleContext SpawnParticle(uint DispatchThreadId )
 {
 	ParticleContext Particle;
@@ -111,7 +84,7 @@ void FilterDeadParticle(uint DispatchThreadId , uint2 GroupThreadId , uint2 Grou
 }
 void ParticleToCell(uint DispatchThreadId )
 {
-	ParticleContext Particle = GetParticle(DispatchThreadId);
+	ParticleContext Particle = GetParticle(ParticleAttributeBuffer,DispatchThreadId);
 
 	if(Particle.Age == 0.0)
 	{

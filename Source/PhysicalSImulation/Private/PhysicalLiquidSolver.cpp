@@ -5,6 +5,29 @@
 #include "RenderGraphUtils.h"
 #include "ShaderParameterStruct.h"
 
+class FSpawnParticleCS : public FGlobalShader
+{
+public:
+	DECLARE_GLOBAL_SHADER(FSpawnParticleCS);
+	SHADER_USE_PARAMETER_STRUCT(FSpawnParticleCS, FGlobalShader);
+
+	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
+		SHADER_PARAMETER_SRV(Buffer<uint32>,		InIDBuffer)
+		SHADER_PARAMETER_SRV(Buffer<float>,		InAttributeBuffer)
+		SHADER_PARAMETER_UAV(RWBuffer<uint32>,		ParticleIDBuffer)
+		SHADER_PARAMETER_UAV(RWBuffer<float>,		ParticleAttributeBuffer)
+	SHADER_PARAMETER(uint32,NewNumParticle)
+	END_SHADER_PARAMETER_STRUCT()
+
+	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)
+	{
+		OutEnvironment.SetDefine(TEXT("THREADGROUP_SIZEX"), 64);
+        OutEnvironment.SetDefine(TEXT("THREADGROUP_SIZEY"), 1);
+
+	}
+};
+IMPLEMENT_GLOBAL_SHADER(FSpawnParticleCS,  "/PluginShader/InitialParticle.usf", "SpawnParticleCS", SF_Compute);
+
 class FLiquidParticleCS : public FGlobalShader
 {
 public:
@@ -48,12 +71,32 @@ void FPhysicalLiquidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder,FPhysi
 	float DeltaTime = Context->SolverParameter->FluidParameter.SolverBaseParameter.dt;
 	FRHICommandListImmediate& RHICmdList = GraphBuilder.RHICmdList;
 	CurrentNumParticle += FMath::DivideAndRoundDown(DeltaTime,Context->SpawnRate);
-
+	const auto ShaderMap = GetGlobalShaderMap(InView.FeatureLevel);
 	if(!AllocatedInstanceCounts)
 	{
 		AllocatedInstanceCounts = 1;
+#if ENGINE_MINOR_VERSION > 1
 		ParticleIDBuffer.Initialize(RHICmdList,TEXT("InitialIDBuffer"),sizeof(uint32),CurrentNumParticle,PF_R32_UINT,ERHIAccess::UAVCompute);
 		ParticleAttributeBuffer.Initialize(RHICmdList,TEXT("InitialParticleBuffer"),sizeof(float),CurrentNumParticle * 6,PF_FloatRGB,ERHIAccess::UAVCompute);
+#else
+		ParticleIDBuffer.Initialize(TEXT("InitialIDBuffer"),sizeof(uint32),CurrentNumParticle,PF_R32_UINT,ERHIAccess::UAVCompute);
+		ParticleAttributeBuffer.Initialize(TEXT("InitialParticleBuffer"),sizeof(float),CurrentNumParticle * 6,PF_FloatRGB,ERHIAccess::UAVCompute);
+#endif
+
+	}
+
+	if(CurrentNumParticle > 0)
+	{
+		FRWBuffer NextIDBuffer;
+		FRWBuffer NextParticleBuffer;
+		int32 UsedIndexCounts[] = {int32(CurrentNumParticle)};
+		NextIDBuffer.Initialize(TEXT("NextIDBuffer"),sizeof(uint32),int(CurrentNumParticle),PF_R32_UINT,ERHIAccess::UAVCompute, BUF_Static | BUF_SourceCopy);
+		NextParticleBuffer.Initialize(TEXT("NextParticleBuffer"),sizeof(float),CurrentNumParticle * 6,PF_FloatRGB,ERHIAccess::UAVCompute);
+
+		TShaderMapRef<FSpawnParticleCS> ComputeShader(ShaderMap);
+
+		RHICmdList.Transition(FRHITransitionInfo(NextIDBuffer.UAV, ERHIAccess::UAVCompute, ERHIAccess::SRVMask | ERHIAccess::CopySrc));
+		Swap(NextIDBuffer, ParticleIDBuffer);
 	}
 
 	/*if (ParticleReadback && ParticleReadback->IsReady())
@@ -69,21 +112,11 @@ void FPhysicalLiquidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder,FPhysi
 		UE_LOG(LogSimulation,Log,TEXT("========================"));
 		ParticleReadback->Unlock();
 	}*/
-	if(CurrentNumParticle > 0)
-	{
-		FRWBuffer NextCountBuffer;
-		int32 UsedIndexCounts[] = {int32(CurrentNumParticle)};
-		NextCountBuffer.Initialize(RHICmdList,TEXT("NextParticleBuffer"),sizeof(uint32),int(CurrentNumParticle),PF_R32_UINT,ERHIAccess::UAVCompute, BUF_Static | BUF_SourceCopy);
 
-		FRHIUnorderedAccessView* UAVs[] = { NextCountBuffer.UAV };
-		CopyUIntBufferToTargets(RHICmdList, Context->FeatureLevel, ParticleIDBuffer.SRV, UAVs, UsedIndexCounts, 0, 1);
-		RHICmdList.Transition(FRHITransitionInfo(NextCountBuffer.UAV, ERHIAccess::UAVCompute, ERHIAccess::SRVMask | ERHIAccess::CopySrc));
-		Swap(NextCountBuffer, ParticleIDBuffer);
-	}
 
 
 	FLiquidParticleCS::FParameters PassParameters; //= GraphBuilder.AllocParameters<FLiquidParticleCS::FParameters>();
-	auto ShaderMap = GetGlobalShaderMap(InView.FeatureLevel);
+
 	TShaderMapRef<FLiquidParticleCS> ComputeShader(ShaderMap);
 	PassParameters.View = InView.ViewUniformBuffer;
 	PassParameters.ShaderType = 0;
@@ -107,7 +140,13 @@ void FPhysicalLiquidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder,FPhysi
 
 void FPhysicalLiquidSolver::Initial(FPhysicalSolverContext* Context)
 {
-	FPhysicalSolverBase::Initial(Context);
+
+}
+
+void FPhysicalLiquidSolver::Release()
+{
+	ParticleIDBuffer.Release();
+	ParticleAttributeBuffer.Release();
 }
 
 void FPhysicalLiquidSolver::PostSimulation()
@@ -121,7 +160,7 @@ void FPhysicalLiquidSolver::EnqueueGPUReadback(FRHICommandListImmediate& RHICmdL
 	{
 		ParticleReadback = new FRHIGPUBufferReadback(TEXT("Niagara GPU Instance Count Readback"));
 	}
-	ParticleReadback->EnqueueCopy(RHICmdList, ParticleBuffer.Buffer);
+	ParticleReadback->EnqueueCopy(RHICmdList, ParticleIDBuffer.Buffer);
 
 //TODO should we need copy all particle buffer?
 

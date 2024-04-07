@@ -15,7 +15,7 @@ public:
 
 	virtual void Initial(FPhysicalSolverContext* Context) override;
 
-
+	virtual void Release() override;
 	bool bIsInitial = false;
 
 	FFluidParameter* SolverParameter;

@@ -28,7 +28,6 @@ public:
 	virtual void PreRenderViewFamily_RenderThread(FRDGBuilder& GraphBuilder, FSceneViewFamily& InViewFamily) override;
 	virtual int32 GetPriority() const override { return -1; }
 	virtual void PreRenderView_RenderThread(FRDGBuilder& GraphBuilder, FSceneView& InView) override;
-
 	virtual bool IsActiveThisFrame_Internal(const FSceneViewExtensionContext& Context) const { return true; }
 	//~ End ISceneViewExtension Interface
 
@@ -38,6 +37,8 @@ public:
 	void ReleaseDelegate();
 	void Render_RenderThread(FPostOpaqueRenderParameters& Parameters);*/
 	void UpdateParameters(FPhysicalSolverContext* Context);
+	void Release();
+
 
 private:
 	//FPhysicalSolverContext* SolverContext;

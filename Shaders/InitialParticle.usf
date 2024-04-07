@@ -1,0 +1,24 @@
+﻿#include "/Engine/Public/Platform.ush"
+#include "ParticleCommon.ush"
+Buffer<uint>		InIDBuffer;
+Buffer<float>		InAttributeBuffer;
+RWBuffer<uint> ParticleIDBuffer;
+
+
+uint NewNumParticle;
+[numthreads(THREADGROUP_SIZEX, THREADGROUP_SIZEY, 1)]
+void SpawnParticleCS(uint DispatchThreadId : SV_DispatchThreadID, uint2 GroupThreadId : SV_GroupThreadID, uint2 GroupID:SV_GroupID)
+{
+	ParticleContext Context = GetParticle(InAttributeBuffer,DispatchThreadId);
+	uint ID = ParticleIDBuffer[DispatchThreadId];
+	if(DispatchThreadId > NewNumParticle)
+	{
+		ParticleAttributeBuffer[DispatchThreadId] = 0;
+	}
+	else
+	{
+		OutPutParticle(DispatchThreadId,Context);
+		ParticleIDBuffer[DispatchThreadId] = ID;
+	}
+
+}

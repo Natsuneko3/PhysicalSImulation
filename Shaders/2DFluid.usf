@@ -256,10 +256,10 @@ void MainCS(uint2 DispatchThreadId : SV_DispatchThreadID, uint2 GroupThreadId : 
 	default:
 		break;
 	}
-	if(DispatchThreadId.x == 0)
+	/*if(DispatchThreadId.x == 0)
 	{
 		FShaderPrintContext Ctx = InitShaderPrintContext(true, float2(0.5, 0.1));
 		Print(Ctx, int(1111));
 		Newline(Ctx);
-	}
+	}*/
 }

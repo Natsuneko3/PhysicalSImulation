@@ -14,7 +14,7 @@ class FPhysicalLiquidSolver:public FPhysicalSolverBase
 	virtual void Update_RenderThread(FRDGBuilder& GraphBuilder,FPhysicalSolverContext* Context,FSceneView& InView) override;
 
 	virtual void Initial(FPhysicalSolverContext* Context) override;
-
+	virtual void Release() override;
 	void PostSimulation();
 
 	bool bIsInitial = false;
