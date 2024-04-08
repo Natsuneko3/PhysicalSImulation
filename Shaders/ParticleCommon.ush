@@ -1,11 +1,22 @@
-﻿
+﻿#include "/Engine/Private/Random.ush"
+
 RWBuffer<float> ParticleAttributeBuffer;
+RWBuffer<uint> ParticleIDBuffer;
 struct ParticleContext
 {
 	float Age;
 	float3 Position;
 	float3 Velocity;
 };
+
+ParticleContext SpawnParticle(uint DispatchThreadId )
+{
+	ParticleContext Particle;
+	Particle.Age = 0;
+	Particle.Position = float3(RandBBSfloat(float(DispatchThreadId)),RandBBSfloat(float(DispatchThreadId+2)),RandBBSfloat(float(DispatchThreadId+3)))*10;
+	Particle.Velocity = float3(0,0,9.8);
+	return Particle;
+}
 
 ParticleContext GetParticle(RWBuffer<float> ParticleAttributeBuffer,uint DispatchThreadId )
 {
@@ -44,4 +55,123 @@ void OutPutParticle(uint DispatchThreadId ,ParticleContext Particle)
 	ParticleAttributeBuffer[DispatchThreadId + 4] = Particle.Velocity.x;
 	ParticleAttributeBuffer[DispatchThreadId + 5] = Particle.Velocity.y;
 	ParticleAttributeBuffer[DispatchThreadId + 6] = Particle.Velocity.z;
+}
+
+groupshared uint GroupSharedIndex[64];
+groupshared uint GroupSharedIndex4[16];
+groupshared uint GroupSharedIndex16[4];
+groupshared uint GroupSharedIndex64;
+int AcquireIndex(uniform int DataSetID, bool bDoAcquire)
+{
+	// Begin static assert : GPU particles only support DataSetID 0
+	int MustBe0[1];
+	MustBe0[DataSetID] = 0;
+	// End static assert
+
+	int PrevIdx = GSpawnStartInstance + NumSpawnedInstances;	// scratch instance as default; write to that for dead particles
+
+	#if 1//USE_WAVE_INTRINSICS
+
+		uint NumCounters = WaveActiveCountBits(bDoAcquire);
+		uint PrefixCounts = WavePrefixCountBits(bDoAcquire);
+		if (NumCounters > 0)
+		{
+			if (WaveIsFirstLane())
+			{
+				uint RetPrevIdx;
+				InterlockedAdd(ParticleIDBuffer[0], NumCounters, RetPrevIdx);
+				PrevIdx = (int)RetPrevIdx;
+			}
+
+			if (bDoAcquire)
+			{
+				PrevIdx = WaveReadLaneFirst(PrevIdx);
+				PrevIdx += PrefixCounts;
+			}
+		}
+
+	#elif USE_GROUP_SHARED
+
+		GroupSharedIndex[GGroupThreadId.x] = bDoAcquire ? 1 : 0;
+		GroupMemoryBarrierWithGroupSync();
+
+		// Group by 4
+		if ((GGroupThreadId.x & 0x3) == 0)
+		{
+			const uint Index = GGroupThreadId.x;
+
+			const uint ActiveCount1 = GroupSharedIndex[Index];
+			const uint ActiveCount2 = ActiveCount1 + GroupSharedIndex[Index + 1];
+			const uint ActiveCount3 = ActiveCount2 + GroupSharedIndex[Index + 2];
+			const uint ActiveCount4 = ActiveCount3 + GroupSharedIndex[Index + 3];
+
+			GroupSharedIndex[Index] = 0;
+			GroupSharedIndex[Index + 1] = ActiveCount1;
+			GroupSharedIndex[Index + 2] = ActiveCount2;
+			GroupSharedIndex[Index + 3] = ActiveCount3;
+			GroupSharedIndex4[Index / 4] = ActiveCount4;
+		}
+		GroupMemoryBarrierWithGroupSync();
+
+		// Group by 16
+		if ((GGroupThreadId.x & 0xF) == 0)
+		{
+			const uint Index = GGroupThreadId.x / 4;
+
+			const uint ActiveCount1 = GroupSharedIndex4[Index];
+			const uint ActiveCount2 = ActiveCount1 + GroupSharedIndex4[Index + 1];
+			const uint ActiveCount3 = ActiveCount2 + GroupSharedIndex4[Index + 2];
+			const uint ActiveCount4 = ActiveCount3 + GroupSharedIndex4[Index + 3];
+
+			GroupSharedIndex4[Index] = 0;
+			GroupSharedIndex4[Index + 1] = ActiveCount1;
+			GroupSharedIndex4[Index + 2] = ActiveCount2;
+			GroupSharedIndex4[Index + 3] = ActiveCount3;
+			GroupSharedIndex16[Index / 4] = ActiveCount4;
+		}
+		GroupMemoryBarrierWithGroupSync();
+
+		// Group by 64
+		if ((GGroupThreadId.x & 0x3F) == 0)
+		{
+			const uint Index = GGroupThreadId.x / 16;
+			uint RetPrevIdx = 0;
+
+			const uint ActiveCount1 = GroupSharedIndex16[Index];
+			const uint ActiveCount2 = ActiveCount1 + GroupSharedIndex16[Index + 1];
+	#if THREADGROUP_SIZE == 64
+			const uint ActiveCount3 = ActiveCount2 + GroupSharedIndex16[Index + 2];
+			const uint ActiveCount4 = ActiveCount3 + GroupSharedIndex16[Index + 3];
+	#endif
+
+			GroupSharedIndex16[Index] = 0;
+			GroupSharedIndex16[Index + 1] = ActiveCount1;
+	#if THREADGROUP_SIZE == 64
+			GroupSharedIndex16[Index + 2] = ActiveCount2;
+			GroupSharedIndex16[Index + 3] = ActiveCount3;
+
+			InterlockedAdd(RWInstanceCounts[WriteInstanceCountOffset], ActiveCount4, RetPrevIdx);
+	#elif THREADGROUP_SIZE == 32
+			InterlockedAdd(RWInstanceCounts[WriteInstanceCountOffset], ActiveCount2, RetPrevIdx);
+	#endif
+			GroupSharedIndex64 = RetPrevIdx;
+		}
+		GroupMemoryBarrierWithGroupSync();
+
+		PrevIdx = GroupSharedIndex64 + GroupSharedIndex16[GGroupThreadId.x / 16] + GroupSharedIndex4[GGroupThreadId.x / 4] + GroupSharedIndex[GGroupThreadId.x];
+
+	#else // !USE_WAVE_INTRINSICS && !USE_GROUP_SHARED
+
+		if(bDoAcquire == true)
+		{
+			// Have to use uint's here to avoid PS4 compiler warnings about InterlockedAdd, cannot propagate uint due to CPU VM limitations...
+			uint RetPrevIdx;
+			// @TODO : add some TLS logic to avoid thread group for doing atomic for each thread. (gathering the actual required count)
+			InterlockedAdd(RWInstanceCounts[WriteInstanceCountOffset], (uint)1U, RetPrevIdx);
+			PrevIdx = (int)RetPrevIdx;
+		}
+
+	#endif // USE_WAVE_INTRISICS || USE_GROUP_SHARED
+
+	return PrevIdx;
 }
