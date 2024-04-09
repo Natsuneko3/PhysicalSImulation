@@ -29,6 +29,5 @@ private:
 	FRWBuffer ParticleIDBuffer;
 	FRWBuffer ParticleAttributeBuffer;
 	FRHIGPUMemoryReadback* ParticleReadback = nullptr;
-
 	void EnqueueGPUReadback(FRHICommandListImmediate& RHICmdList);
 };
