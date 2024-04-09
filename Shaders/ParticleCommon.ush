@@ -25,7 +25,7 @@ ParticleContext SpawnParticle(uint DispatchThreadId )
 	return Particle;
 }
 
-ParticleContext GetParticle(RWBuffer<float> ParticleAttributeBuffer,uint DispatchThreadId )
+ParticleContext GetParticle(uint DispatchThreadId )
 {
 	ParticleContext Particle;
 	Particle.Age = ParticleAttributeBuffer[DispatchThreadId];

@@ -205,7 +205,7 @@ void FPhysical2DFluidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder,FPhys
 
 		//GraphBuilder.RHICmdList.Transition(FRHITransitionInfo(SimulationTexture->GetRHI(), ERHIAccess::UAVCompute, ERHIAccess::SRVCompute));
 
-		if (GRHISupportsRWTextureBuffers)
+		if (!GRHISupportsRWTextureBuffers)
 		{
 			AddCopyTexturePass(GraphBuilder, SimulationTexture, TempGrid);
 			SimSRV = GraphBuilder.CreateSRV(TempGrid);
@@ -361,7 +361,7 @@ void FPhysical2DFluidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder,FPhys
 		F2DFluidCS::FParameters* PassParameters = GraphBuilder.AllocParameters<F2DFluidCS::FParameters>();
 
 		//GraphBuilder.RHICmdList.Transition(FRHITransitionInfo(SimulationTexture->GetRHI(), ERHIAccess::UAVCompute, ERHIAccess::SRVCompute));
-		if (GRHISupportsRWTextureBuffers)
+		if (!GRHISupportsRWTextureBuffers)
 		{
 			AddCopyTexturePass(GraphBuilder, SimulationTexture, TempGrid);
 			SimSRV = GraphBuilder.CreateSRV(TempGrid);

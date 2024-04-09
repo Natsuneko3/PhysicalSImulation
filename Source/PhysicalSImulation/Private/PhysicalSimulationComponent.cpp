@@ -27,8 +27,12 @@ UPhysicalSimulationComponent::UPhysicalSimulationComponent()
 
 UPhysicalSimulationComponent::~UPhysicalSimulationComponent()
 {
-	PhysicalSolverViewExtension->Release();
-	PhysicalSolverViewExtension.Reset();
+	if(PhysicalSolverViewExtension)
+	{
+		PhysicalSolverViewExtension->Release();
+		PhysicalSolverViewExtension.Reset();
+	}
+
 }
 
 
@@ -111,6 +115,7 @@ void UPhysicalSimulationComponent::UpdateSolverContext()
 	PhysicalSolverContext.SimulatorType = SimulatorType;
 	PhysicalSolverContext.SolverParameter = &SolverParameter;
 	PhysicalSolverContext.OutputTextures = OutputTextures;
+	PhysicalSolverContext.SpawnRate = SpawnRate;
 }
 
 void UPhysicalSimulationComponent::CreateSolverTextures()
