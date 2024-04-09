@@ -134,7 +134,7 @@ void UPhysicalSimulationComponent::Create3DRenderTarget()
 	OutputTextures.Empty();
 	UTextureRenderTargetVolume* VolumeRT = NewObject<UTextureRenderTargetVolume>();
 	VolumeRT->InitAutoFormat(GridSize.X, GridSize.Y, GridSize.Z);
-	VolumeRT->OverrideFormat = PF_FloatRGB;
+	VolumeRT->OverrideFormat = PF_R16F;
 	VolumeRT->ClearColor = FLinearColor::Black;
 	VolumeRT->bCanCreateUAV = true;
 	VolumeRT->UpdateResourceImmediate(true);

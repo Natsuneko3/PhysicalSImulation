@@ -2,6 +2,13 @@
 
 RWBuffer<float> ParticleAttributeBuffer;
 RWBuffer<uint> ParticleIDBuffer;
+
+float3 GridSize;
+float dt;
+float dx;
+SamplerState WarpSampler;
+int Time;
+
 struct ParticleContext
 {
 	float Age;

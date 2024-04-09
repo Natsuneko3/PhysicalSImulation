@@ -8,13 +8,7 @@ groupshared uint GroupWriteOffsets[2*THREADGROUP_SIZEX];
 // The offset where this thread group will start writing its output.
 groupshared uint GroupWriteStart;
 
-
-
 int ShaderType;
-int Time;
-float dt;
-
-
 
 void FilterDeadParticle(uint DispatchThreadId , uint2 GroupThreadId , uint2 GroupID)
 {
@@ -87,7 +81,10 @@ void ParticleToCell(uint DispatchThreadId )
 }
 void CellToParticle(uint DispatchThreadId )
 {
-
+	ParticleContext Particle = GetParticle(ParticleAttributeBuffer,DispatchThreadId);
+	Particle.Velocity += float3(0,0,9.8);
+	Particle.Position += Particle.Velocity * dt;
+	OutPutParticle(DispatchThreadId,Particle);
 }
 void Rasterize(uint DispatchThreadId)
 {

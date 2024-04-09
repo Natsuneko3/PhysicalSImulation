@@ -1,6 +1,4 @@
 #include "Physical2DFluidSolver.h"
-
-
 #include "PhysicalSolver.h"
 
 #include "RenderGraphBuilder.h"
