@@ -22,12 +22,13 @@ class FPhysicalLiquidSolver:public FPhysicalSolverBase
 	FFluidParameter* SolverParameter;
 	FIntPoint GridSize;
 	int32 Frame;
-	uint32 CurrentNumParticle;
+	float LastNumParticle;
 	uint32 DeadParticle;
 private:
 	int32 AllocatedInstanceCounts = 0;
 	FRWBuffer ParticleIDBuffer;
 	FRWBuffer ParticleAttributeBuffer;
 	FRHIGPUMemoryReadback* ParticleReadback = nullptr;
+	FRHIGPUMemoryReadback* ParticleIDReadback = nullptr;
 	void EnqueueGPUReadback(FRHICommandListImmediate& RHICmdList);
 };

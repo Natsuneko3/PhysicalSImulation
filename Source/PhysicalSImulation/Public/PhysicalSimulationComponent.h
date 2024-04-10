@@ -54,8 +54,9 @@ public:
 	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation")
 	float GravityScale = 20;
 
-	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation")
+	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation",meta = (EditCondition = "SimulatorType==ESimulatorType::Liquid"))
 	float SpawnRate = 60;
+
 	UFUNCTION(BlueprintCallable,Category = "PhysicalSimulation")
 	void Initial();
 

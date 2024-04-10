@@ -10,6 +10,15 @@
 /**
  * 
  */
+
+TAutoConsoleVariable<int32> CVarPhysicalSimulationDebug(
+	TEXT("r.PhysicalSimulationDebug"),
+	0,
+	TEXT("Debug Physical Simulation .")
+	TEXT("0: Disabled (default)\n")
+	TEXT("1: Print particle Position and Velocity \n"),
+	ECVF_Default);
+
 BEGIN_SHADER_PARAMETER_STRUCT(FSolverBaseParameter, PHYSICALSIMULATION_API)
 SHADER_PARAMETER(FVector3f,GridSize)
 SHADER_PARAMETER(int32,Time)
@@ -30,6 +39,11 @@ BEGIN_SHADER_PARAMETER_STRUCT(FFluidParameter, PHYSICALSIMULATION_API)
 SHADER_PARAMETER(int,UseFFT)
 END_SHADER_PARAMETER_STRUCT()
 
+BEGIN_SHADER_PARAMETER_STRUCT(FLiuquidParameter, PHYSICALSIMULATION_API)
+	SHADER_PARAMETER_STRUCT_INCLUDE(FSolverBaseParameter, SolverBaseParameter)
+	SHADER_PARAMETER(float,GravityScale)
+
+END_SHADER_PARAMETER_STRUCT()
 DECLARE_MULTICAST_DELEGATE(FPhysicalSolverInitialed);
 UENUM()
 enum class ESimulatorType : uint8
@@ -42,6 +56,7 @@ enum class ESimulatorType : uint8
 struct FSolverParameter
 {
 	FFluidParameter FluidParameter;
+	FLiuquidParameter LiuquidParameter;
 };
 
 struct FPhysicalSolverContext

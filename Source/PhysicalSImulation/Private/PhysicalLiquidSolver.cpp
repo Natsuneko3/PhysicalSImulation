@@ -1,4 +1,4 @@
-#include "PhysicalLiquidSolver.h"
+      #include "PhysicalLiquidSolver.h"
 
 #include "GPUSortManager.h"
 #include "RenderGraphBuilder.h"
@@ -36,7 +36,7 @@ public:
 
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
 	    SHADER_PARAMETER_STRUCT_REF(FViewUniformShaderParameters, View)
-		SHADER_PARAMETER_STRUCT_INCLUDE(FSolverBaseParameter, SolverBaseParameter)
+		SHADER_PARAMETER_STRUCT_INCLUDE(FLiuquidParameter, LiuquidParameter)
 		SHADER_PARAMETER(int, ShaderType)
 		SHADER_PARAMETER_UAV(RWBuffer<uint32>,		ParticleIDBuffer)
 	SHADER_PARAMETER_UAV(RWTexture3D<float>, RasterizeTexture)
@@ -61,7 +61,7 @@ IMPLEMENT_GLOBAL_SHADER(FLiquidParticleCS, "/PluginShader/MPM.usf", "MainCS", SF
 
 FPhysicalLiquidSolver::FPhysicalLiquidSolver()
 {
-	CurrentNumParticle = 64;
+	LastNumParticle = 0;
 	AllocatedInstanceCounts = 0;
 }
 
@@ -74,105 +74,122 @@ void FPhysicalLiquidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder,FPhysi
 {
 	float DeltaTime = Context->SolverParameter->FluidParameter.SolverBaseParameter.dt;
 	FRHICommandListImmediate& RHICmdList = GraphBuilder.RHICmdList;
-	const uint32 NewSpawnParticle = CurrentNumParticle + FMath::DivideAndRoundDown(DeltaTime,Context->SpawnRate);
-	FIntVector DispatchCount = FIntVector(FMath::DivideAndRoundUp(int(NewSpawnParticle) , 64), 1, 1);
-	const auto ShaderMap = GetGlobalShaderMap(InView.FeatureLevel);
+	float CurrentNumParticle = LastNumParticle + DeltaTime * Context->SpawnRate;
 
-	if (ParticleReadback && ParticleReadback->IsReady())
+	const auto ShaderMap = GetGlobalShaderMap(InView.FeatureLevel);
+    uint32 DeadParticleNum = 0;
+
+	//if we are in initial stage we need to read?
+	if (ParticleIDReadback && ParticleIDReadback->IsReady())
 	{
 		// last frame readback buffer
-		float* Particles = (float*)ParticleReadback->Lock(NewSpawnParticle * sizeof(float));
+		uint32* Particles = (uint32*)ParticleIDReadback->Lock(LastNumParticle * sizeof(uint32));
+		DeadParticleNum = Particles[0];
+		ParticleReadback->Unlock();
 		//uint32 Offset = 0;
-		for(int i = 0;i<int(NewSpawnParticle);i++)
+		if(CVarPhysicalSimulationDebug.GetValueOnAnyThread() == 1)
 		{
-			float PositionX = Particles[0 ];
+			if(ParticleReadback && ParticleReadback->IsReady())
+			{
+				float* ParticleDebug = (float*)ParticleReadback->Lock(LastNumParticle * 6 * sizeof(float));
+				for(int i = 0;i<int(LastNumParticle);i++)
+				{
+					float age = ParticleDebug[i];
+					float PositionX = ParticleDebug[i+1];
+					float PositionY = ParticleDebug[i+2];
+					float PositionZ = ParticleDebug[i+3];
 
-			UE_LOG(LogSimulation,Log,TEXT("Test: %f"),PositionX);
+					float VelocityX = ParticleDebug[i+4];
+					float VelocityY = ParticleDebug[i+5];
+					float VelocityZ = ParticleDebug[i+6];
+					UE_LOG(LogSimulation,Log,TEXT("Age: %f"),age);
+					UE_LOG(LogSimulation,Log,TEXT("Position: %f,%f,%f"),PositionX,PositionY,PositionZ);
+					UE_LOG(LogSimulation,Log,TEXT("Velocity: %f,%f,%f"),VelocityX,VelocityY,VelocityZ);
+
+				}
+				UE_LOG(LogSimulation,Log,TEXT("========================"));
+
+			}
 
 		}
-		UE_LOG(LogSimulation,Log,TEXT("========================"));
-		ParticleReadback->Unlock();
-	}
-	if(!AllocatedInstanceCounts)
-	{
-		AllocatedInstanceCounts = 1;
-#if ENGINE_MINOR_VERSION > 3
-		ParticleIDBuffer.Initialize(RHICmdList,TEXT("InitialIDBuffer"),sizeof(uint32),CurrentNumParticle,PF_R32_UINT,ERHIAccess::UAVCompute);
-		ParticleAttributeBuffer.Initialize(RHICmdList,TEXT("InitialParticleBuffer"),sizeof(float),CurrentNumParticle * 6,PF_R32_FLOAT,ERHIAccess::UAVCompute);
-#else
-		ParticleIDBuffer.Initialize(TEXT("InitialIDBuffer"),sizeof(uint32),CurrentNumParticle,PF_R32_UINT,ERHIAccess::UAVCompute);
-		ParticleAttributeBuffer.Initialize(TEXT("InitialParticleBuffer"),sizeof(float),CurrentNumParticle * 6,PF_FloatRGB,ERHIAccess::UAVCompute);
-#endif
 
 	}
-
-	//Spawn Or Initial Particle
-	/*if(NewSpawnParticle != CurrentNumParticle)
+	CurrentNumParticle -= float(DeadParticleNum);
+	if(CurrentNumParticle > 0)
 	{
-		FRWBuffer NextIDBuffer;
-		FRWBuffer NextParticleBuffer;
-
-#if ENGINE_MINOR_VERSION > 3
-		NextIDBuffer.Initialize(RHICmdList,TEXT("NextIDBuffer"),sizeof(uint32),int(CurrentNumParticle),PF_R32_UINT,ERHIAccess::UAVCompute, BUF_Static | BUF_SourceCopy);
-		NextParticleBuffer.Initialize(RHICmdList,TEXT("NextParticleBuffer"),sizeof(float),CurrentNumParticle * 6,PF_FloatRGB,ERHIAccess::UAVCompute);
-#else
-		NextIDBuffer.Initialize(TEXT("NextIDBuffer"),sizeof(uint32),int(CurrentNumParticle),PF_R32_UINT,ERHIAccess::UAVCompute, BUF_Static | BUF_SourceCopy);
-		NextParticleBuffer.Initialize(TEXT("NextParticleBuffer"),sizeof(float),CurrentNumParticle * 6,PF_FloatRGB,ERHIAccess::UAVCompute);
-#endif
-
-
-		TShaderMapRef<FSpawnParticleCS> ComputeShader(ShaderMap);
-		FSpawnParticleCS::FParameters Parameters;
-		Parameters.InAttributeBuffer = ParticleAttributeBuffer.SRV;
-		Parameters.InIDBuffer = ParticleIDBuffer.SRV;
-		Parameters.LastNumParticle = CurrentNumParticle;
-		Parameters.ParticleIDBuffer = NextIDBuffer.UAV;
-		Parameters.ParticleAttributeBuffer = NextParticleBuffer.UAV;
-
-		FComputeShaderUtils::Dispatch(RHICmdList,
-		ComputeShader,
-		Parameters,
-		DispatchCount);
-
-		RHICmdList.Transition(FRHITransitionInfo(NextIDBuffer.UAV, ERHIAccess::UAVCompute, ERHIAccess::SRVMask | ERHIAccess::CopySrc));
-		RHICmdList.Transition(FRHITransitionInfo(NextParticleBuffer.UAV, ERHIAccess::UAVCompute, ERHIAccess::SRVMask | ERHIAccess::CopySrc));
-		Swap(NextIDBuffer, ParticleIDBuffer);
-		Swap(NextParticleBuffer, ParticleAttributeBuffer);
-	}*/
+		int ParticleElement = int(CurrentNumParticle);
+		FIntVector DispatchCount = FIntVector(FMath::DivideAndRoundUp(ParticleElement , 64), 1, 1);
+		if(!AllocatedInstanceCounts)
+		{
+			AllocatedInstanceCounts = 1;
+			ParticleIDBuffer.Initialize(RHICmdList,TEXT("InitialIDBuffer"),sizeof(uint32),ParticleElement ,PF_R32_UINT,ERHIAccess::UAVCompute);
+			ParticleAttributeBuffer.Initialize(RHICmdList,TEXT("InitialParticleBuffer"),sizeof(float),ParticleElement * 6,PF_R32_FLOAT,ERHIAccess::UAVCompute);
+		}else
+		{
+			//Spawn Or Initial Particle
+			if(LastNumParticle != CurrentNumParticle)
+			{
+				FRWBuffer NextIDBuffer;
+				FRWBuffer NextParticleBuffer;
 
 
+				NextIDBuffer.Initialize(RHICmdList,TEXT("NextIDBuffer"),sizeof(uint32),ParticleElement,PF_R32_UINT,ERHIAccess::UAVCompute, BUF_Static | BUF_SourceCopy);
+				NextParticleBuffer.Initialize(RHICmdList,TEXT("NextParticleBuffer"),sizeof(float),ParticleElement * 6,PF_R32_FLOAT,ERHIAccess::UAVCompute);
 
-	FUnorderedAccessViewRHIRef RasterizeTexture = RHICmdList.CreateUnorderedAccessView(Context->OutputTextures[0]->GetResource()->GetTextureRHI());
-	auto DispatchShader = [&](int DoShaderType)
-	{
-		FLiquidParticleCS::FParameters PassParameters; //= GraphBuilder.AllocParameters<FLiquidParticleCS::FParameters>();
 
-		TShaderMapRef<FLiquidParticleCS> ComputeShader(ShaderMap);
-		PassParameters.View = InView.ViewUniformBuffer;
-		PassParameters.ShaderType = DoShaderType;
-		PassParameters.ParticleIDBuffer = ParticleIDBuffer.UAV;
-		PassParameters.ParticleAttributeBuffer = ParticleAttributeBuffer.UAV;
-		PassParameters.SolverBaseParameter = Context->SolverParameter->FluidParameter.SolverBaseParameter;
-		PassParameters.RasterizeTexture = RasterizeTexture;
-		FComputeShaderUtils::Dispatch(RHICmdList,
-			ComputeShader,
-			PassParameters,
-			DispatchCount);
-	};
+				TShaderMapRef<FSpawnParticleCS> ComputeShader(ShaderMap);
+				FSpawnParticleCS::FParameters Parameters;
+				Parameters.InAttributeBuffer = ParticleAttributeBuffer.SRV;
+				Parameters.InIDBuffer = ParticleIDBuffer.SRV;
+				Parameters.LastNumParticle = CurrentNumParticle;
+				Parameters.ParticleIDBuffer = NextIDBuffer.UAV;
+				Parameters.ParticleAttributeBuffer = NextParticleBuffer.UAV;
 
-	{
-		//Particle To Grid
-		DispatchShader(0);
-		/*DispatchShader(0);
-		DispatchShader(1);
-		DispatchShader(2);*/
+				FComputeShaderUtils::Dispatch(RHICmdList,
+				ComputeShader,
+				Parameters,
+				DispatchCount);
+
+				RHICmdList.Transition(FRHITransitionInfo(NextIDBuffer.UAV, ERHIAccess::UAVCompute, ERHIAccess::SRVMask | ERHIAccess::CopySrc));
+				RHICmdList.Transition(FRHITransitionInfo(NextParticleBuffer.UAV, ERHIAccess::UAVCompute, ERHIAccess::SRVMask | ERHIAccess::CopySrc));
+				Swap(NextIDBuffer, ParticleIDBuffer);
+				Swap(NextParticleBuffer, ParticleAttributeBuffer);
+			}
+		}
+
+		FUnorderedAccessViewRHIRef RasterizeTexture = RHICmdList.CreateUnorderedAccessView(Context->OutputTextures[0]->GetResource()->GetTextureRHI());
+		auto DispatchShader = [&](int DoShaderType)
+		{
+			FLiquidParticleCS::FParameters PassParameters; //= GraphBuilder.AllocParameters<FLiquidParticleCS::FParameters>();
+
+			TShaderMapRef<FLiquidParticleCS> ComputeShader(ShaderMap);
+			PassParameters.View = InView.ViewUniformBuffer;
+			PassParameters.ShaderType = DoShaderType;
+			PassParameters.ParticleIDBuffer = ParticleIDBuffer.UAV;
+			PassParameters.ParticleAttributeBuffer = ParticleAttributeBuffer.UAV;
+			PassParameters.LiuquidParameter = Context->SolverParameter->LiuquidParameter;
+			PassParameters.RasterizeTexture = RasterizeTexture;
+			FComputeShaderUtils::Dispatch(RHICmdList,
+				ComputeShader,
+				PassParameters,
+				DispatchCount);
+		};
+
+		{
+			//Particle To Grid
+
+			DispatchShader(0);
+			DispatchShader(1);
+			DispatchShader(2);
+		}
+
+
+
+		EnqueueGPUReadback(RHICmdList);
+
+		LastNumParticle = CurrentNumParticle;
 	}
 
-
-
-	EnqueueGPUReadback(RHICmdList);
-
-	CurrentNumParticle = NewSpawnParticle;
 }
 
 void FPhysicalLiquidSolver::Initial(FPhysicalSolverContext* Context)
@@ -193,11 +210,13 @@ void FPhysicalLiquidSolver::PostSimulation()
 void FPhysicalLiquidSolver::EnqueueGPUReadback(FRHICommandListImmediate& RHICmdList)
 {
 
-	if (!ParticleReadback)
+	if (!ParticleReadback &&!ParticleIDReadback)
 	{
-		ParticleReadback = new FRHIGPUBufferReadback(TEXT("Niagara GPU Instance Count Readback"));
+		ParticleReadback = new FRHIGPUBufferReadback(TEXT("Physicial Simulation Particle ReadBack"));
+		ParticleIDReadback = new FRHIGPUBufferReadback(TEXT("Physicial Simulation Particle ID ReadBack"));
 	}
 	ParticleReadback->EnqueueCopy(RHICmdList, ParticleAttributeBuffer.Buffer);
+	ParticleIDReadback->EnqueueCopy(RHICmdList, ParticleIDBuffer.Buffer);
 
 //TODO should we need copy all particle buffer?
 

@@ -76,6 +76,7 @@ void UPhysicalSimulationComponent::PostEditChangeProperty(FPropertyChangedEvent&
 void UPhysicalSimulationComponent::SetupSolverParameter()
 {
 	UWorld* World = GetWorld();
+
 	FSolverBaseParameter SolverBase;
 
 	if(World == nullptr)
@@ -92,6 +93,7 @@ void UPhysicalSimulationComponent::SetupSolverParameter()
 	UTexture2D* NoiseTexture = LoadObject<UTexture2D>(nullptr,TEXT("/SpeedTreeImporter/SpeedTree9/game_wind_noise.game_wind_noise"));
 	SolverBase.WarpSampler = TStaticSamplerState<SF_Bilinear, AM_Wrap, AM_Wrap, AM_Wrap>::GetRHI();
 
+
 	SolverParameter.FluidParameter.SolverBaseParameter = SolverBase;
 	SolverParameter.FluidParameter.VorticityMult = VorticityMult;
 	SolverParameter.FluidParameter.NoiseFrequency = NoiseFrequency;
@@ -100,6 +102,9 @@ void UPhysicalSimulationComponent::SetupSolverParameter()
 	SolverParameter.FluidParameter.DensityDissipate = DensityDissipate;
 	SolverParameter.FluidParameter.GravityScale = GravityScale;
 	SolverParameter.FluidParameter.UseFFT = true;
+
+	SolverParameter.LiuquidParameter.GravityScale = GravityScale;
+	SolverParameter.LiuquidParameter.SolverBaseParameter = SolverBase;
 }
 
 void UPhysicalSimulationComponent::UpdateSolverContext()
