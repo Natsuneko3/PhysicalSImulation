@@ -5,19 +5,14 @@
 #include "CoreMinimal.h"
 #include "Engine/TextureRenderTarget.h"
 #include "UObject/Object.h"
+#include "HAL/IConsoleManager.h"
 //#include "PhysicalSolver.generated.h"
 
 /**
  * 
  */
 
-TAutoConsoleVariable<int32> CVarPhysicalSimulationDebug(
-	TEXT("r.PhysicalSimulationDebug"),
-	0,
-	TEXT("Debug Physical Simulation .")
-	TEXT("0: Disabled (default)\n")
-	TEXT("1: Print particle Position and Velocity \n"),
-	ECVF_Default);
+
 
 BEGIN_SHADER_PARAMETER_STRUCT(FSolverBaseParameter, PHYSICALSIMULATION_API)
 SHADER_PARAMETER(FVector3f,GridSize)

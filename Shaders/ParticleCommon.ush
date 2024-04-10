@@ -19,7 +19,7 @@ struct ParticleContext
 ParticleContext SpawnParticle(uint DispatchThreadId )
 {
 	ParticleContext Particle;
-	Particle.Age = 0;
+	Particle.Age = 0.0;
 	Particle.Position = float3(RandBBSfloat(float(DispatchThreadId)),RandBBSfloat(float(DispatchThreadId+2)),RandBBSfloat(float(DispatchThreadId+3)))*10;
 	Particle.Velocity = float3(0,0,9.8);
 	return Particle;
@@ -28,40 +28,40 @@ ParticleContext SpawnParticle(uint DispatchThreadId )
 ParticleContext GetParticle(uint DispatchThreadId )
 {
 	ParticleContext Particle;
-	Particle.Age = ParticleAttributeBuffer[DispatchThreadId];
-	Particle.Position.x= ParticleAttributeBuffer[DispatchThreadId + 1];
-	Particle.Position.y= ParticleAttributeBuffer[DispatchThreadId + 2];
-	Particle.Position.z= ParticleAttributeBuffer[DispatchThreadId + 3];
+	Particle.Age = ParticleAttributeBuffer[DispatchThreadId* 7 ];
+	Particle.Position.x= ParticleAttributeBuffer[DispatchThreadId* 7 + 1];
+	Particle.Position.y= ParticleAttributeBuffer[DispatchThreadId* 7 + 2];
+	Particle.Position.z= ParticleAttributeBuffer[DispatchThreadId* 7 + 3];
 
-	Particle.Velocity.x= ParticleAttributeBuffer[DispatchThreadId + 4];
-	Particle.Velocity.y= ParticleAttributeBuffer[DispatchThreadId + 5];
-	Particle.Velocity.z= ParticleAttributeBuffer[DispatchThreadId + 6];
+	Particle.Velocity.x= ParticleAttributeBuffer[DispatchThreadId* 7 + 4];
+	Particle.Velocity.y= ParticleAttributeBuffer[DispatchThreadId* 7 + 5];
+	Particle.Velocity.z= ParticleAttributeBuffer[DispatchThreadId* 7 + 6];
 	return Particle;
 }
 
 ParticleContext GetParticle(Buffer<float> ParticleAttributeBuffer,uint DispatchThreadId )
 {
 	ParticleContext Particle;
-	Particle.Age = ParticleAttributeBuffer[DispatchThreadId];
-	Particle.Position.x= ParticleAttributeBuffer[DispatchThreadId + 1];
-	Particle.Position.y= ParticleAttributeBuffer[DispatchThreadId + 2];
-	Particle.Position.z= ParticleAttributeBuffer[DispatchThreadId + 3];
+	Particle.Age = ParticleAttributeBuffer[DispatchThreadId* 7 ];
+	Particle.Position.x= ParticleAttributeBuffer[DispatchThreadId* 7 + 1];
+	Particle.Position.y= ParticleAttributeBuffer[DispatchThreadId* 7 + 2];
+	Particle.Position.z= ParticleAttributeBuffer[DispatchThreadId* 7 + 3];
 
-	Particle.Velocity.x= ParticleAttributeBuffer[DispatchThreadId + 4];
-	Particle.Velocity.y= ParticleAttributeBuffer[DispatchThreadId + 5];
-	Particle.Velocity.z= ParticleAttributeBuffer[DispatchThreadId + 6];
+	Particle.Velocity.x= ParticleAttributeBuffer[DispatchThreadId* 7 + 4];
+	Particle.Velocity.y= ParticleAttributeBuffer[DispatchThreadId* 7 + 5];
+	Particle.Velocity.z= ParticleAttributeBuffer[DispatchThreadId* 7 + 6];
 	return Particle;
 }
 
 void OutPutParticle(uint DispatchThreadId ,ParticleContext Particle)
 {
-	ParticleAttributeBuffer[DispatchThreadId] = Particle.Age;
-	ParticleAttributeBuffer[DispatchThreadId + 1] = Particle.Position.x;
-	ParticleAttributeBuffer[DispatchThreadId + 2] = Particle.Position.y;
-	ParticleAttributeBuffer[DispatchThreadId + 3] = Particle.Position.z;
-	ParticleAttributeBuffer[DispatchThreadId + 4] = Particle.Velocity.x;
-	ParticleAttributeBuffer[DispatchThreadId + 5] = Particle.Velocity.y;
-	ParticleAttributeBuffer[DispatchThreadId + 6] = Particle.Velocity.z;
+	ParticleAttributeBuffer[DispatchThreadId * 6] = Particle.Age;
+	ParticleAttributeBuffer[DispatchThreadId* 7 + 1] = Particle.Position.x;
+	ParticleAttributeBuffer[DispatchThreadId* 7 + 2] = Particle.Position.y;
+	ParticleAttributeBuffer[DispatchThreadId* 7 + 3] = Particle.Position.z;
+	ParticleAttributeBuffer[DispatchThreadId* 7 + 4] = Particle.Velocity.x;
+	ParticleAttributeBuffer[DispatchThreadId* 7 + 5] = Particle.Velocity.y;
+	ParticleAttributeBuffer[DispatchThreadId* 7 + 6] = Particle.Velocity.z;
 }
 
 groupshared uint GroupSharedIndex[64];
