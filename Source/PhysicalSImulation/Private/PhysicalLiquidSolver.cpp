@@ -1,9 +1,11 @@
-      #include "PhysicalLiquidSolver.h"
-
+#include "PhysicalLiquidSolver.h"
 #include "GPUSortManager.h"
 #include "RenderGraphBuilder.h"
 #include "RenderGraphUtils.h"
 #include "ShaderParameterStruct.h"
+DECLARE_CYCLE_STAT(TEXT("Particle To Cell"),STAT_P2G,STATGROUP_PS)
+DECLARE_CYCLE_STAT(TEXT("Cell To Particle"),STAT_G2P,STATGROUP_PS)
+DECLARE_CYCLE_STAT(TEXT("Rasterize"),STAT_Rasterize,STATGROUP_PS)
 
 #define NUMATTRIBUTE 7
 TAutoConsoleVariable<int32> CVarPhysicalParticleDebug(
@@ -194,7 +196,7 @@ void FPhysicalLiquidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder,FPhysi
 		auto DispatchShader = [&](int DoShaderType)
 		{
 			FLiquidParticleCS::FParameters PassParameters; //= GraphBuilder.AllocParameters<FLiquidParticleCS::FParameters>();
-
+			SCOPE_CYCLE_COUNTER(STAT_P2G);
 			TShaderMapRef<FLiquidParticleCS> ComputeShader(ShaderMap);
 			//PassParameters.View = InView.ViewUniformBuffer;
 			PassParameters.ShaderType = DoShaderType;
@@ -209,11 +211,9 @@ void FPhysicalLiquidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder,FPhysi
 		};
 
 		{
-			//Particle To Grid
-
-			/*DispatchShader(0);
+			DispatchShader(0);
 			DispatchShader(1);
-			DispatchShader(2);*/
+			DispatchShader(2);
 		}
 
 

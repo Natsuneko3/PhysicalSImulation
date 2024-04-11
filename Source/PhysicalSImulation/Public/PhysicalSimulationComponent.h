@@ -36,43 +36,48 @@ public:
 	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation")
 	ESimulatorType SimulatorType = ESimulatorType::PlaneSmokeFluid;
 
-	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation",meta=(DisplayName="Vorticity Scale"))
-	float VorticityMult = 500;
+	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation|2D Smoke Fluid",meta=(DisplayName="Vorticity Scale"))
+	float VorticityMult = 100;
 
-	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation")
-	float NoiseFrequency = 250;
+	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation|2D Smoke Fluid")
+	float NoiseFrequency = 5;
 
-	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation")
-	float NoiseIntensity = 1;
+	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation|2D Smoke Fluid")
+	float NoiseIntensity = 50;
 
-	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation")
+	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation|2D Smoke Fluid")
 	float DensityDissipate = 0.2;
 
-	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation")
-	float VelocityDissipate = 0.5;
+	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation|2D Smoke Fluid")
+	float VelocityDissipate = 0.05;
 
-	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation")
+	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation|2D Smoke Fluid")
 	float GravityScale = 20;
 
-	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation",meta = (EditCondition = "SimulatorType==ESimulatorType::Liquid"))
+	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation|Liquid",meta = (EditCondition = "SimulatorType==ESimulatorType::Liquid"))
 	float SpawnRate = 60;
+
+	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation|Liquid",meta = (EditCondition = "SimulatorType==ESimulatorType::Liquid"))
+	float LifeTime = 2;
 
 	UFUNCTION(BlueprintCallable,Category = "PhysicalSimulation")
 	void Initial();
 
-
+	void InitializeComponent() override;
+	virtual void BeginDestroy() override;
 	/*UPROPERTY(BlueprintReadOnly,Category = "PhysicalSimulation")
 	UTextureRenderTarget* SimulationTexture;
 
 	UPROPERTY(BlueprintReadOnly,Category = "PhysicalSimulation")
 	UTextureRenderTarget* PressureTexture;*/
-	
+
 	FSolverParameter SolverParameter;
 
 protected:
 	
 	virtual void BeginPlay() override;
-
+	virtual void OnRegister() override;
+	void OnUnregister() override;
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 

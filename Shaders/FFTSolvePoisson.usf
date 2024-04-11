@@ -83,7 +83,7 @@ void MainCS(uint3 DispatchThreadId : SV_DispatchThreadID,uint3 GroupThreadId : S
 	bool bCorrectDim = (Mx / 2 == THREADGROUP_SIZEX);
 	bool bValidSetUp = bCorrectDim;
 
-	float GridSpaceDX = dx;
+	float GridSpaceDX = dx*-0.9;
 	float RScale = 1. / GridSpaceDX;
 	float WScale = (GridSpaceDX * GridSpaceDX) * 1. / RScale;
 

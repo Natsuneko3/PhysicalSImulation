@@ -10,6 +10,8 @@ groupshared uint GroupWriteStart;
 
 int ShaderType;
 RWTexture3D<float>RasterizeTexture;
+float GravityScale;
+float LifeTime;
 void FilterDeadParticle(uint DispatchThreadId , uint2 GroupThreadId , uint2 GroupID)
 {
 	int Array[64] = {0,1,2,-1,4,-1,-1,7,-1,9,10,-1,12,13,14,15,16,-1,18,-1,-1,21,22,23,24,25,26,27,-1,-1,30,-1,32,33,34,35,36,37,-1,39,40,41,42,43,44,45,-1,47,-1,49,-1,51,52,53,54,55,56,-1,58,59,-1,-1
@@ -84,6 +86,13 @@ void CellToParticle(uint DispatchThreadId )
 	ParticleContext Particle = GetParticle(DispatchThreadId);
 	Particle.Velocity += float3(0,0,9.8);
 	Particle.Position += Particle.Velocity * dt;
+	Particle.Age += dt;
+
+	ParticleIDBuffer[DispatchThreadId] = 1;
+	if(Particle.Age > LifeTime)
+	{
+		ParticleIDBuffer[DispatchThreadId] = 0;
+	}
 	OutPutParticle(DispatchThreadId,Particle);
 }
 void Rasterize(uint DispatchThreadId)

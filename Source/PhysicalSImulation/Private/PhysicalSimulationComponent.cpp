@@ -15,14 +15,12 @@ UPhysicalSimulationComponent::UPhysicalSimulationComponent()
 	PrimaryComponentTick.bCanEverTick = true;
 	bTickInEditor = true;
 	OutputTextures.Empty();
-	//PhysicalSolverContext = MakeShared<FPhysicalSolverContext>();
-	// CenterOnwerPosition = FVector3f(0);
-	// LastOnwerPosition = FVector3f(0);
-	/*if (!GetStaticMesh())
+	if(!GetStaticMesh())
 	{
-		UStaticMesh* LoadMesh = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Plane.Plane"));
-		SetStaticMesh(LoadMesh);
-	}*/
+		UStaticMesh* Mesh = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Plane"));
+		SetStaticMesh(Mesh);
+	}
+
 }
 
 UPhysicalSimulationComponent::~UPhysicalSimulationComponent()
@@ -35,17 +33,32 @@ UPhysicalSimulationComponent::~UPhysicalSimulationComponent()
 
 void UPhysicalSimulationComponent::Initial()
 {
-	if(!bInitialed && GetStaticMesh() && Material)
+	if(!bInitialed && GetStaticMesh() && Material && !HasAnyFlags(RF_ClassDefaultObject))
 	{
-		UE_LOG(LogPhysics,Log,TEXT("Physical simulation initial"))
+		UE_LOG(LogSimulation,Log,TEXT("Physical simulation initial"))
 		CreateSolverTextures();
 		UpdateSolverContext();
-		PhysicalSolverViewExtension = FSceneViewExtensions::NewExtension<FPhysicalSolverViewExtension>(&PhysicalSolverContext);
-		//PhysicalSolverViewExtension->Initial(&PhysicalSolverContext);
-		//PhysicalSolverViewExtension->Initial(&PhysicalSolverContext);
-
+		if(!PhysicalSolverViewExtension.IsValid())
+		{
+			PhysicalSolverViewExtension = FSceneViewExtensions::NewExtension<FPhysicalSolverViewExtension>(&PhysicalSolverContext);
+		}
 
 		bInitialed = true;
+	}
+
+}
+
+void UPhysicalSimulationComponent::InitializeComponent()
+{
+
+}
+
+void UPhysicalSimulationComponent::BeginDestroy()
+{
+	Super::BeginDestroy();
+	if(PhysicalSolverViewExtension.IsValid())
+	{
+		PhysicalSolverViewExtension.Reset();
 	}
 
 }
@@ -54,22 +67,41 @@ void UPhysicalSimulationComponent::Initial()
 // Called when the game starts or when spawned
 void UPhysicalSimulationComponent::BeginPlay()
 {
-	Super::BeginPlay();
+
+}
+
+void UPhysicalSimulationComponent::OnRegister()
+{
+	Super::OnRegister();
+	//Initial();
+}
+
+void UPhysicalSimulationComponent::OnUnregister()
+{
+	Super::OnUnregister();
+	if(PhysicalSolverViewExtension.IsValid())
+	{
+		PhysicalSolverViewExtension.Reset();
+	}
 }
 
 void UPhysicalSimulationComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-	PhysicalSolverContext.bSimulation = false;
-	Initial();
-	UpdateSolverContext();
-
+	//PhysicalSolverContext.bSimulation = false;
+	//Initial();
+	if(bSimulation)
+	{
+		Initial();
+		UpdateSolverContext();
+	}
 	//PhysicalSolverViewExtension.Get()->UpdateParameters(&PhysicalSolverContext);
 }
 
 void UPhysicalSimulationComponent::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
 	Super::PostEditChangeProperty(PropertyChangedEvent);
+
 }
 
 void UPhysicalSimulationComponent::SetupSolverParameter()
@@ -83,7 +115,7 @@ void UPhysicalSimulationComponent::SetupSolverParameter()
 		SolverBase.dt = 0.002;
 	}else
 	{
-		SolverBase.dt =  GetWorld()->GetDeltaSeconds();
+		SolverBase.dt =  GetWorld()->GetDeltaSeconds() * 2.0;
 	}
 
 	SolverBase.dx = 1.0; //1.0 / (float)GridSize.X;
@@ -103,6 +135,7 @@ void UPhysicalSimulationComponent::SetupSolverParameter()
 	SolverParameter.FluidParameter.UseFFT = true;
 
 	SolverParameter.LiuquidParameter.GravityScale = GravityScale;
+	SolverParameter.LiuquidParameter.LifeTime = LifeTime;
 	SolverParameter.LiuquidParameter.SolverBaseParameter = SolverBase;
 }
 
@@ -191,5 +224,5 @@ void UPhysicalSimulationComponent::Create2DRenderTarget()
 	MID->SetTextureParameterValue(TEXT("RT"),OutputTextures[0]);
 	MID->SetTextureParameterValue(TEXT("RT2"),OutputTextures[1]);
 	SetMaterial(0,MID);
-	//GetStaticMesh()->SetMaterial(0,MID);
+
 }
