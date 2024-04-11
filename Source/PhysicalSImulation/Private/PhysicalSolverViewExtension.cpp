@@ -32,18 +32,22 @@ void FPhysicalSolverViewExtension::BeginRenderViewFamily(FSceneViewFamily& InVie
 
 void FPhysicalSolverViewExtension::PreRenderView_RenderThread(FRDGBuilder& GraphBuilder,FSceneView& InView)
 {
-	if (SolverContext != nullptr)
+
+	if(SolverContext !=nullptr)
 	{
 		if(SolverContext->bSimulation)
 		{
-
-			SolverContext->SolverParameter->FluidParameter.SolverBaseParameter.View = InView.ViewUniformBuffer;
+			UE_LOG(LogSimulation,Log,TEXT("%s active"),*SolverContext->ActorName);
+			/*SolverContext->SolverParameter->FluidParameter.SolverBaseParameter.View = InView.ViewUniformBuffer;
+			SolverContext->SolverParameter->LiuquidParameter.SolverBaseParameter.View = InView.ViewUniformBuffer;
 			SolverContext->FeatureLevel = InView.FeatureLevel;
 			PhysicalSolver->SetParameter(SolverContext->SolverParameter);
-			PhysicalSolver->Update_RenderThread(GraphBuilder, SolverContext,InView);
+			PhysicalSolver->Update_RenderThread(GraphBuilder, SolverContext,InView);*/
 
 		}
 	}
+
+
 }
 
 void FPhysicalSolverViewExtension::PreRenderViewFamily_RenderThread(FRDGBuilder& GraphBuilder, FSceneViewFamily& InViewFamily)

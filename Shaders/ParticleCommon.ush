@@ -1,7 +1,8 @@
-﻿#include "/Engine/Private/Random.ush"
+﻿
+#include "/Engine/Private/Common.ush"
 
 RWBuffer<float> ParticleAttributeBuffer;
-RWBuffer<uint> ParticleIDBuffer;
+RWBuffer<int> ParticleIDBuffer;
 
 float3 GridSize;
 float dt;
@@ -64,6 +65,7 @@ void OutPutParticle(uint DispatchThreadId ,ParticleContext Particle)
 	ParticleAttributeBuffer[DispatchThreadId* 7 + 6] = Particle.Velocity.z;
 }
 
+/*
 groupshared uint GroupSharedIndex[64];
 groupshared uint GroupSharedIndex4[16];
 groupshared uint GroupSharedIndex16[4];
@@ -181,4 +183,4 @@ int AcquireIndex(uniform int DataSetID, bool bDoAcquire)
 	#endif // USE_WAVE_INTRISICS || USE_GROUP_SHARED
 
 	return PrevIdx;
-}
+}*/

@@ -90,7 +90,7 @@ private:
 	void CreateSolverTextures();
 	void Create3DRenderTarget();
 	void Create2DRenderTarget();
-	TSharedPtr<FPhysicalSolverViewExtension> PhysicalSolverViewExtension;
+	TSharedPtr<FPhysicalSolverViewExtension,ESPMode::ThreadSafe> PhysicalSolverViewExtension;
 
 	TArray<UTextureRenderTarget*> OutputTextures;
 	bool bInitialed;

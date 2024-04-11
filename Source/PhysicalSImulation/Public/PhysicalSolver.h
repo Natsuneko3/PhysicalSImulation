@@ -72,7 +72,8 @@ struct FPhysicalSolverContext
 	FSolverParameter* SolverParameter;
 	ESimulatorType SimulatorType;
 	TArray<UTextureRenderTarget*> OutputTextures;
-	bool bSimulation;
+	bool bSimulation = false;
+	FString ActorName;
 };
 
 class FPhysicalSolverBase

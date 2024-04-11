@@ -27,12 +27,9 @@ UPhysicalSimulationComponent::UPhysicalSimulationComponent()
 
 UPhysicalSimulationComponent::~UPhysicalSimulationComponent()
 {
-	if(PhysicalSolverViewExtension)
-	{
-		PhysicalSolverViewExtension->Release();
-		PhysicalSolverViewExtension.Reset();
-	}
-
+	PhysicalSolverViewExtension = nullptr;
+		/*PhysicalSolverViewExtension->Release();
+		PhysicalSolverViewExtension.Reset();*/
 }
 
 
@@ -66,6 +63,8 @@ void UPhysicalSimulationComponent::TickComponent(float DeltaTime, ELevelTick Tic
 	PhysicalSolverContext.bSimulation = false;
 	Initial();
 	UpdateSolverContext();
+
+	//PhysicalSolverViewExtension.Get()->UpdateParameters(&PhysicalSolverContext);
 }
 
 void UPhysicalSimulationComponent::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
@@ -109,12 +108,15 @@ void UPhysicalSimulationComponent::SetupSolverParameter()
 
 void UPhysicalSimulationComponent::UpdateSolverContext()
 {
+	//PhysicalSolverContext.ActorName = "";
 	SetupSolverParameter();
 	if(GetOwner())
 	{
 		PhysicalSolverContext.WorldVelocity = FVector3f(GetOwner()->GetVelocity());
 		PhysicalSolverContext.WorldPosition = FVector3f(GetOwner()->GetActorLocation());
+		PhysicalSolverContext.ActorName = GetOwner()->GetName();
 	}
+
 
 	PhysicalSolverContext.bSimulation = bSimulation;
 	PhysicalSolverContext.SimulatorType = SimulatorType;
