@@ -1,11 +1,12 @@
 ﻿#include "PhysicalSolverViewExtension.h"
 
+#include "PhysicalSimulationComponent.h"
 #include "ShaderPrintParameters.h"
 
-FPhysicalSolverViewExtension::FPhysicalSolverViewExtension(const FAutoRegister& AutoRegister, FPhysicalSolverContext* InContext):
-	FSceneViewExtensionBase(AutoRegister), SolverContext(InContext)
+FPhysicalSolverViewExtension::FPhysicalSolverViewExtension(const FAutoRegister& AutoRegister, UPhysicalSimulationComponent* InComponent):
+	FSceneViewExtensionBase(AutoRegister), Component(InComponent)
 {
-	switch (SolverContext->SimulatorType)
+	switch (Component->SimulatorType)
 	{
 	case ESimulatorType::PlaneSmokeFluid:
 		PhysicalSolver = MakeShareable(new FPhysical2DFluidSolver);
@@ -18,7 +19,7 @@ FPhysicalSolverViewExtension::FPhysicalSolverViewExtension(const FAutoRegister& 
 		break;
 	}
 
-	PhysicalSolver->Initial(SolverContext);
+	PhysicalSolver->Initial(&Component->PhysicalSolverContext);
 }
 
 FPhysicalSolverViewExtension::~FPhysicalSolverViewExtension()
@@ -32,11 +33,16 @@ void FPhysicalSolverViewExtension::BeginRenderViewFamily(FSceneViewFamily& InVie
 
 void FPhysicalSolverViewExtension::PreRenderView_RenderThread(FRDGBuilder& GraphBuilder, FSceneView& InView)
 {
-	SolverContext->SolverParameter->FluidParameter.SolverBaseParameter.View = InView.ViewUniformBuffer;
-	SolverContext->SolverParameter->LiuquidParameter.SolverBaseParameter.View = InView.ViewUniformBuffer;
-	SolverContext->FeatureLevel = InView.FeatureLevel;
+	UpdateParameters(InView);
 	PhysicalSolver->SetParameter(SolverContext->SolverParameter);
 	PhysicalSolver->Update_RenderThread(GraphBuilder, SolverContext, InView);
+
+
+}
+
+bool FPhysicalSolverViewExtension::IsActiveThisFrame_Internal(const FSceneViewExtensionContext& Context) const
+{
+	return Component->bSimulation;
 }
 
 void FPhysicalSolverViewExtension::PreRenderViewFamily_RenderThread(FRDGBuilder& GraphBuilder, FSceneViewFamily& InViewFamily)
@@ -88,9 +94,13 @@ void FPhysicalSolverViewExtension::Initial(FPhysicalSolverContext* InContext)
 }
 
 
-void FPhysicalSolverViewExtension::UpdateParameters(FPhysicalSolverContext* Context)
+void FPhysicalSolverViewExtension::UpdateParameters(FSceneView& InView)
 {
-	SolverContext = Context;
+	Component->UpdateSolverContext();
+	SolverContext = &Component->PhysicalSolverContext;
+	SolverContext->SolverParameter->FluidParameter.SolverBaseParameter.View = InView.ViewUniformBuffer;
+	SolverContext->SolverParameter->LiuquidParameter.SolverBaseParameter.View = InView.ViewUniformBuffer;
+	SolverContext->FeatureLevel = InView.FeatureLevel;
 }
 
 void FPhysicalSolverViewExtension::Release()

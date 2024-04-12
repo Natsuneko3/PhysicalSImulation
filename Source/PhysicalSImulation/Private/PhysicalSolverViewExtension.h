@@ -5,12 +5,15 @@
 #include "Physical2DFluidSolver.h"
 #include "Physical3DFluidSolver.h"
 #include "PhysicalLiquidSolver.h"
+#include "PhysicalSimulationComponent.h"
 
+
+class UPhysicalSimulationComponent;
 
 class FPhysicalSolverViewExtension : public FSceneViewExtensionBase
 {
 public:
-	FPhysicalSolverViewExtension(const FAutoRegister& AutoRegister, FPhysicalSolverContext* InContext);
+	FPhysicalSolverViewExtension(const FAutoRegister& AutoRegister, UPhysicalSimulationComponent* InComponent);
 	~FPhysicalSolverViewExtension();
 
 public:
@@ -28,7 +31,9 @@ public:
 	virtual void PreRenderViewFamily_RenderThread(FRDGBuilder& GraphBuilder, FSceneViewFamily& InViewFamily) override;
 	virtual int32 GetPriority() const override { return -1; }
 	virtual void PreRenderView_RenderThread(FRDGBuilder& GraphBuilder, FSceneView& InView) override;
-	virtual bool IsActiveThisFrame_Internal(const FSceneViewExtensionContext& Context) const { return true; }
+	virtual bool IsActiveThisFrame_Internal(const FSceneViewExtensionContext& Context) const;
+
+
 	//~ End ISceneViewExtension Interface
 
 
@@ -36,7 +41,7 @@ public:
 	/*void InitDelegate();
 	void ReleaseDelegate();
 	void Render_RenderThread(FPostOpaqueRenderParameters& Parameters);*/
-	void UpdateParameters(FPhysicalSolverContext* Context);
+	void UpdateParameters(FSceneView& InView);
 	void Release();
 
 
@@ -44,6 +49,7 @@ private:
 	//FPhysicalSolverContext* SolverContext;
 	FPhysicalSolverContext* SolverContext;
 	FPostOpaqueRenderDelegate RenderDelegate;
+	UPhysicalSimulationComponent* Component;
 	//TArray<FPhysicalSolverSceneProxy*> SceneProxies;
 	//UPhysicalSimulationComponent* SolverComponent;
 	//FPhysicalSolverBase* PhysicalSolver;

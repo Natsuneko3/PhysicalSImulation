@@ -83,22 +83,22 @@ void ParticleToCell(uint DispatchThreadId )
 }
 void CellToParticle(uint DispatchThreadId )
 {
+	int active = 1;
 	ParticleContext Particle = GetParticle(DispatchThreadId);
 	Particle.Velocity += float3(0,0,9.8);
 	Particle.Position += Particle.Velocity * dt;
 	Particle.Age += dt;
-
-	ParticleIDBuffer[DispatchThreadId] = 1;
 	if(Particle.Age > LifeTime)
 	{
-		ParticleIDBuffer[DispatchThreadId] = 0;
+		active = 0;
 	}
+	ParticleIDBuffer[DispatchThreadId] = active;
 	OutPutParticle(DispatchThreadId,Particle);
 }
 void Rasterize(uint DispatchThreadId)
 {
 	ParticleContext Particle = GetParticle(DispatchThreadId);
-	float3 GridPosition = Particle.Position /GridSize;
+	float3 GridPosition = Particle.Position /dx;
 
 	RasterizeTexture[int3(GridPosition)] = 1;
 }

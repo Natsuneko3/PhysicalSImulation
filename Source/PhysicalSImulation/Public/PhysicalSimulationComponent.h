@@ -36,22 +36,22 @@ public:
 	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation")
 	ESimulatorType SimulatorType = ESimulatorType::PlaneSmokeFluid;
 
-	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation|2D Smoke Fluid",meta=(DisplayName="Vorticity Scale"))
+	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation|2D Smoke Fluid",meta = (EditCondition = "SimulatorType==ESimulatorType::PlaneSmokeFluid"))
 	float VorticityMult = 100;
 
-	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation|2D Smoke Fluid")
+	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation|2D Smoke Fluid",meta = (EditCondition = "SimulatorType==ESimulatorType::PlaneSmokeFluid"))
 	float NoiseFrequency = 5;
 
-	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation|2D Smoke Fluid")
+	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation|2D Smoke Fluid",meta = (EditCondition = "SimulatorType==ESimulatorType::PlaneSmokeFluid"))
 	float NoiseIntensity = 50;
 
-	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation|2D Smoke Fluid")
+	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation|2D Smoke Fluid",meta = (EditCondition = "SimulatorType==ESimulatorType::PlaneSmokeFluid"))
 	float DensityDissipate = 0.2;
 
-	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation|2D Smoke Fluid")
+	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation|2D Smoke Fluid",meta = (EditCondition = "SimulatorType==ESimulatorType::PlaneSmokeFluid"))
 	float VelocityDissipate = 0.05;
 
-	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation|2D Smoke Fluid")
+	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation|2D Smoke Fluid",meta = (EditCondition = "SimulatorType==ESimulatorType::PlaneSmokeFluid"))
 	float GravityScale = 20;
 
 	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation|Liquid",meta = (EditCondition = "SimulatorType==ESimulatorType::Liquid"))
@@ -72,12 +72,13 @@ public:
 	UTextureRenderTarget* PressureTexture;*/
 
 	FSolverParameter SolverParameter;
-
+	FPhysicalSolverContext PhysicalSolverContext;
+	void UpdateSolverContext();
 protected:
 	
 	virtual void BeginPlay() override;
 	virtual void OnRegister() override;
-	void OnUnregister() override;
+	virtual void OnUnregister() override;
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 
@@ -90,8 +91,8 @@ protected:
 	/*FVector3f LastOnwerPosition;
 	FVector3f CenterOnwerPosition;*/
 private:
-	FPhysicalSolverContext PhysicalSolverContext;
-	void UpdateSolverContext();
+
+
 	void CreateSolverTextures();
 	void Create3DRenderTarget();
 	void Create2DRenderTarget();

@@ -190,7 +190,7 @@ void PreVelocity(uint2 DispatchThreadId : SV_DispatchThreadID, uint2 GroupThread
 	float noiseY = simplex3d(float3(DispatchThreadId.xy, Time * 0.05) * noiseScale);
 	//(NoiseTexture.SampleLevel(WarpSampler, (DispatchThreadId.xy +  float2(0, -Time) * 0.1) / GridSize.xy * noiseScale, 0).y * 2 - 1) ;
 
-	float2 CenterPoint = float2(sin(Time*0.01),cos(Time*0.01))*100 + float2(250,250);//
+	float2 CenterPoint = float2(sin(Time*0.01),cos(Time*0.01))*100 + float2(250,150);//
 	float2 Dis = float2(DispatchThreadId) - CenterPoint;
 	if (length(Dis) < 30)
 	{

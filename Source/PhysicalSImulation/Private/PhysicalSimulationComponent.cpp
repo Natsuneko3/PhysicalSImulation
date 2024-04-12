@@ -26,8 +26,6 @@ UPhysicalSimulationComponent::UPhysicalSimulationComponent()
 UPhysicalSimulationComponent::~UPhysicalSimulationComponent()
 {
 	PhysicalSolverViewExtension = nullptr;
-		/*PhysicalSolverViewExtension->Release();
-		PhysicalSolverViewExtension.Reset();*/
 }
 
 
@@ -40,7 +38,7 @@ void UPhysicalSimulationComponent::Initial()
 		UpdateSolverContext();
 		if(!PhysicalSolverViewExtension.IsValid())
 		{
-			PhysicalSolverViewExtension = FSceneViewExtensions::NewExtension<FPhysicalSolverViewExtension>(&PhysicalSolverContext);
+			PhysicalSolverViewExtension = FSceneViewExtensions::NewExtension<FPhysicalSolverViewExtension>(this);
 		}
 
 		bInitialed = true;
@@ -50,7 +48,7 @@ void UPhysicalSimulationComponent::Initial()
 
 void UPhysicalSimulationComponent::InitializeComponent()
 {
-
+Initial();
 }
 
 void UPhysicalSimulationComponent::BeginDestroy()
@@ -60,7 +58,6 @@ void UPhysicalSimulationComponent::BeginDestroy()
 	{
 		PhysicalSolverViewExtension.Reset();
 	}
-
 }
 
 
@@ -73,29 +70,27 @@ void UPhysicalSimulationComponent::BeginPlay()
 void UPhysicalSimulationComponent::OnRegister()
 {
 	Super::OnRegister();
-	//Initial();
+	UE_LOG(LogSimulation,Log,TEXT("%s:Physical simulation initial"),*GetOwner()->GetName())
+	CreateSolverTextures();
+	UpdateSolverContext();
+	if(!PhysicalSolverViewExtension.IsValid() && bSimulation)
+	{
+		PhysicalSolverViewExtension = FSceneViewExtensions::NewExtension<FPhysicalSolverViewExtension>(this);
+	}
 }
 
 void UPhysicalSimulationComponent::OnUnregister()
 {
 	Super::OnUnregister();
 	if(PhysicalSolverViewExtension.IsValid())
-	{
-		PhysicalSolverViewExtension.Reset();
-	}
+    {
+    	PhysicalSolverViewExtension.Reset();
+    }
 }
 
 void UPhysicalSimulationComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
-	//PhysicalSolverContext.bSimulation = false;
-	//Initial();
-	if(bSimulation)
-	{
-		Initial();
-		UpdateSolverContext();
-	}
-	//PhysicalSolverViewExtension.Get()->UpdateParameters(&PhysicalSolverContext);
 }
 
 void UPhysicalSimulationComponent::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)

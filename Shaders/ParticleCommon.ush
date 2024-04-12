@@ -65,6 +65,7 @@ void OutPutParticle(uint DispatchThreadId ,ParticleContext Particle)
 	ParticleAttributeBuffer[DispatchThreadId * NUMATTRIBUTE + 6] = Particle.Velocity.z;
 }
 
+
 /*
 groupshared uint GroupSharedIndex[64];
 groupshared uint GroupSharedIndex4[16];
@@ -77,7 +78,7 @@ int AcquireIndex(uniform int DataSetID, bool bDoAcquire)
 	MustBe0[DataSetID] = 0;
 	// End static assert
 
-	int PrevIdx = GSpawnStartInstance + NumSpawnedInstances;	// scratch instance as default; write to that for dead particles
+	int PrevIdx = 0;//GSpawnStartInstance + NumSpawnedInstances;	// scratch instance as default; write to that for dead particles
 
 	#if 1//USE_WAVE_INTRINSICS
 

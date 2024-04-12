@@ -10,7 +10,7 @@ DECLARE_CYCLE_STAT(TEXT("Rasterize"),STAT_Rasterize,STATGROUP_PS)
 #define NUMATTRIBUTE 7
 TAutoConsoleVariable<int32> CVarPhysicalParticleDebug(
 	TEXT("r.PhysicalParticleDebugLog"),
-	1,
+	0,
 	TEXT("Debug Physical Simulation .")
 	TEXT("0: Disabled (default)\n")
 	TEXT("1: Print particle Position and Velocity \n"),
@@ -110,13 +110,13 @@ void FPhysicalLiquidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder,FPhysi
 				{
 					int ID = Particles[i];
 					float age = ParticleDebug[i * NUMATTRIBUTE];
-					float PositionX = ParticleDebug[i * NUMATTRIBUTE+1];
-					float PositionY = ParticleDebug[i * NUMATTRIBUTE+2];
-					float PositionZ = ParticleDebug[i* NUMATTRIBUTE+3];
+					float PositionX = ParticleDebug[i * NUMATTRIBUTE + 1];
+					float PositionY = ParticleDebug[i * NUMATTRIBUTE + 2];
+					float PositionZ = ParticleDebug[i * NUMATTRIBUTE + 3];
 
-					float VelocityX = ParticleDebug[i * NUMATTRIBUTE+4];
-					float VelocityY = ParticleDebug[i * NUMATTRIBUTE+5];
-					float VelocityZ = ParticleDebug[i * NUMATTRIBUTE+6];
+					float VelocityX = ParticleDebug[i * NUMATTRIBUTE + 4];
+					float VelocityY = ParticleDebug[i * NUMATTRIBUTE + 5];
+					float VelocityZ = ParticleDebug[i * NUMATTRIBUTE + 6];
 					UE_LOG(LogSimulation,Log,TEXT("ID: %i"),i);
 					UE_LOG(LogSimulation,Log,TEXT("Active: %i"),ID);
 					UE_LOG(LogSimulation,Log,TEXT("Age: %f"),age);
@@ -135,16 +135,17 @@ void FPhysicalLiquidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder,FPhysi
 	//CurrentNumParticle -= float(DeadParticleNum);
 	if(CurrentNumParticle > 1)
 	{
-		int ParticleElement = int(CurrentNumParticle);
-		FIntVector DispatchCount = FIntVector(FMath::DivideAndRoundUp(ParticleElement , 64), 1, 1);
+		const int ParticleElement = int(CurrentNumParticle);
+		const FIntVector DispatchCount = FIntVector(FMath::DivideAndRoundUp(ParticleElement , 64), 1, 1);
+		const TShaderMapRef<FSpawnParticleCS> SpawnComputeShader(ShaderMap);
 		if(!AllocatedInstanceCounts)
 		{
 			AllocatedInstanceCounts = 1;
 			/*ParticleIDBuffer.Initialize(RHICmdList,TEXT("InitialIDBuffer"),sizeof(int),ParticleElement ,PF_R32_UINT,ERHIAccess::UAVCompute);
 			ParticleAttributeBuffer.Initialize(RHICmdList,TEXT("InitialParticleBuffer"),sizeof(float),ParticleElement * NUMATTRIBUTE,PF_R32_FLOAT,ERHIAccess::UAVCompute);*/
-			ParticleIDBuffer.Initialize(TEXT("InitialIDBuffer"),sizeof(int),ParticleElement ,PF_R32_UINT,ERHIAccess::UAVCompute);
+			ParticleIDBuffer.Initialize(TEXT("InitialIDBuffer"),sizeof(int),ParticleElement ,PF_R32_SINT,ERHIAccess::UAVCompute);
 			ParticleAttributeBuffer.Initialize(TEXT("InitialParticleBuffer"),sizeof(float),ParticleElement * NUMATTRIBUTE,PF_R32_FLOAT,ERHIAccess::UAVCompute);
-			TShaderMapRef<FSpawnParticleCS> ComputeShader(ShaderMap);
+
 			FSpawnParticleCS::FParameters Parameters;
 			Parameters.View = InView.ViewUniformBuffer;
 			Parameters.InAttributeBuffer = ParticleAttributeBuffer.SRV;
@@ -154,7 +155,7 @@ void FPhysicalLiquidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder,FPhysi
 			Parameters.ParticleAttributeBuffer = ParticleAttributeBuffer.UAV;
 
 			FComputeShaderUtils::Dispatch(RHICmdList,
-			ComputeShader,
+			SpawnComputeShader,
 			Parameters,
 			DispatchCount);
 		}else
@@ -169,10 +170,9 @@ void FPhysicalLiquidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder,FPhysi
 				/*
 				NextIDBuffer.Initialize(RHICmdList,TEXT("NextIDBuffer"),sizeof(int),ParticleElement,PF_R32_UINT,ERHIAccess::UAVCompute, BUF_Static | BUF_SourceCopy);
 				NextParticleBuffer.Initialize(RHICmdList,TEXT("NextParticleBuffer"),sizeof(float),ParticleElement * NUMATTRIBUTE,PF_R32_FLOAT,ERHIAccess::UAVCompute);*/
-				NextIDBuffer.Initialize(TEXT("NextIDBuffer"),sizeof(int),ParticleElement,PF_R32_UINT,ERHIAccess::UAVCompute, BUF_Static | BUF_SourceCopy);
+				NextIDBuffer.Initialize(TEXT("NextIDBuffer"),sizeof(int),ParticleElement,PF_R32_SINT,ERHIAccess::UAVCompute, BUF_Static | BUF_SourceCopy);
 				NextParticleBuffer.Initialize(TEXT("NextParticleBuffer"),sizeof(float),ParticleElement * NUMATTRIBUTE,PF_R32_FLOAT,ERHIAccess::UAVCompute);
 
-				TShaderMapRef<FSpawnParticleCS> ComputeShader(ShaderMap);
 				FSpawnParticleCS::FParameters Parameters;
 				Parameters.InAttributeBuffer = ParticleAttributeBuffer.SRV;
 				Parameters.InIDBuffer = ParticleIDBuffer.SRV;
@@ -181,7 +181,7 @@ void FPhysicalLiquidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder,FPhysi
 				Parameters.ParticleAttributeBuffer = NextParticleBuffer.UAV;
 
 				FComputeShaderUtils::Dispatch(RHICmdList,
-				ComputeShader,
+				SpawnComputeShader,
 				Parameters,
 				DispatchCount);
 
@@ -192,11 +192,26 @@ void FPhysicalLiquidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder,FPhysi
 			}
 		}
 
+		ClearRenderTarget(RHICmdList,Context->OutputTextures[0]->GetResource()->GetTextureRHI());
 		FUnorderedAccessViewRHIRef RasterizeTexture = RHICreateUnorderedAccessView(Context->OutputTextures[0]->GetResource()->GetTextureRHI());//RHICmdList.CreateUnorderedAccessView(Context->OutputTextures[0]->GetResource()->GetTextureRHI());
-		auto DispatchShader = [&](int DoShaderType)
+		//TShaderMapRef<FLiquidParticleCS> ComputeShader(ShaderMap);
+		/*auto DispatchShader = [&](int DoShaderType)
 		{
 			FLiquidParticleCS::FParameters PassParameters; //= GraphBuilder.AllocParameters<FLiquidParticleCS::FParameters>();
-			SCOPE_CYCLE_COUNTER(STAT_P2G);
+			switch (DoShaderType)
+			{
+			case 0:
+				SCOPE_CYCLE_COUNTER(STAT_P2G);
+				break;
+			case 1:
+				SCOPE_CYCLE_COUNTER(STAT_G2P);
+				break;
+			case 2:
+				SCOPE_CYCLE_COUNTER(STAT_Rasterize);
+				break;
+
+			}
+
 			TShaderMapRef<FLiquidParticleCS> ComputeShader(ShaderMap);
 			//PassParameters.View = InView.ViewUniformBuffer;
 			PassParameters.ShaderType = DoShaderType;
@@ -208,14 +223,41 @@ void FPhysicalLiquidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder,FPhysi
 				ComputeShader,
 				PassParameters,
 				DispatchCount);
-		};
-
+		};*/
+		TShaderMapRef<FLiquidParticleCS> LiquidComputeShader(ShaderMap);
+		FLiquidParticleCS::FParameters PassParameters;
+		PassParameters.ParticleIDBuffer = ParticleIDBuffer.UAV;
+		PassParameters.ParticleAttributeBuffer = ParticleAttributeBuffer.UAV;
+		PassParameters.LiuquidParameter = Context->SolverParameter->LiuquidParameter;
+		PassParameters.RasterizeTexture = RasterizeTexture;
 		{
-			DispatchShader(0);
-			DispatchShader(1);
-			DispatchShader(2);
+			SCOPE_CYCLE_COUNTER(STAT_P2G);
+			PassParameters.ShaderType = 0;
+
+			FComputeShaderUtils::Dispatch(RHICmdList,
+				LiquidComputeShader,
+				PassParameters,
+				DispatchCount);
 		}
 
+		{
+			SCOPE_CYCLE_COUNTER(STAT_G2P);
+			PassParameters.ShaderType = 1;
+
+			FComputeShaderUtils::Dispatch(RHICmdList,
+				LiquidComputeShader,
+				PassParameters,
+				DispatchCount);
+		}
+		{
+			SCOPE_CYCLE_COUNTER(STAT_Rasterize);
+			PassParameters.ShaderType = 2;
+
+			FComputeShaderUtils::Dispatch(RHICmdList,
+				LiquidComputeShader,
+				PassParameters,
+				DispatchCount);
+		}
 
 
 		EnqueueGPUReadback(RHICmdList);
