@@ -20,7 +20,7 @@ class FPhysicalLiquidSolver:public FPhysicalSolverBase
 	bool bIsInitial = false;
 
 	FFluidParameter* SolverParameter;
-	FIntPoint GridSize;
+	FIntVector GridSize;
 	int32 Frame;
 	float LastNumParticle;
 	uint32 DeadParticle;

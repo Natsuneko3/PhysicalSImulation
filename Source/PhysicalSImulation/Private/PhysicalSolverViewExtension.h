@@ -5,8 +5,6 @@
 #include "Physical2DFluidSolver.h"
 #include "Physical3DFluidSolver.h"
 #include "PhysicalLiquidSolver.h"
-#include "PhysicalSimulationComponent.h"
-
 
 class UPhysicalSimulationComponent;
 
@@ -41,7 +39,8 @@ public:
 	/*void InitDelegate();
 	void ReleaseDelegate();
 	void Render_RenderThread(FPostOpaqueRenderParameters& Parameters);*/
-	void UpdateParameters(FSceneView& InView);
+
+	void UpdateParameters(UPhysicalSimulationComponent* InComponent);
 	void Release();
 
 
@@ -50,6 +49,7 @@ private:
 	FPhysicalSolverContext* SolverContext;
 	FPostOpaqueRenderDelegate RenderDelegate;
 	UPhysicalSimulationComponent* Component;
+	ESimulatorType LastType;
 	//TArray<FPhysicalSolverSceneProxy*> SceneProxies;
 	//UPhysicalSimulationComponent* SolverComponent;
 	//FPhysicalSolverBase* PhysicalSolver;

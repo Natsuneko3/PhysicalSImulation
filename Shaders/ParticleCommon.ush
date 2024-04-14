@@ -1,6 +1,5 @@
-﻿
-#include "/Engine/Private/Common.ush"
-
+﻿#include  "/Engine/Public/Platform.ush"
+#include "/Engine/Private/Random.ush"
 RWBuffer<float> ParticleAttributeBuffer;
 RWBuffer<int> ParticleIDBuffer;
 
@@ -10,6 +9,10 @@ float dx;
 SamplerState WarpSampler;
 int Time;
 
+#ifndef NUMATTRIBUTE
+#define NUMATTRIBUTE 1
+#endif
+
 struct ParticleContext
 {
 	float Age;
@@ -17,44 +20,45 @@ struct ParticleContext
 	float3 Velocity;
 };
 
-ParticleContext SpawnParticle(uint DispatchThreadId )
+ParticleContext SpawnParticle(uint DispatchThreadId)
 {
 	ParticleContext Particle;
 	Particle.Age = 0.0;
-	Particle.Position = float3(RandBBSfloat(float(DispatchThreadId)),RandBBSfloat(float(DispatchThreadId+2)),RandBBSfloat(float(DispatchThreadId+3)))*10;
-	Particle.Velocity = float3(0,0,9.8);
+	Particle.Position = float3(RandBBSfloat(float(DispatchThreadId)), RandBBSfloat(float(DispatchThreadId + 2)), RandBBSfloat(float(DispatchThreadId + 3))) * 10;
+	Particle.Position += 100;
+	Particle.Velocity = float3(0, 0, -9.8);
 	return Particle;
 }
 
-ParticleContext GetParticle(uint DispatchThreadId )
+ParticleContext GetParticle(uint DispatchThreadId)
 {
 	ParticleContext Particle;
-	Particle.Age = ParticleAttributeBuffer[DispatchThreadId * NUMATTRIBUTE ];
-	Particle.Position.x= ParticleAttributeBuffer[DispatchThreadId * NUMATTRIBUTE + 1];
-	Particle.Position.y= ParticleAttributeBuffer[DispatchThreadId * NUMATTRIBUTE + 2];
-	Particle.Position.z= ParticleAttributeBuffer[DispatchThreadId * NUMATTRIBUTE + 3];
+	Particle.Age = ParticleAttributeBuffer[DispatchThreadId * NUMATTRIBUTE];
+	Particle.Position.x = ParticleAttributeBuffer[DispatchThreadId * NUMATTRIBUTE + 1];
+	Particle.Position.y = ParticleAttributeBuffer[DispatchThreadId * NUMATTRIBUTE + 2];
+	Particle.Position.z = ParticleAttributeBuffer[DispatchThreadId * NUMATTRIBUTE + 3];
 
-	Particle.Velocity.x= ParticleAttributeBuffer[DispatchThreadId * NUMATTRIBUTE + 4];
-	Particle.Velocity.y= ParticleAttributeBuffer[DispatchThreadId * NUMATTRIBUTE + 5];
-	Particle.Velocity.z= ParticleAttributeBuffer[DispatchThreadId * NUMATTRIBUTE + 6];
+	Particle.Velocity.x = ParticleAttributeBuffer[DispatchThreadId * NUMATTRIBUTE + 4];
+	Particle.Velocity.y = ParticleAttributeBuffer[DispatchThreadId * NUMATTRIBUTE + 5];
+	Particle.Velocity.z = ParticleAttributeBuffer[DispatchThreadId * NUMATTRIBUTE + 6];
 	return Particle;
 }
 
-ParticleContext GetParticle(Buffer<float> ParticleAttributeBuffer,uint DispatchThreadId )
+ParticleContext GetParticle(Buffer<float> ParticleAttributeBuffer, uint DispatchThreadId)
 {
 	ParticleContext Particle;
-	Particle.Age = ParticleAttributeBuffer[DispatchThreadId * NUMATTRIBUTE ];
-	Particle.Position.x= ParticleAttributeBuffer[DispatchThreadId * NUMATTRIBUTE + 1];
-	Particle.Position.y= ParticleAttributeBuffer[DispatchThreadId * NUMATTRIBUTE + 2];
-	Particle.Position.z= ParticleAttributeBuffer[DispatchThreadId * NUMATTRIBUTE + 3];
+	Particle.Age = ParticleAttributeBuffer[DispatchThreadId * NUMATTRIBUTE];
+	Particle.Position.x = ParticleAttributeBuffer[DispatchThreadId * NUMATTRIBUTE + 1];
+	Particle.Position.y = ParticleAttributeBuffer[DispatchThreadId * NUMATTRIBUTE + 2];
+	Particle.Position.z = ParticleAttributeBuffer[DispatchThreadId * NUMATTRIBUTE + 3];
 
-	Particle.Velocity.x= ParticleAttributeBuffer[DispatchThreadId * NUMATTRIBUTE + 4];
-	Particle.Velocity.y= ParticleAttributeBuffer[DispatchThreadId * NUMATTRIBUTE + 5];
-	Particle.Velocity.z= ParticleAttributeBuffer[DispatchThreadId * NUMATTRIBUTE + 6];
+	Particle.Velocity.x = ParticleAttributeBuffer[DispatchThreadId * NUMATTRIBUTE + 4];
+	Particle.Velocity.y = ParticleAttributeBuffer[DispatchThreadId * NUMATTRIBUTE + 5];
+	Particle.Velocity.z = ParticleAttributeBuffer[DispatchThreadId * NUMATTRIBUTE + 6];
 	return Particle;
 }
 
-void OutPutParticle(uint DispatchThreadId ,ParticleContext Particle)
+void OutPutParticle(uint DispatchThreadId, ParticleContext Particle)
 {
 	ParticleAttributeBuffer[DispatchThreadId * NUMATTRIBUTE] = Particle.Age;
 	ParticleAttributeBuffer[DispatchThreadId * NUMATTRIBUTE + 1] = Particle.Position.x;

@@ -10,8 +10,8 @@ uint LastNumParticle;
 void SpawnParticleCS(uint DispatchThreadId : SV_DispatchThreadID, uint2 GroupThreadId : SV_GroupThreadID, uint2 GroupID:SV_GroupID)
 {
 	ParticleContext Context = GetParticle(InAttributeBuffer,DispatchThreadId);
-	int ID = InIDBuffer[DispatchThreadId];
-	if(ID == 0)
+	int Active = InIDBuffer[DispatchThreadId + 1];
+	if(Active == 0)
 	{
 		Context = SpawnParticle(DispatchThreadId);
 		OutPutParticle(DispatchThreadId,Context);
@@ -20,7 +20,7 @@ void SpawnParticleCS(uint DispatchThreadId : SV_DispatchThreadID, uint2 GroupThr
 	else
 	{
 		OutPutParticle(DispatchThreadId,Context);
-		ParticleIDBuffer[DispatchThreadId] = ID;
+		ParticleIDBuffer[DispatchThreadId + 1] = Active;
 	}
 
 

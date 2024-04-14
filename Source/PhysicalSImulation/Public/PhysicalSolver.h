@@ -83,6 +83,7 @@ class FPhysicalSolverBase
 {
 
 public:
+	int Frame = 0;
 	virtual void SetParameter(FSolverParameter* InParameter){}
 	virtual void Initial(FPhysicalSolverContext* Context){}
 	virtual void Release(){}

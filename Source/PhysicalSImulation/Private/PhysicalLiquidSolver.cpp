@@ -39,7 +39,7 @@ public:
 
 	}
 };
-IMPLEMENT_GLOBAL_SHADER(FSpawnParticleCS,  "/PluginShader/InitialParticle.usf", "SpawnParticleCS", SF_Compute);
+
 
 class FLiquidParticleCS : public FGlobalShader
 {
@@ -52,7 +52,7 @@ public:
 		SHADER_PARAMETER_STRUCT_INCLUDE(FLiuquidParameter, LiuquidParameter)
 		SHADER_PARAMETER(int, ShaderType)
 		SHADER_PARAMETER_UAV(RWBuffer<int>,		ParticleIDBuffer)
-	SHADER_PARAMETER_UAV(RWTexture3D<float>, RasterizeTexture)
+	SHADER_PARAMETER_UAV(RWTexture3D<int>, RasterizeTexture)
 	SHADER_PARAMETER_UAV(RWBuffer<float>,		ParticleAttributeBuffer)
 	END_SHADER_PARAMETER_STRUCT()
 
@@ -71,21 +71,52 @@ public:
 		OutEnvironment.SetDefine(TEXT("NUMATTRIBUTE"), NUMATTRIBUTE);
 	}
 };
+
+class FTestShaderCS : public FGlobalShader
+{
+public:
+	DECLARE_GLOBAL_SHADER(FTestShaderCS);
+	SHADER_USE_PARAMETER_STRUCT(FTestShaderCS, FGlobalShader);
+
+	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
+SHADER_PARAMETER(int,Time)
+	    SHADER_PARAMETER_UAV(RWTexture3D<float>, OutTestShader)
+	END_SHADER_PARAMETER_STRUCT()
+
+	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
+	{
+		return true;
+	}
+
+	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)
+	{
+		OutEnvironment.SetDefine(TEXT("THREADGROUP_SIZEX"), 8);
+		OutEnvironment.SetDefine(TEXT("THREADGROUP_SIZEY"), 8);
+	}
+};
+
+IMPLEMENT_GLOBAL_SHADER(FTestShaderCS, "/PluginShader/test.usf", "MainCS", SF_Compute);
+IMPLEMENT_GLOBAL_SHADER(FSpawnParticleCS,  "/PluginShader/InitialParticle.usf", "SpawnParticleCS", SF_Compute);
 IMPLEMENT_GLOBAL_SHADER(FLiquidParticleCS, "/PluginShader/MPM.usf", "MainCS", SF_Compute);
 
 FPhysicalLiquidSolver::FPhysicalLiquidSolver()
 {
 	LastNumParticle = 0;
 	AllocatedInstanceCounts = 0;
+	GridSize = FIntVector(64);
 }
 
 void FPhysicalLiquidSolver::SetParameter(FSolverParameter* InParameter)
 {
-	FPhysicalSolverBase::SetParameter(InParameter);
+	int x = FMath::Max(InParameter->FluidParameter.SolverBaseParameter.GridSize.X - 1,8);
+	int y = FMath::Max(InParameter->FluidParameter.SolverBaseParameter.GridSize.Y - 1,8);
+	int z = FMath::Max(InParameter->FluidParameter.SolverBaseParameter.GridSize.Z - 1,8);
+	GridSize = FIntVector(x,y,z);
 }
 
 void FPhysicalLiquidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder,FPhysicalSolverContext* Context,FSceneView& InView)
 {
+	Frame++;
 	float DeltaTime = Context->SolverParameter->FluidParameter.SolverBaseParameter.dt;
 	FRHICommandListImmediate& RHICmdList = GraphBuilder.RHICmdList;
 	float CurrentNumParticle = LastNumParticle + DeltaTime * Context->SpawnRate;
@@ -94,9 +125,10 @@ void FPhysicalLiquidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder,FPhysi
     int DeadParticleNum = 0;
 
 	//if we are in Initial stage. this will be nullptr
-	if (ParticleIDReadback && ParticleIDReadback->IsReady())
+	if (ParticleIDReadback && ParticleIDReadback->IsReady() && AllocatedInstanceCounts)
 	{
 		// last frame readback buffer
+		int* IDBuffer = (int*)RHICmdList.LockBuffer(ParticleIDBuffer.Buffer,0,sizeof(int),RLM_WriteOnly);
 		int* Particles = (int*)ParticleIDReadback->Lock(LastNumParticle * sizeof(int));
 		DeadParticleNum = Particles[0];
 
@@ -130,6 +162,8 @@ void FPhysicalLiquidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder,FPhysi
 		}
 
 		ParticleIDReadback->Unlock();
+		IDBuffer[0] = 0;
+		RHICmdList.UnlockBuffer(ParticleIDBuffer.Buffer);
 	}
 
 	//CurrentNumParticle -= float(DeadParticleNum);
@@ -145,6 +179,8 @@ void FPhysicalLiquidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder,FPhysi
 			ParticleAttributeBuffer.Initialize(RHICmdList,TEXT("InitialParticleBuffer"),sizeof(float),ParticleElement * NUMATTRIBUTE,PF_R32_FLOAT,ERHIAccess::UAVCompute);*/
 			ParticleIDBuffer.Initialize(TEXT("InitialIDBuffer"),sizeof(int),ParticleElement ,PF_R32_SINT,ERHIAccess::UAVCompute);
 			ParticleAttributeBuffer.Initialize(TEXT("InitialParticleBuffer"),sizeof(float),ParticleElement * NUMATTRIBUTE,PF_R32_FLOAT,ERHIAccess::UAVCompute);
+			RHICmdList.ClearUAVUint(ParticleIDBuffer.UAV,FUintVector4(0));
+			RHICmdList.ClearUAVFloat(ParticleAttributeBuffer.UAV,FVector4f(0.0));
 
 			FSpawnParticleCS::FParameters Parameters;
 			Parameters.View = InView.ViewUniformBuffer;
@@ -194,36 +230,7 @@ void FPhysicalLiquidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder,FPhysi
 
 		ClearRenderTarget(RHICmdList,Context->OutputTextures[0]->GetResource()->GetTextureRHI());
 		FUnorderedAccessViewRHIRef RasterizeTexture = RHICreateUnorderedAccessView(Context->OutputTextures[0]->GetResource()->GetTextureRHI());//RHICmdList.CreateUnorderedAccessView(Context->OutputTextures[0]->GetResource()->GetTextureRHI());
-		//TShaderMapRef<FLiquidParticleCS> ComputeShader(ShaderMap);
-		/*auto DispatchShader = [&](int DoShaderType)
-		{
-			FLiquidParticleCS::FParameters PassParameters; //= GraphBuilder.AllocParameters<FLiquidParticleCS::FParameters>();
-			switch (DoShaderType)
-			{
-			case 0:
-				SCOPE_CYCLE_COUNTER(STAT_P2G);
-				break;
-			case 1:
-				SCOPE_CYCLE_COUNTER(STAT_G2P);
-				break;
-			case 2:
-				SCOPE_CYCLE_COUNTER(STAT_Rasterize);
-				break;
 
-			}
-
-			TShaderMapRef<FLiquidParticleCS> ComputeShader(ShaderMap);
-			//PassParameters.View = InView.ViewUniformBuffer;
-			PassParameters.ShaderType = DoShaderType;
-			PassParameters.ParticleIDBuffer = ParticleIDBuffer.UAV;
-			PassParameters.ParticleAttributeBuffer = ParticleAttributeBuffer.UAV;
-			PassParameters.LiuquidParameter = Context->SolverParameter->LiuquidParameter;
-			PassParameters.RasterizeTexture = RasterizeTexture;
-			FComputeShaderUtils::Dispatch(RHICmdList,
-				ComputeShader,
-				PassParameters,
-				DispatchCount);
-		};*/
 		TShaderMapRef<FLiquidParticleCS> LiquidComputeShader(ShaderMap);
 		FLiquidParticleCS::FParameters PassParameters;
 		PassParameters.ParticleIDBuffer = ParticleIDBuffer.UAV;
@@ -249,6 +256,7 @@ void FPhysicalLiquidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder,FPhysi
 				PassParameters,
 				DispatchCount);
 		}
+		RHICmdList.ClearUAVFloat(RasterizeTexture,FVector4f(.0,.0,.0,.0));
 		{
 			SCOPE_CYCLE_COUNTER(STAT_Rasterize);
 			PassParameters.ShaderType = 2;
@@ -259,12 +267,20 @@ void FPhysicalLiquidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder,FPhysi
 				DispatchCount);
 		}
 
-
 		EnqueueGPUReadback(RHICmdList);
 
-		LastNumParticle = CurrentNumParticle;
-	}
 
+	}else
+	{
+		FUnorderedAccessViewRHIRef RasterizeTexture = RHICmdList.CreateUnorderedAccessView(Context->OutputTextures[0]->GetResource()->GetTextureRHI());
+
+		TShaderMapRef<FTestShaderCS> TestShader(ShaderMap);
+		FTestShaderCS::FParameters TestParameters;
+		TestParameters.OutTestShader = RasterizeTexture;
+		TestParameters.Time = Frame;
+		FComputeShaderUtils::Dispatch(RHICmdList,TestShader,TestParameters,FIntVector(64,64,64));
+	}
+	LastNumParticle = CurrentNumParticle;
 }
 
 void FPhysicalLiquidSolver::Initial(FPhysicalSolverContext* Context)

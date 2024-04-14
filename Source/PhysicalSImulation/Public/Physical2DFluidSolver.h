@@ -20,5 +20,5 @@ public:
 
 	FFluidParameter* SolverParameter;
 	FIntPoint GridSize;
-	int32 Frame;
+
 };

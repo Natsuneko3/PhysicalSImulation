@@ -89,16 +89,6 @@ public:
 
 	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
 	{
-		FPermutationDomain PermutationVector(Parameters.PermutationId);
-
-		// Only generate one permutation for each define.
-		// uint32 DefineEnabled = 0;
-		// DefineEnabled += PermutationVector.Get<FInitial>()		== true ? 1 : 0;
-		// DefineEnabled += PermutationVector.Get<FPreVel>()		== true ? 1 : 0;
-		// DefineEnabled += PermutationVector.Get<FAdvection>()		== true ? 1 : 0;
-		// DefineEnabled += PermutationVector.Get<FIteratePressure>()		== true ? 1 : 0;
-		// DefineEnabled += PermutationVector.Get<FFFTPressure>()		== true ? 1 : 0;
-		// return DefineEnabled == 1;
 		return true;
 	}
 
@@ -162,10 +152,9 @@ void FPhysical2DFluidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder,FPhys
 	FRDGTextureUAVRef PressureUAV = GraphBuilder.CreateUAV(PressureTexture);
 
 	FRDGTextureSRVRef SimSRV = nullptr;
-	//FRDGTextureSRVRef PressureSRV = nullptr;
+
 	SimSRV = GraphBuilder.CreateSRV(SimulationTexture);
-	//PressureSRV = GraphBuilder.CreateSRV(PressureTexture);
-	//AddClearRenderTargetPass(GraphBuilder,PressureTexture);
+
 	ShaderPrint::FShaderPrintSetup ShaderPrintSetup(InView);
 
 	FShaderPrintData ShaderPrintData = ShaderPrint::CreateShaderPrintData(GraphBuilder, ShaderPrintSetup);

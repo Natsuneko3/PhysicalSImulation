@@ -76,9 +76,7 @@ public:
 	void UpdateSolverContext();
 protected:
 	
-	virtual void BeginPlay() override;
-	virtual void OnRegister() override;
-	virtual void OnUnregister() override;
+
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 
@@ -99,7 +97,7 @@ private:
 	TSharedPtr<FPhysicalSolverViewExtension,ESPMode::ThreadSafe> PhysicalSolverViewExtension;
 
 	TArray<UTextureRenderTarget*> OutputTextures;
-	bool bInitialed;
+
 
 	
 };

@@ -2,6 +2,7 @@
 
 #include "PhysicalSimulationComponent.h"
 #include "Physical2DFluidSolver.h"
+#include "PhysicalSimulationSystem.h"
 
 #include "RenderGraphBuilder.h"
 #include "RenderGraphUtils.h"
@@ -31,24 +32,23 @@ UPhysicalSimulationComponent::~UPhysicalSimulationComponent()
 
 void UPhysicalSimulationComponent::Initial()
 {
-	if(!bInitialed && GetStaticMesh() && Material && !HasAnyFlags(RF_ClassDefaultObject))
+	if( Material )
 	{
 		UE_LOG(LogSimulation,Log,TEXT("Physical simulation initial"))
 		CreateSolverTextures();
 		UpdateSolverContext();
-		if(!PhysicalSolverViewExtension.IsValid())
+		UPhysicalSimulationSystem* SubSystem = GetWorld()->GetSubsystem<UPhysicalSimulationSystem>();
+		if(SubSystem)
 		{
-			PhysicalSolverViewExtension = FSceneViewExtensions::NewExtension<FPhysicalSolverViewExtension>(this);
+			PhysicalSolverViewExtension = SubSystem->FindOrCreateViewExtension(*GetOwner()->GetName(),this);
 		}
-
-		bInitialed = true;
 	}
 
 }
 
 void UPhysicalSimulationComponent::InitializeComponent()
 {
-Initial();
+	Initial();
 }
 
 void UPhysicalSimulationComponent::BeginDestroy()
@@ -60,34 +60,6 @@ void UPhysicalSimulationComponent::BeginDestroy()
 	}
 }
 
-
-// Called when the game starts or when spawned
-void UPhysicalSimulationComponent::BeginPlay()
-{
-
-}
-
-void UPhysicalSimulationComponent::OnRegister()
-{
-	Super::OnRegister();
-	UE_LOG(LogSimulation,Log,TEXT("%s:Physical simulation initial"),*GetOwner()->GetName())
-	CreateSolverTextures();
-	UpdateSolverContext();
-	if(!PhysicalSolverViewExtension.IsValid() && bSimulation)
-	{
-		PhysicalSolverViewExtension = FSceneViewExtensions::NewExtension<FPhysicalSolverViewExtension>(this);
-	}
-}
-
-void UPhysicalSimulationComponent::OnUnregister()
-{
-	Super::OnUnregister();
-	if(PhysicalSolverViewExtension.IsValid())
-    {
-    	PhysicalSolverViewExtension.Reset();
-    }
-}
-
 void UPhysicalSimulationComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
@@ -96,7 +68,7 @@ void UPhysicalSimulationComponent::TickComponent(float DeltaTime, ELevelTick Tic
 void UPhysicalSimulationComponent::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
 	Super::PostEditChangeProperty(PropertyChangedEvent);
-
+	Initial();
 }
 
 void UPhysicalSimulationComponent::SetupSolverParameter()
@@ -155,15 +127,22 @@ void UPhysicalSimulationComponent::UpdateSolverContext()
 
 void UPhysicalSimulationComponent::CreateSolverTextures()
 {
+	UStaticMesh* Mesh ;
 	switch (SimulatorType)
 	{
 	case ESimulatorType::PlaneSmokeFluid:
+		Mesh = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Plane"));
+		SetStaticMesh(Mesh);
 		Create2DRenderTarget();
 		break;
 	case ESimulatorType::CubeSmokeFluid:
+		Mesh = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cube"));
+		SetStaticMesh(Mesh);
 		Create3DRenderTarget();
 		break;
 	case ESimulatorType::Liquid:
+		Mesh = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cube"));
+		SetStaticMesh(Mesh);
 		Create3DRenderTarget();
 		break;
 	}
@@ -174,7 +153,7 @@ void UPhysicalSimulationComponent::Create3DRenderTarget()
 	OutputTextures.Empty();
 	UTextureRenderTargetVolume* VolumeRT = NewObject<UTextureRenderTargetVolume>();
 	VolumeRT->InitAutoFormat(GridSize.X, GridSize.Y, GridSize.Z);
-	VolumeRT->OverrideFormat = PF_R16F;
+	VolumeRT->OverrideFormat = PF_R32_FLOAT;
 	VolumeRT->ClearColor = FLinearColor::Black;
 	VolumeRT->bCanCreateUAV = true;
 	VolumeRT->UpdateResourceImmediate(true);

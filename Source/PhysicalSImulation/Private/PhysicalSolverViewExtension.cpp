@@ -18,7 +18,7 @@ FPhysicalSolverViewExtension::FPhysicalSolverViewExtension(const FAutoRegister& 
 		PhysicalSolver = MakeShareable(new FPhysicalLiquidSolver); //new FPhysicalLiquidSolver;
 		break;
 	}
-
+	LastType = Component->SimulatorType;
 	PhysicalSolver->Initial(&Component->PhysicalSolverContext);
 }
 
@@ -33,16 +33,26 @@ void FPhysicalSolverViewExtension::BeginRenderViewFamily(FSceneViewFamily& InVie
 
 void FPhysicalSolverViewExtension::PreRenderView_RenderThread(FRDGBuilder& GraphBuilder, FSceneView& InView)
 {
-	UpdateParameters(InView);
+
+	Component->UpdateSolverContext();
+	SolverContext = &Component->PhysicalSolverContext;
+	SolverContext->SolverParameter->FluidParameter.SolverBaseParameter.View = InView.ViewUniformBuffer;
+	SolverContext->SolverParameter->LiuquidParameter.SolverBaseParameter.View = InView.ViewUniformBuffer;
+	SolverContext->FeatureLevel = InView.FeatureLevel;
+
 	PhysicalSolver->SetParameter(SolverContext->SolverParameter);
 	PhysicalSolver->Update_RenderThread(GraphBuilder, SolverContext, InView);
-
 
 }
 
 bool FPhysicalSolverViewExtension::IsActiveThisFrame_Internal(const FSceneViewExtensionContext& Context) const
 {
-	return Component->bSimulation;
+	if(Component)
+	{
+		return Component->bSimulation;
+	}
+	return false;
+
 }
 
 void FPhysicalSolverViewExtension::PreRenderViewFamily_RenderThread(FRDGBuilder& GraphBuilder, FSceneViewFamily& InViewFamily)
@@ -94,13 +104,26 @@ void FPhysicalSolverViewExtension::Initial(FPhysicalSolverContext* InContext)
 }
 
 
-void FPhysicalSolverViewExtension::UpdateParameters(FSceneView& InView)
+void FPhysicalSolverViewExtension::UpdateParameters(UPhysicalSimulationComponent* InComponent)
 {
-	Component->UpdateSolverContext();
-	SolverContext = &Component->PhysicalSolverContext;
-	SolverContext->SolverParameter->FluidParameter.SolverBaseParameter.View = InView.ViewUniformBuffer;
-	SolverContext->SolverParameter->LiuquidParameter.SolverBaseParameter.View = InView.ViewUniformBuffer;
-	SolverContext->FeatureLevel = InView.FeatureLevel;
+	Component = InComponent;
+	if(LastType != Component->SimulatorType)
+	{
+		PhysicalSolver->Release();
+		switch (Component->SimulatorType)
+		{
+		case ESimulatorType::PlaneSmokeFluid:
+			PhysicalSolver = MakeShareable(new FPhysical2DFluidSolver);
+			break;
+		case ESimulatorType::CubeSmokeFluid:
+			PhysicalSolver = MakeShareable(new FPhysical3DFluidSolver);
+			break;
+		case ESimulatorType::Liquid:
+			PhysicalSolver = MakeShareable(new FPhysicalLiquidSolver); //new FPhysicalLiquidSolver;
+			break;
+		}
+		LastType = Component->SimulatorType;
+	}
 }
 
 void FPhysicalSolverViewExtension::Release()

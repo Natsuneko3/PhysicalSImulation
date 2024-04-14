@@ -9,7 +9,7 @@ groupshared uint GroupWriteOffsets[2*THREADGROUP_SIZEX];
 groupshared uint GroupWriteStart;
 
 int ShaderType;
-RWTexture3D<float>RasterizeTexture;
+RWTexture3D<float> RasterizeTexture;
 float GravityScale;
 float LifeTime;
 void FilterDeadParticle(uint DispatchThreadId , uint2 GroupThreadId , uint2 GroupID)
@@ -85,22 +85,42 @@ void CellToParticle(uint DispatchThreadId )
 {
 	int active = 1;
 	ParticleContext Particle = GetParticle(DispatchThreadId);
-	Particle.Velocity += float3(0,0,9.8);
+	Particle.Velocity += float3(0,0,-9.8);
 	Particle.Position += Particle.Velocity * dt;
 	Particle.Age += dt;
 	if(Particle.Age > LifeTime)
 	{
 		active = 0;
+		int DeadNum = 0;
+		InterlockedAdd(ParticleIDBuffer[0],active,DeadNum);
 	}
-	ParticleIDBuffer[DispatchThreadId] = active;
+	ParticleIDBuffer[DispatchThreadId + 1] = active;
 	OutPutParticle(DispatchThreadId,Particle);
 }
 void Rasterize(uint DispatchThreadId)
 {
 	ParticleContext Particle = GetParticle(DispatchThreadId);
-	float3 GridPosition = Particle.Position /dx;
+	float3 GridPosition = Particle.Position / (GridSize * dx);
+	GridPosition = saturate(GridPosition) * GridSize;
+	int a = 1;
+	int original_value = 0;
+	//RasterizeTexture[int3(GridPosition)] = 1;
+	int Radius = 20;
+	for(int x = -Radius; x < Radius;x++)
+	{
+		for(int y = -Radius; y < Radius;y++)
+		{
+			for(int z = -Radius; z < Radius;z++)
+			{
+				int3 Position = int3(GridPosition + int3(x,y,z));
+				//InterlockedMax(RasterizeTexture[uint3(0,0,0)],1,original_value);//
+				RasterizeTexture[uint3(Position)] = 1;
+			}
+		}
+	}
+	//RasterizeTexture[uint3(0,0,0)] = 1;
+	//InterlockedMax(RasterizeTexture[int3(GridPosition)],asfloat(a));
 
-	RasterizeTexture[int3(GridPosition)] = 1;
 }
 [numthreads(THREADGROUP_SIZEX, THREADGROUP_SIZEY, 1)]
 void MainCS(uint DispatchThreadId : SV_DispatchThreadID, uint2 GroupThreadId : SV_GroupThreadID, uint2 GroupID:SV_GroupID)
