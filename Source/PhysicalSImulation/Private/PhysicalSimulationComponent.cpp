@@ -2,6 +2,7 @@
 
 #include "PhysicalSimulationComponent.h"
 #include "Physical2DFluidSolver.h"
+#include "PhysicalSimulationSceneProxy.h"
 #include "PhysicalSimulationSystem.h"
 
 #include "RenderGraphBuilder.h"
@@ -40,7 +41,7 @@ void UPhysicalSimulationComponent::Initial()
 		UPhysicalSimulationSystem* SubSystem = GetWorld()->GetSubsystem<UPhysicalSimulationSystem>();
 		if(SubSystem)
 		{
-			PhysicalSolverViewExtension = SubSystem->FindOrCreateViewExtension(*GetOwner()->GetName(),this);
+			PhysicalSolverViewExtension = SubSystem->FindOrCreateViewExtension(this);
 		}
 	}
 
@@ -69,6 +70,15 @@ void UPhysicalSimulationComponent::PostEditChangeProperty(FPropertyChangedEvent&
 {
 	Super::PostEditChangeProperty(PropertyChangedEvent);
 	Initial();
+}
+
+FPrimitiveSceneProxy* UPhysicalSimulationComponent::CreateSceneProxy()
+{
+	if(Material)
+	{
+		return new FPhysicalSimulationSceneProxy(this);
+	}
+	return  nullptr;
 }
 
 void UPhysicalSimulationComponent::SetupSolverParameter()

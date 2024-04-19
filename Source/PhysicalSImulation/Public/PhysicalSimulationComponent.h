@@ -6,7 +6,7 @@
 #include "Engine/TextureRenderTarget2D.h"
 #include "GameFramework/Actor.h"
 
-#include "PhysicalSolverViewExtension.h"
+#include "PhysicalSimulationViewExtension.h"
 #include "PhysicalSimulationComponent.generated.h"
 
 
@@ -81,7 +81,7 @@ protected:
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 
 
-	//virtual FPrimitiveSceneProxy* CreateSceneProxy() override;
+	virtual FPrimitiveSceneProxy* CreateSceneProxy() override;
 
 	void SetupSolverParameter();
 
@@ -94,7 +94,7 @@ private:
 	void CreateSolverTextures();
 	void Create3DRenderTarget();
 	void Create2DRenderTarget();
-	TSharedPtr<FPhysicalSolverViewExtension,ESPMode::ThreadSafe> PhysicalSolverViewExtension;
+	TSharedPtr<FPhysicalSimulationViewExtension,ESPMode::ThreadSafe> PhysicalSolverViewExtension;
 
 	TArray<UTextureRenderTarget*> OutputTextures;
 

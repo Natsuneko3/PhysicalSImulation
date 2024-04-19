@@ -36,7 +36,6 @@ public:
 		OutEnvironment.SetDefine(TEXT("THREADGROUP_SIZEX"), 64);
         OutEnvironment.SetDefine(TEXT("THREADGROUP_SIZEY"), 1);
 		OutEnvironment.SetDefine(TEXT("NUMATTRIBUTE"), NUMATTRIBUTE);
-
 	}
 };
 

@@ -37,22 +37,22 @@ void UPhysicalSimulationSystem::PostInitialize()
 	Super::PostInitialize();
 }
 
-TSharedPtr<FPhysicalSolverViewExtension> UPhysicalSimulationSystem::FindOrCreateViewExtension(FString InName, UPhysicalSimulationComponent* InComponent)
+TSharedPtr<FPhysicalSimulationViewExtension> UPhysicalSimulationSystem::FindOrCreateViewExtension(UPhysicalSimulationComponent* InComponent)
 {
 
 	/*if(PhysicalSolverViewExtensions.IsEmpty())
 	{
-		TSharedPtr<FPhysicalSolverViewExtension> PhysicalSolverViewExtension = FSceneViewExtensions::NewExtension<FPhysicalSolverViewExtension>(InComponent);
+		TSharedPtr<FPhysicalSimulationViewExtension> PhysicalSolverViewExtension = FSceneViewExtensions::NewExtension<FPhysicalSimulationViewExtension>(InComponent);
 		PhysicalSolverViewExtensions.Add(InName,PhysicalSolverViewExtension);
 		return PhysicalSolverViewExtension;
 	}*/
-
-	TSharedPtr<FPhysicalSolverViewExtension>* PhysicalSolverViewExtension = PhysicalSolverViewExtensions.Find(InName);
+	FString ComponentName = InComponent->GetName();
+	TSharedPtr<FPhysicalSimulationViewExtension>* PhysicalSolverViewExtension = PhysicalSolverViewExtensions.Find(ComponentName);
 	if(!PhysicalSolverViewExtension)
 	{
-		UE_LOG(LogSimulation,Log,TEXT("%s:Create SceneViewExtensions"),*InName)
-		TSharedPtr<FPhysicalSolverViewExtension> NewViewExtension = FSceneViewExtensions::NewExtension<FPhysicalSolverViewExtension>(InComponent);
-		PhysicalSolverViewExtensions.Add(InName,NewViewExtension);
+		UE_LOG(LogSimulation,Log,TEXT("%s:Create SceneViewExtensions"),*ComponentName)
+		TSharedPtr<FPhysicalSimulationViewExtension> NewViewExtension = FSceneViewExtensions::NewExtension<FPhysicalSimulationViewExtension>(InComponent);
+		PhysicalSolverViewExtensions.Add(ComponentName,NewViewExtension);
 		return NewViewExtension;
 	}
 	else

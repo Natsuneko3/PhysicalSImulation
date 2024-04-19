@@ -5,16 +5,18 @@
 #include "Physical2DFluidSolver.h"
 #include "Physical3DFluidSolver.h"
 #include "PhysicalLiquidSolver.h"
+#include "Engine/InstancedStaticMesh.h"
 
+class FPhysicalSimulationSceneProxy;
 class UPhysicalSimulationComponent;
 
-class FPhysicalSolverViewExtension : public FSceneViewExtensionBase
+class FPhysicalSimulationViewExtension : public FSceneViewExtensionBase
 {
 public:
-	FPhysicalSolverViewExtension(const FAutoRegister& AutoRegister, UPhysicalSimulationComponent* InComponent);
-	~FPhysicalSolverViewExtension();
+	FPhysicalSimulationViewExtension(const FAutoRegister& AutoRegister, UPhysicalSimulationComponent* InComponent);
+	~FPhysicalSimulationViewExtension();
 
-public:
+
 	//~ Begin ISceneViewExtension Interface
 	virtual void SetupViewFamily(FSceneViewFamily& InViewFamily) override
 	{
@@ -30,10 +32,12 @@ public:
 	virtual int32 GetPriority() const override { return -1; }
 	virtual void PreRenderView_RenderThread(FRDGBuilder& GraphBuilder, FSceneView& InView) override;
 	virtual bool IsActiveThisFrame_Internal(const FSceneViewExtensionContext& Context) const;
-
-
 	//~ End ISceneViewExtension Interface
 
+	void CreateMeshBatch(struct FMeshBatch&, const FPhysicalSimulationSceneProxy*, const class FMaterialRenderProxy*) const;
+
+	void AddProxy(FPhysicalSimulationSceneProxy* Proxy);
+	void RemoveProxy(FPhysicalSimulationSceneProxy* Proxy);
 
 	void Initial(FPhysicalSolverContext* InContext);
 	/*void InitDelegate();
@@ -50,10 +54,11 @@ private:
 	FPostOpaqueRenderDelegate RenderDelegate;
 	UPhysicalSimulationComponent* Component;
 	ESimulatorType LastType;
-	//TArray<FPhysicalSolverSceneProxy*> SceneProxies;
-	//UPhysicalSimulationComponent* SolverComponent;
-	//FPhysicalSolverBase* PhysicalSolver;
+	TArray<FPhysicalSimulationSceneProxy*> SceneProxies;
+
 	TSharedPtr<FPhysicalSolverBase> PhysicalSolver;
 	FDelegateHandle RenderDelegateHandle;
 	TArray<UTextureRenderTarget*> OutPutTextures;
+
+	TUniquePtr<class FInstancedStaticMeshVertexFactory> VertexFactory;
 };
