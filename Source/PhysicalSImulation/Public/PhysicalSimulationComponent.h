@@ -33,8 +33,13 @@ public:
 	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation ")
 	TSoftObjectPtr<UMaterialInterface> Material;
 
-	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation")
+	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation",meta = (DisplayName = "Use Physical Solver"))
+	bool bUsePhysicalSolver;
+
+	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation", meta = (EditCondition = "bUsePhysicalSolver"))
 	ESimulatorType SimulatorType = ESimulatorType::PlaneSmokeFluid;
+
+
 
 	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation|2D Smoke Fluid",meta = (EditCondition = "SimulatorType==ESimulatorType::PlaneSmokeFluid"))
 	float VorticityMult = 100;

@@ -9,11 +9,14 @@
 DECLARE_CYCLE_STAT(TEXT("GetDynamicMeshElements"),STAT_PS_GetDynamicMeshElements,STATGROUP_PS)
 
 FPhysicalSimulationSceneProxy::FPhysicalSimulationSceneProxy(UPhysicalSimulationComponent* InComponent)
-:FPhysicalSimulationSceneProxy(InComponent)
+:FPrimitiveSceneProxy(InComponent),Component(InComponent)
 {
 	UPhysicalSimulationSystem* SubSystem = InComponent->GetWorld()->GetSubsystem<UPhysicalSimulationSystem>();
-	ViewExtension = SubSystem->FindOrCreateViewExtension(InComponent);
-	Component = InComponent;
+	if(SubSystem)
+	{
+		ViewExtension = SubSystem->FindOrCreateViewExtension(InComponent);
+	}
+
 	StaticMesh = InComponent->GetStaticMesh();
 	Material = InComponent->Material.Get();
 }
@@ -24,23 +27,32 @@ SIZE_T FPhysicalSimulationSceneProxy::GetTypeHash() const
 	return reinterpret_cast<size_t>(&UniquePointer);
 }
 
-void FPhysicalSimulationSceneProxy::CreateRenderThreadResources()
+void FPhysicalSimulationSceneProxy::CreateRenderThreadResources(FRHICommandListBase& RHICmdList)
 {
-	FPrimitiveSceneProxy::CreateRenderThreadResources();
-	ViewExtension->AddProxy(this);
+	FPrimitiveSceneProxy::CreateRenderThreadResources( RHICmdList);
+	if(ViewExtension)
+	{
+		ViewExtension->AddProxy(this);
+		ViewExtension->Initial(RHICmdList);
+	}
+
 
 }
 
 void FPhysicalSimulationSceneProxy::DestroyRenderThreadResources()
 {
 	FPrimitiveSceneProxy::DestroyRenderThreadResources();
-	ViewExtension->RemoveProxy(this);
+	if(ViewExtension)
+	{
+		ViewExtension->RemoveProxy(this);
+	}
+
 }
 // This setups associated volume mesh for built-in Unreal passes.
 // Actual rendering is FPhysicalSimulationViewExtension::PreRenderView_RenderThread.
 void FPhysicalSimulationSceneProxy::GetDynamicMeshElements(const TArray<const FSceneView*>& Views, const FSceneViewFamily& ViewFamily, uint32 VisibilityMap, FMeshElementCollector& Collector) const
 {
-	SCOPE_CYCLE_COUNTER(STAT_PS_GetDynamicMeshElements);
+	/*SCOPE_CYCLE_COUNTER(STAT_PS_GetDynamicMeshElements);
 	for (int32 ViewIndex = 0; ViewIndex < Views.Num(); ViewIndex++)
 	{
 		const FSceneView* View = Views[ViewIndex];
@@ -54,7 +66,8 @@ void FPhysicalSimulationSceneProxy::GetDynamicMeshElements(const TArray<const FS
 
 			Collector.AddMesh(ViewIndex, Mesh);
 		}
-	}
+	}*/
+	ViewExtension->GetDynamicMeshElements(Views,ViewFamily,VisibilityMap,Collector,this);
 }
 
 FPrimitiveViewRelevance FPhysicalSimulationSceneProxy::GetViewRelevance(const FSceneView* View) const

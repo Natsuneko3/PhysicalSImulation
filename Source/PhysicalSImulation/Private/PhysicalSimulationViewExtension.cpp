@@ -20,9 +20,9 @@ FPhysicalSimulationViewExtension::FPhysicalSimulationViewExtension(const FAutoRe
 		break;
 	}
 	LastType = Component->SimulatorType;
-	PhysicalSolver->Initial(&Component->PhysicalSolverContext);
-	VertexFactory = MakeUnique<FInstancedStaticMeshVertexFactory>(InComponent->GetWorld()->FeatureLevel);
-	VertexFactory->InitResource();
+	FeatureLevel = InComponent->GetWorld()->FeatureLevel;
+
+
 }
 
 FPhysicalSimulationViewExtension::~FPhysicalSimulationViewExtension()
@@ -43,8 +43,8 @@ void FPhysicalSimulationViewExtension::PreRenderView_RenderThread(FRDGBuilder& G
 	SolverContext->SolverParameter->LiuquidParameter.SolverBaseParameter.View = InView.ViewUniformBuffer;
 	SolverContext->FeatureLevel = InView.FeatureLevel;
 
-	PhysicalSolver->SetParameter(SolverContext->SolverParameter);
-	PhysicalSolver->Update_RenderThread(GraphBuilder, SolverContext, InView);
+	PhysicalSolver->SetParameter(SolverContext);
+	PhysicalSolver->Update_RenderThread(GraphBuilder, InView);
 	if(Component->SimulatorType == ESimulatorType::Liquid)
 	{
 
@@ -62,7 +62,12 @@ bool FPhysicalSimulationViewExtension::IsActiveThisFrame_Internal(const FSceneVi
 
 }
 
-void FPhysicalSimulationViewExtension::CreateMeshBatch(FMeshBatch& MeshBatch, const FPhysicalSimulationSceneProxy* PrimitiveProxy, const FMaterialRenderProxy* MaterialProxy) const
+void FPhysicalSimulationViewExtension::GetDynamicMeshElements(const TArray<const FSceneView*>& Views, const FSceneViewFamily& ViewFamily, uint32 VisibilityMap, FMeshElementCollector& Collector,const FPhysicalSimulationSceneProxy* SceneProxy) const
+{
+	PhysicalSolver->GetDynamicMeshElements(Views,ViewFamily,VisibilityMap,Collector,SceneProxy);
+}
+
+/*void FPhysicalSimulationViewExtension::CreateMeshBatch(FMeshBatch& MeshBatch, const FPhysicalSimulationSceneProxy* PrimitiveProxy, const FMaterialRenderProxy* MaterialProxy) const
 {
 	MeshBatch.bUseWireframeSelectionColoring = PrimitiveProxy->IsSelected();
 	MeshBatch.VertexFactory = VertexFactory.Get();
@@ -86,16 +91,18 @@ void FPhysicalSimulationViewExtension::CreateMeshBatch(FMeshBatch& MeshBatch, co
 	BatchElement.NumPrimitives = LODModel.GetNumTriangles();
 	BatchElement.VertexFactoryUserData = VertexFactory->GetUniformBuffer();
 
-}
+}*/
 
 void FPhysicalSimulationViewExtension::AddProxy(FPhysicalSimulationSceneProxy* Proxy)
 {
-	ENQUEUE_RENDER_COMMAND(FAddPhysicalSimulationProxyCommand)(
+	/*ENQUEUE_RENDER_COMMAND(FAddPhysicalSimulationProxyCommand)(
 		[this, Proxy](FRHICommandListImmediate& RHICmdList)
 		{
 			check(SceneProxies.Find(Proxy) == INDEX_NONE);
 			SceneProxies.Emplace(Proxy);
-		});
+		});*/
+	check(SceneProxies.Find(Proxy) == INDEX_NONE);
+	SceneProxies.Emplace(Proxy);
 }
 
 void FPhysicalSimulationViewExtension::RemoveProxy(FPhysicalSimulationSceneProxy* Proxy)
@@ -117,46 +124,9 @@ void FPhysicalSimulationViewExtension::PreRenderViewFamily_RenderThread(FRDGBuil
 }
 
 
-void FPhysicalSimulationViewExtension::Initial(FPhysicalSolverContext* InContext)
+void FPhysicalSimulationViewExtension::Initial(FRHICommandListBase& RHICmdList)
 {
-	/*if(IsInRenderingThread())
-	{
-		//SolverContext = InContext;
-		switch (SolverContext->SimulatorType)
-		{
-		case ESimulatorType::PlaneSmokeFluid:
-			PhysicalSolver = MakeShareable(new FPhysical2DFluidSolver).Object;
-			break;
-		case ESimulatorType::CubeSmokeFluid:
-			break;
-		case ESimulatorType::Water:
-			break;
-		}
-		PhysicalSolver->Initial(SolverContext);
-		bInitialed = true;
-		//InitDelegate();
-	}
-	else
-	{
-		ENQUEUE_RENDER_COMMAND(ActorPhysicalSimulation)([this,InContext](FRHICommandListImmediate& RHICmdList)
-		{
-
-			Initial(InContext);
-		});
-	}*/
-	/*switch (SolverContext->SimulatorType)
-	{
-	case ESimulatorType::PlaneSmokeFluid:
-		PhysicalSolver = MakeShareable(new FPhysical2DFluidSolver).Object;
-		break;
-	case ESimulatorType::CubeSmokeFluid:
-		break;
-	case ESimulatorType::Water:
-		break;
-	}
-	PhysicalSolver->Initial(SolverContext);*/
-
-	//SolverContext = InContext;
+	PhysicalSolver->Initial(RHICmdList);
 }
 
 

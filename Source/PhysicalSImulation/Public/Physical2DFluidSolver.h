@@ -9,16 +9,18 @@ class FPhysical2DFluidSolver :public FPhysicalSolverBase
 public:
 	FPhysical2DFluidSolver();
 
-	virtual void SetParameter(FSolverParameter* InParameter) override;
+	virtual void SetParameter(FPhysicalSolverContext* InContext) override;
 
-	virtual void Update_RenderThread(FRDGBuilder& GraphBuilder,FPhysicalSolverContext* Context,FSceneView& InView) override;
+	virtual void Update_RenderThread(FRDGBuilder& GraphBuilder,FSceneView& InView) override;
 
-	virtual void Initial(FPhysicalSolverContext* Context) override;
+	virtual void Initial(FRHICommandListBase& RHICmdList) override;
 
 	virtual void Release() override;
 	bool bIsInitial = false;
 
 	FFluidParameter* SolverParameter;
 	FIntPoint GridSize;
+
+	FPhysicalSolverContext* Context;
 
 };

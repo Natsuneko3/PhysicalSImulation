@@ -1,5 +1,6 @@
 #include "PhysicalLiquidSolver.h"
 #include "GPUSortManager.h"
+#include "PhysicalSimulationSceneProxy.h"
 #include "RenderGraphBuilder.h"
 #include "RenderGraphUtils.h"
 #include "ShaderParameterStruct.h"
@@ -7,6 +8,8 @@ DECLARE_CYCLE_STAT(TEXT("Particle To Cell"),STAT_P2G,STATGROUP_PS)
 DECLARE_CYCLE_STAT(TEXT("Cell To Particle"),STAT_G2P,STATGROUP_PS)
 DECLARE_CYCLE_STAT(TEXT("Rasterize"),STAT_Rasterize,STATGROUP_PS)
 
+//DECLARE_DWORD_COUNTER_STAT_EXTERN(TEXT("Physical Simulation Particle Polys"), STAT_PSParticlePolys, STATGROUP_Particles );
+//DEFINE_STAT(STAT_PSParticlePolys);
 #define NUMATTRIBUTE 7
 TAutoConsoleVariable<int32> CVarPhysicalParticleDebug(
 	TEXT("r.PhysicalParticleDebugLog"),
@@ -105,15 +108,16 @@ FPhysicalLiquidSolver::FPhysicalLiquidSolver()
 	GridSize = FIntVector(64);
 }
 
-void FPhysicalLiquidSolver::SetParameter(FSolverParameter* InParameter)
+void FPhysicalLiquidSolver::SetParameter(FPhysicalSolverContext* InContext)
 {
-	int x = FMath::Max(InParameter->FluidParameter.SolverBaseParameter.GridSize.X - 1,8);
-	int y = FMath::Max(InParameter->FluidParameter.SolverBaseParameter.GridSize.Y - 1,8);
-	int z = FMath::Max(InParameter->FluidParameter.SolverBaseParameter.GridSize.Z - 1,8);
+	int x = FMath::Max(InContext->SolverParameter->FluidParameter.SolverBaseParameter.GridSize.X - 1,8);
+	int y = FMath::Max(InContext->SolverParameter->FluidParameter.SolverBaseParameter.GridSize.Y - 1,8);
+	int z = FMath::Max(InContext->SolverParameter->FluidParameter.SolverBaseParameter.GridSize.Z - 1,8);
 	GridSize = FIntVector(x,y,z);
+	Context = InContext;
 }
 
-void FPhysicalLiquidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder,FPhysicalSolverContext* Context,FSceneView& InView)
+void FPhysicalLiquidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder,FSceneView& InView)
 {
 	Frame++;
 	float DeltaTime = Context->SolverParameter->FluidParameter.SolverBaseParameter.dt;
@@ -123,7 +127,7 @@ void FPhysicalLiquidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder,FPhysi
 	const auto ShaderMap = GetGlobalShaderMap(InView.FeatureLevel);
     int DeadParticleNum = 0;
 
-	//if we are in Initial stage. this will be nullptr
+	//Read back to check the value
 	if (ParticleIDReadback && ParticleIDReadback->IsReady() && AllocatedInstanceCounts)
 	{
 		// last frame readback buffer
@@ -171,13 +175,9 @@ void FPhysicalLiquidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder,FPhysi
 		const int ParticleElement = int(CurrentNumParticle);
 		const FIntVector DispatchCount = FIntVector(FMath::DivideAndRoundUp(ParticleElement , 64), 1, 1);
 		const TShaderMapRef<FSpawnParticleCS> SpawnComputeShader(ShaderMap);
-		if(!AllocatedInstanceCounts)
+		if(0)//(!AllocatedInstanceCounts)
 		{
 			AllocatedInstanceCounts = 1;
-			/*ParticleIDBuffer.Initialize(RHICmdList,TEXT("InitialIDBuffer"),sizeof(int),ParticleElement ,PF_R32_UINT,ERHIAccess::UAVCompute);
-			ParticleAttributeBuffer.Initialize(RHICmdList,TEXT("InitialParticleBuffer"),sizeof(float),ParticleElement * NUMATTRIBUTE,PF_R32_FLOAT,ERHIAccess::UAVCompute);*/
-			ParticleIDBuffer.Initialize(TEXT("InitialIDBuffer"),sizeof(int),ParticleElement ,PF_R32_SINT,ERHIAccess::UAVCompute);
-			ParticleAttributeBuffer.Initialize(TEXT("InitialParticleBuffer"),sizeof(float),ParticleElement * NUMATTRIBUTE,PF_R32_FLOAT,ERHIAccess::UAVCompute);
 			RHICmdList.ClearUAVUint(ParticleIDBuffer.UAV,FUintVector4(0));
 			RHICmdList.ClearUAVFloat(ParticleAttributeBuffer.UAV,FVector4f(0.0));
 
@@ -185,7 +185,7 @@ void FPhysicalLiquidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder,FPhysi
 			Parameters.View = InView.ViewUniformBuffer;
 			Parameters.InAttributeBuffer = ParticleAttributeBuffer.SRV;
 			Parameters.InIDBuffer = ParticleIDBuffer.SRV;
-			Parameters.LastNumParticle = CurrentNumParticle;
+			Parameters.LastNumParticle = 1;
 			Parameters.ParticleIDBuffer = ParticleIDBuffer.UAV;
 			Parameters.ParticleAttributeBuffer = ParticleAttributeBuffer.UAV;
 
@@ -193,6 +193,7 @@ void FPhysicalLiquidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder,FPhysi
 			SpawnComputeShader,
 			Parameters,
 			DispatchCount);
+
 		}else
 		{
 			//Spawn Or Initial Particle
@@ -207,7 +208,7 @@ void FPhysicalLiquidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder,FPhysi
 				NextParticleBuffer.Initialize(RHICmdList,TEXT("NextParticleBuffer"),sizeof(float),ParticleElement * NUMATTRIBUTE,PF_R32_FLOAT,ERHIAccess::UAVCompute);*/
 				NextIDBuffer.Initialize(TEXT("NextIDBuffer"),sizeof(int),ParticleElement,PF_R32_SINT,ERHIAccess::UAVCompute, BUF_Static | BUF_SourceCopy);
 				NextParticleBuffer.Initialize(TEXT("NextParticleBuffer"),sizeof(float),ParticleElement * NUMATTRIBUTE,PF_R32_FLOAT,ERHIAccess::UAVCompute);
-
+				//TODO the new buffer need to initial?
 				FSpawnParticleCS::FParameters Parameters;
 				Parameters.InAttributeBuffer = ParticleAttributeBuffer.SRV;
 				Parameters.InIDBuffer = ParticleIDBuffer.SRV;
@@ -282,8 +283,21 @@ void FPhysicalLiquidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder,FPhysi
 	LastNumParticle = CurrentNumParticle;
 }
 
-void FPhysicalLiquidSolver::Initial(FPhysicalSolverContext* Context)
+void FPhysicalLiquidSolver::Initial(FRHICommandListBase& RHICmdList)
 {
+	ParticleIDBuffer.Initialize(RHICmdList,TEXT("InitialIDBuffer"),sizeof(int),1 ,PF_R32_UINT,ERHIAccess::UAVCompute);
+	ParticleAttributeBuffer.Initialize(RHICmdList,TEXT("InitialParticleBuffer"),sizeof(float),  NUMATTRIBUTE,PF_R32_FLOAT,ERHIAccess::UAVCompute);
+	float* Particle = (float*)RHICmdList.LockBuffer(ParticleAttributeBuffer.Buffer,0,sizeof(float),RLM_WriteOnly);
+	int* ID = (int*)RHICmdList.LockBuffer(ParticleAttributeBuffer.Buffer,0,sizeof(int),RLM_WriteOnly);
+	ID[0] = 0;
+	for(int i = 0;i<NUMATTRIBUTE;i++)
+	{
+		Particle[i] = (float)i;
+	}
+	RHICmdList.UnlockBuffer(ParticleIDBuffer.Buffer);
+	RHICmdList.UnlockBuffer(ParticleAttributeBuffer.Buffer);
+	VertexFactory->SetInstanceBuffer(  ParticleAttributeBuffer.SRV);
+	VertexFactory->InitRHI(RHICmdList);
 
 }
 
@@ -291,6 +305,38 @@ void FPhysicalLiquidSolver::Release()
 {
 	ParticleIDBuffer.Release();
 	ParticleAttributeBuffer.Release();
+}
+
+void FPhysicalLiquidSolver::GetDynamicMeshElements(const TArray<const FSceneView*>& Views, const FSceneViewFamily& ViewFamily, uint32 VisibilityMap, FMeshElementCollector& Collector,const FPhysicalSimulationSceneProxy* SceneProxy)
+{
+	FMeshBatch MeshBatch = Collector.AllocateMesh();
+	MeshBatch.bUseWireframeSelectionColoring = SceneProxy->IsSelected();
+	MeshBatch.VertexFactory = VertexFactory.Get();
+	MeshBatch.MaterialRenderProxy = SceneProxy->GetMeterial()->GetRenderProxy();
+	MeshBatch.ReverseCulling = false;
+	MeshBatch.Type = PT_TriangleList;
+	MeshBatch.DepthPriorityGroup = SDPG_World;
+	MeshBatch.bCanApplyViewModeOverrides = true;
+	MeshBatch.bUseForMaterial = true;
+	MeshBatch.CastShadow = false;
+	MeshBatch.bUseForDepthPass = false;
+
+	const FStaticMeshLODResources& LODModel = SceneProxy->GetStaticMesh()->GetRenderData()->LODResources[0];
+	FMeshBatchElement& BatchElement = MeshBatch.Elements[0];
+	BatchElement.PrimitiveUniformBuffer = SceneProxy->GetUniformBuffer();
+	BatchElement.IndexBuffer = &LODModel.IndexBuffer;
+	BatchElement.FirstIndex = 0;
+	BatchElement.MinVertexIndex = 0;
+	BatchElement.NumInstances = LastNumParticle;
+	BatchElement.MaxVertexIndex = LODModel.GetNumVertices() - 1;
+	BatchElement.NumPrimitives = LODModel.GetNumTriangles();
+	BatchElement.VertexFactoryUserData = VertexFactory->GetSpriteUniformBuffer();
+	for(int i = 0;i< Views.Num();i++)
+	{
+		Collector.AddMesh(i,MeshBatch);
+		//INC_DWORD_STAT_BY(STAT_PSParticlePolys, LastNumParticle * LODModel.GetNumTriangles());
+	}
+
 }
 
 void FPhysicalLiquidSolver::PostSimulation()

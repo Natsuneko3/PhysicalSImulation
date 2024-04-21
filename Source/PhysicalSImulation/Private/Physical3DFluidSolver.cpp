@@ -4,17 +4,17 @@ FPhysical3DFluidSolver::FPhysical3DFluidSolver()
 {
 }
 
-void FPhysical3DFluidSolver::SetParameter(FSolverParameter* InParameter)
+void FPhysical3DFluidSolver::SetParameter(FPhysicalSolverContext* Context)
 {
-	FPhysicalSolverBase::SetParameter(InParameter);
+
 }
 
-void FPhysical3DFluidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder,FPhysicalSolverContext* Context,FSceneView& InView)
+void FPhysical3DFluidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder,FSceneView& InView)
 {
-	FPhysicalSolverBase::Update_RenderThread(GraphBuilder, Context,InView);
+
 }
 
-void FPhysical3DFluidSolver::Initial(FPhysicalSolverContext* Context)
+void FPhysical3DFluidSolver::Initial(FRHICommandListBase& RHICmdList)
 {
-	FPhysicalSolverBase::Initial(Context);
+
 }

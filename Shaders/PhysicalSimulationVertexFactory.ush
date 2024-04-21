@@ -1,0 +1,166 @@
+#include "/Engine/Private/VertexFactoryCommon.ush"
+#include "/Engine/Private/ParticleVertexFactoryCommon.ush"
+
+
+Buffer<float>InstanceParticle;
+struct FVertexFactoryInput
+{
+	float4	Position	: ATTRIBUTE0;
+	float2	TexCoord				: ATTRIBUTE1;
+	uint VertexId					: SV_VertexID;
+	uint InstanceId					: SV_InstanceID;
+};
+
+struct FVertexFactoryInterpolantsVSToPS
+{
+	float2	TexCoords : TEXCOORD0;
+
+#if INSTANCED_STEREO
+	nointerpolation uint EyeIndex : PACKED_EYE_INDEX;
+#endif
+};
+
+struct FVertexFactoryIntermediates
+{
+
+	/** The position of the vertex in translated world space. */
+	float3 WorldPosition;
+	/** Particle translated world space position and size. */
+	float4 TranslatedWorldPositionAndSize;
+
+	/** The texture coordinate at this vertex. */
+	float4 TexCoord;
+
+	float4 Color;
+	/** The velocity of the particle, XYZ: direction, W: speed. */
+	float4 ParticleVelocity;
+
+	float2 ParticleSize;
+
+	FSceneDataIntermediates SceneData;
+
+};
+
+FPrimitiveSceneData GetPrimitiveData(FVertexFactoryIntermediates Intermediates)
+{
+	return Intermediates.SceneData.Primitive;
+}
+
+FVertexFactoryIntermediates GetVertexFactoryIntermediates(FVertexFactoryInput Input)
+{
+	FVertexFactoryIntermediates Intermediates = (FVertexFactoryIntermediates)0;
+	float3 ParticlePosition;
+	ParticlePosition.x = InstanceParticle[Input.InstanceId  * 7 + 1];
+	ParticlePosition.y = InstanceParticle[Input.InstanceId  * 7 + 2];
+	ParticlePosition.z = InstanceParticle[Input.InstanceId  * 7 + 3];
+	Intermediates.SceneData = VF_GPUSCENE_GET_INTERMEDIATES(Input);
+	Intermediates.WorldPosition = ParticlePosition + Input.Position.xyz;
+	Intermediates.ParticleSize = 1.0;
+	return  Intermediates;
+}
+
+FMaterialVertexParameters GetMaterialVertexParameters(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates, float3 WorldPosition, float3x3 TangentToLocal)
+{
+	FMaterialVertexParameters Result = MakeInitializedMaterialVertexParameters();
+	Result.SceneData = Intermediates.SceneData;
+	Result.WorldPosition = WorldPosition;
+	Result.VertexColor = 0.0;
+	Result.TangentToWorld = float3(0,1,0);
+	Result.Particle.MacroUV = 0.0;
+	Result.Particle.Color = Intermediates.Color;
+	Result.Particle.MotionBlurFade = 1.0f;
+	Result.PreSkinnedPosition = WorldPosition.xyz;
+	Result.PreSkinnedNormal = TangentToLocal[2].xyz;
+
+	// Previous frame not handled deliberately. Lacks necessary information and
+	// primitives using this VF are usually transparent and hence don't output velocity
+	Result.PrevFrameLocalToWorld = GetPrimitiveDataFromUniformBuffer().LocalToWorld;
+
+	return Result;
+}
+
+/** Converts from vertex factory specific interpolants to a FMaterialPixelParameters, which is used by material inputs. */
+FMaterialPixelParameters GetMaterialPixelParameters(FVertexFactoryInterpolantsVSToPS Interpolants, float4 SvPosition)
+{
+	// GetMaterialPixelParameters is responsible for fully initializing the result
+	FMaterialPixelParameters Result = MakeInitializedMaterialPixelParameters();
+
+	Result.VertexColor = 1;
+	Result.UnMirrored = 1;
+	Result.TwoSidedSign = 1;
+	return Result;
+}
+//Calculate the world position used by GetMaterialVertexParameters,here is out to screen;
+float4 VertexFactoryGetWorldPosition(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates)
+{
+	return Intermediates.WorldPosition;
+}
+
+float3 VertexFactoryGetWorldNormal(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates)
+{
+	return float3(0,0,1);
+}
+
+float4 VertexFactoryGetRasterizedWorldPosition(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates, float4 TranslatedWorldPosition)
+{
+	return TranslatedWorldPosition;
+}
+
+float3 VertexFactoryGetPositionForVertexLighting(FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates, float3 TranslatedWorldPosition)
+{
+	return TranslatedWorldPosition;
+}
+
+/**
+ * Constructs values that need to be interpolated from the vertex shader to the pixel shader.
+ * @param Input - Vertex attributes.
+ * @param Intermediates - Intermediates computed for this vertex.
+ * @returns interpolants.
+ */
+FVertexFactoryInterpolantsVSToPS VertexFactoryGetInterpolantsVSToPS( FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates, FMaterialVertexParameters VertexParameters )
+{
+	FVertexFactoryInterpolantsVSToPS Interpolants;
+	Interpolants.TexCoords = Input.TexCoord;
+
+#if INSTANCED_STEREO
+	Interpolants.EyeIndex = 0;
+#endif
+
+	return Interpolants;
+}
+
+/**
+ * Computes the position of this vertex last frame in world space.
+ * @param Input - Vertex attributes.
+ * @param Intermediates - Intermediates computed for this vertex.
+ * @returns the previous position of this vertex in world space.
+ */
+float4 VertexFactoryGetPreviousWorldPosition( FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates )
+{
+	return Intermediates.WorldPosition;
+}
+
+/**
+ * Computes the tangent basis for this vertex in world space.
+ * @param Input - Vertex attributes.
+ * @param Intermediates - Intermediates computed for this vertex.
+ * @returns the tangent basis for this vertex in world space.
+ */
+float3x3 VertexFactoryGetTangentToLocal( FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates )
+{
+	float3x3 TangentToLocal;
+	TangentToLocal[0] = float3(1,0,0);
+	TangentToLocal[1] = float3(0,1,0);
+	TangentToLocal[2] = float3(0,0,1);
+	return TangentToLocal;
+}
+
+float4 VertexFactoryGetTranslatedPrimitiveVolumeBounds(FVertexFactoryInterpolantsVSToPS Interpolants)
+{
+	return 0;
+}
+
+uint VertexFactoryGetPrimitiveId(FVertexFactoryInterpolantsVSToPS Interpolants)
+{
+	return 0;
+}

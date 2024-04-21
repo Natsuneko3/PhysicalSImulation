@@ -34,12 +34,12 @@ public:
 	virtual bool IsActiveThisFrame_Internal(const FSceneViewExtensionContext& Context) const;
 	//~ End ISceneViewExtension Interface
 
-	void CreateMeshBatch(struct FMeshBatch&, const FPhysicalSimulationSceneProxy*, const class FMaterialRenderProxy*) const;
 
+	void GetDynamicMeshElements(const TArray<const FSceneView*>& Views, const FSceneViewFamily& ViewFamily, uint32 VisibilityMap, FMeshElementCollector& Collector,const FPhysicalSimulationSceneProxy* SceneProxy) const;
 	void AddProxy(FPhysicalSimulationSceneProxy* Proxy);
 	void RemoveProxy(FPhysicalSimulationSceneProxy* Proxy);
 
-	void Initial(FPhysicalSolverContext* InContext);
+	void Initial(FRHICommandListBase& RHICmdList);
 	/*void InitDelegate();
 	void ReleaseDelegate();
 	void Render_RenderThread(FPostOpaqueRenderParameters& Parameters);*/
@@ -50,6 +50,7 @@ public:
 
 private:
 	//FPhysicalSolverContext* SolverContext;
+	TEnumAsByte<ERHIFeatureLevel::Type> FeatureLevel;
 	FPhysicalSolverContext* SolverContext;
 	FPostOpaqueRenderDelegate RenderDelegate;
 	UPhysicalSimulationComponent* Component;
@@ -60,5 +61,5 @@ private:
 	FDelegateHandle RenderDelegateHandle;
 	TArray<UTextureRenderTarget*> OutPutTextures;
 
-	TUniquePtr<class FInstancedStaticMeshVertexFactory> VertexFactory;
+	TUniquePtr<FInstancedStaticMeshVertexFactory> VertexFactory;
 };

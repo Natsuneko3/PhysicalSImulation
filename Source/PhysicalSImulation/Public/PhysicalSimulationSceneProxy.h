@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "UObject/Object.h"
-#include "PhysicalSimulationSceneProxy.generated.h"
+
 
 /**
  * 
@@ -22,7 +22,8 @@ public:
 protected:
 	//FPrimitiveSceneProxy Interface
 	virtual SIZE_T GetTypeHash() const override;
-	virtual void CreateRenderThreadResources() override;
+
+	virtual void CreateRenderThreadResources(FRHICommandListBase& RHICmdList) override;
 	virtual void DestroyRenderThreadResources() override;
 	virtual void GetDynamicMeshElements(const TArray<const FSceneView*>& Views, const FSceneViewFamily& ViewFamily, uint32 VisibilityMap, FMeshElementCollector& Collector) const override;
 	virtual FPrimitiveViewRelevance GetViewRelevance(const FSceneView* View) const override;

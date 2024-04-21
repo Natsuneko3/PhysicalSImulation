@@ -118,15 +118,16 @@ FPhysical2DFluidSolver::FPhysical2DFluidSolver()
 	GridSize = FIntPoint(128);
 }
 
-void FPhysical2DFluidSolver::SetParameter(FSolverParameter* InParameter)
+void FPhysical2DFluidSolver::SetParameter(FPhysicalSolverContext* InContext)
 {
-	FIntPoint InSize = FIntPoint(InParameter->FluidParameter.SolverBaseParameter.GridSize.X,
-	                             InParameter->FluidParameter.SolverBaseParameter.GridSize.Y) - 1;
+	FIntPoint InSize = FIntPoint(Context->SolverParameter->FluidParameter.SolverBaseParameter.GridSize.X,
+	                             Context->SolverParameter->FluidParameter.SolverBaseParameter.GridSize.Y) - 1;
 	GridSize = InSize.ComponentMax(8); //FMath::Max(,);
-	SolverParameter = &InParameter->FluidParameter;
+
+	Context = InContext;
 }
 
-void FPhysical2DFluidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder,FPhysicalSolverContext* Context,FSceneView& InView)
+void FPhysical2DFluidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder,FSceneView& InView)
 {
 	DECLARE_GPU_STAT(PlaneFluidSolver)
 	RDG_EVENT_SCOPE(GraphBuilder, "PlaneFluidSolver");
@@ -159,7 +160,7 @@ void FPhysical2DFluidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder,FPhys
 
 	FShaderPrintData ShaderPrintData = ShaderPrint::CreateShaderPrintData(GraphBuilder, ShaderPrintSetup);
 
-	auto SetParameter = [this,&GraphBuilder,Context,ShaderPrintData,SimulationTexture](F2DFluidCS::FParameters* InPassParameters, bool bAdvectionDensity, int IterationIndex
+	auto SetParameter = [this,&GraphBuilder,ShaderPrintData,SimulationTexture](F2DFluidCS::FParameters* InPassParameters, bool bAdvectionDensity, int IterationIndex
 	                                                 , FRDGTextureUAVRef SimUAV, FRDGTextureUAVRef PressureUAV, FRDGTextureSRVRef SimSRV, int ShaderType)
 	{
 		InPassParameters->FluidParameter = *SolverParameter;
@@ -405,10 +406,10 @@ void FPhysical2DFluidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder,FPhys
 	//OutTexture = SimulationGrid;
 }
 
-void FPhysical2DFluidSolver::Initial(FPhysicalSolverContext* Context)
+void FPhysical2DFluidSolver::Initial(FRHICommandListBase& RHICmdList)
 {
 	Frame = 0;
-	SetParameter(Context->SolverParameter);
+	//SetParameter(Context->SolverParameter);
 	InitialedDelegate.Broadcast();
 }
 

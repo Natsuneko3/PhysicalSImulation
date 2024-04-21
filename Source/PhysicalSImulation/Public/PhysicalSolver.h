@@ -13,8 +13,8 @@
  */
 
 
-
-DECLARE_STATS_GROUP(TEXT("Physical Simulation"),STATGROUP_PS,STATCAT_Advanced)
+class FPhysicalSimulationSceneProxy;
+DECLARE_STATS_GROUP(TEXT("Physical Simulation"), STATGROUP_PS, STATCAT_Advanced)
 
 BEGIN_SHADER_PARAMETER_STRUCT(FSolverBaseParameter, PHYSICALSIMULATION_API)
 SHADER_PARAMETER(FVector3f,GridSize)
@@ -84,10 +84,12 @@ class FPhysicalSolverBase
 
 public:
 	int Frame = 0;
-	virtual void SetParameter(FSolverParameter* InParameter){}
-	virtual void Initial(FPhysicalSolverContext* Context){}
+	virtual void SetParameter(FPhysicalSolverContext* InContext){}
+	virtual void Initial(FRHICommandListBase& RHICmdList){}
 	virtual void Release(){}
-	virtual void Update_RenderThread(FRDGBuilder& GraphBuilder,FPhysicalSolverContext* Context,FSceneView& InView){}
+	virtual void Update_RenderThread(FRDGBuilder& GraphBuilder,FSceneView& InView){}
+	virtual void RenderParticle(){}
+	virtual void GetDynamicMeshElements(const TArray<const FSceneView*>& Views, const FSceneViewFamily& ViewFamily, uint32 VisibilityMap, FMeshElementCollector& Collector,const FPhysicalSimulationSceneProxy* SceneProxy){}
 	FPhysicalSolverInitialed InitialedDelegate;
 	
 };
