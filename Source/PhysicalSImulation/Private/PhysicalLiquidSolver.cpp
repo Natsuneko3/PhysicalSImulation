@@ -143,6 +143,7 @@ void FPhysicalLiquidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder,FScene
 				float* ParticleDebug = (float*)ParticleReadback->Lock(LastNumParticle * NUMATTRIBUTE * sizeof(float));
 				for(int i = 0;i<int(LastNumParticle);i++)
 				{
+
 					int ID = Particles[i];
 					float age = ParticleDebug[i * NUMATTRIBUTE];
 					float PositionX = ParticleDebug[i * NUMATTRIBUTE + 1];
@@ -152,6 +153,8 @@ void FPhysicalLiquidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder,FScene
 					float VelocityX = ParticleDebug[i * NUMATTRIBUTE + 4];
 					float VelocityY = ParticleDebug[i * NUMATTRIBUTE + 5];
 					float VelocityZ = ParticleDebug[i * NUMATTRIBUTE + 6];
+					FVector Position = FVector(PositionX,PositionY,PositionZ);
+					DrawDebugPoint(Context->World,Position,2,FColor::Green);
 					UE_LOG(LogSimulation,Log,TEXT("ID: %i"),i);
 					UE_LOG(LogSimulation,Log,TEXT("Active: %i"),ID);
 					UE_LOG(LogSimulation,Log,TEXT("Age: %f"),age);
@@ -296,8 +299,9 @@ void FPhysicalLiquidSolver::Initial(FRHICommandListBase& RHICmdList)
 	}
 	RHICmdList.UnlockBuffer(ParticleIDBuffer.Buffer);
 	RHICmdList.UnlockBuffer(ParticleAttributeBuffer.Buffer);
-	VertexFactory->SetInstanceBuffer(  ParticleAttributeBuffer.SRV);
-	VertexFactory->InitRHI(RHICmdList);
+	VertexFactory = MakeUnique<FPhysicalSimulationVertexFactory>(ERHIFeatureLevel::SM5);
+	VertexFactory->SetInstanceBuffer(ParticleAttributeBuffer.SRV);
+	//VertexFactory->InitRHI(RHICmdList);
 
 }
 
@@ -322,6 +326,8 @@ void FPhysicalLiquidSolver::GetDynamicMeshElements(const TArray<const FSceneView
 	MeshBatch.bUseForDepthPass = false;
 
 	const FStaticMeshLODResources& LODModel = SceneProxy->GetStaticMesh()->GetRenderData()->LODResources[0];
+	VertexFactory->SetUpVertexBuffer(LODModel);
+	VertexFactory->InitResource();
 	FMeshBatchElement& BatchElement = MeshBatch.Elements[0];
 	BatchElement.PrimitiveUniformBuffer = SceneProxy->GetUniformBuffer();
 	BatchElement.IndexBuffer = &LODModel.IndexBuffer;
@@ -330,7 +336,7 @@ void FPhysicalLiquidSolver::GetDynamicMeshElements(const TArray<const FSceneView
 	BatchElement.NumInstances = LastNumParticle;
 	BatchElement.MaxVertexIndex = LODModel.GetNumVertices() - 1;
 	BatchElement.NumPrimitives = LODModel.GetNumTriangles();
-	BatchElement.VertexFactoryUserData = VertexFactory->GetSpriteUniformBuffer();
+	BatchElement.VertexFactoryUserData = VertexFactory->GetUniformBuffer();
 	for(int i = 0;i< Views.Num();i++)
 	{
 		Collector.AddMesh(i,MeshBatch);

@@ -127,7 +127,7 @@ void UPhysicalSimulationComponent::UpdateSolverContext()
 		PhysicalSolverContext.ActorName = GetOwner()->GetName();
 	}
 
-
+	PhysicalSolverContext.World = GetWorld();
 	PhysicalSolverContext.bSimulation = bSimulation;
 	PhysicalSolverContext.SimulatorType = SimulatorType;
 	PhysicalSolverContext.SolverParameter = &SolverParameter;

@@ -77,6 +77,7 @@ struct FPhysicalSolverContext
 	TArray<UTextureRenderTarget*> OutputTextures;
 	bool bSimulation = false;
 	FString ActorName;
+	UWorld* World;
 };
 
 class FPhysicalSolverBase

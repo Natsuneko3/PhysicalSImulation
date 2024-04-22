@@ -64,7 +64,7 @@ bool FPhysicalSimulationViewExtension::IsActiveThisFrame_Internal(const FSceneVi
 
 void FPhysicalSimulationViewExtension::GetDynamicMeshElements(const TArray<const FSceneView*>& Views, const FSceneViewFamily& ViewFamily, uint32 VisibilityMap, FMeshElementCollector& Collector,const FPhysicalSimulationSceneProxy* SceneProxy) const
 {
-	PhysicalSolver->GetDynamicMeshElements(Views,ViewFamily,VisibilityMap,Collector,SceneProxy);
+	//PhysicalSolver->GetDynamicMeshElements(Views,ViewFamily,VisibilityMap,Collector,SceneProxy);
 }
 
 /*void FPhysicalSimulationViewExtension::CreateMeshBatch(FMeshBatch& MeshBatch, const FPhysicalSimulationSceneProxy* PrimitiveProxy, const FMaterialRenderProxy* MaterialProxy) const

@@ -2,27 +2,28 @@
 
 #pragma once
 
-BEGIN_GLOBAL_SHADER_PARAMETER_STRUCT( FParticleUniformParameters, )
+/*BEGIN_GLOBAL_SHADER_PARAMETER_STRUCT( FParticleUniformParameters, )
 	SHADER_PARAMETER_SRV(Buffer<float>, InstanceParticle)
 
-END_GLOBAL_SHADER_PARAMETER_STRUCT()
+END_GLOBAL_SHADER_PARAMETER_STRUCT()*/
 
 
-class PHYSICALSIMULATION_API FPhysicalSimulationVertexFactory : public FVertexFactory
+class PHYSICALSIMULATION_API FPhysicalSimulationVertexFactory : public FLocalVertexFactory
 {
 public:
 	DECLARE_VERTEX_FACTORY_TYPE(FPhysicalSimulationVertexFactor);
-
+	FPhysicalSimulationVertexFactory(ERHIFeatureLevel::Type InFeatureLevel)
+	: FLocalVertexFactory(InFeatureLevel, "FPhysicalSimulationVertexFactory"){}
 	virtual void InitRHI(FRHICommandListBase& RHICmdList) override;
 
 
 	/**
 	 * Retrieve the uniform buffer for this vertex factory.
 	 */
-	FORCEINLINE FRHIUniformBuffer* GetSpriteUniformBuffer()
+	/*FORCEINLINE FRHIUniformBuffer* GetSpriteUniformBuffer()
 	{
 		return UniformBuffer;
-	}
+	}*/
 
 	/**
 	 * Should we cache the material's shadertype on this platform with this vertex factory?
@@ -38,7 +39,7 @@ public:
 	 * Get vertex elements used when during PSO precaching materials using this vertex factory type
 	 */
 	static  void GetPSOPrecacheVertexFetchElements(EVertexInputStreamType VertexInputStreamType, FVertexDeclarationElementList& Elements);
-	static  void GetVertexElements(ERHIFeatureLevel::Type FeatureLevel, bool bSupportsManualVertexFetch, FStaticMeshDataType& Data, FVertexDeclarationElementList& Elements);
+	//static  void GetVertexElements(ERHIFeatureLevel::Type FeatureLevel, bool bSupportsManualVertexFetch, FStaticMeshDataType& Data, FVertexDeclarationElementList& Elements);
 
 
 
@@ -51,11 +52,13 @@ public:
 	{
 		InstanceParticleSRV = InInstancePositionSRV;
 	}
+
+	void SetUpVertexBuffer(const FStaticMeshLODResources& LODResources);
 protected:
-	static  void GetVertexElements(ERHIFeatureLevel::Type FeatureLevel, bool bSupportsManualVertexFetch, FStaticMeshDataType& Data, FVertexDeclarationElementList& Elements, FVertexStreamList& InOutStreams);
+	//static  void GetVertexElements(ERHIFeatureLevel::Type FeatureLevel, bool bSupportsManualVertexFetch, FStaticMeshDataType& Data, FVertexDeclarationElementList& Elements, FVertexStreamList& InOutStreams);
 	FStaticMeshDataType Data;
 private:
-	TUniformBufferRef<FParticleUniformParameters> UniformBuffer;
+	//TUniformBufferRef<FParticleUniformParameters> UniformBuffer;
 
 	FRHIShaderResourceView* InstanceParticleSRV;
 };

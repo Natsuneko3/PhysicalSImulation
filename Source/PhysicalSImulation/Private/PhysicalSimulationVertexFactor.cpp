@@ -6,7 +6,7 @@
 #include "MeshDrawShaderBindings.h"
 #include "MeshMaterialShader.h"
 
-IMPLEMENT_GLOBAL_SHADER_PARAMETER_STRUCT(FParticleUniformParameters,"ParticleParameter")
+//IMPLEMENT_GLOBAL_SHADER_PARAMETER_STRUCT(FParticleUniformParameters,"ParticleParameter")
 class FParticleVertexFactoryShaderParameters : public FLocalVertexFactoryShaderParametersBase
 {
 	DECLARE_TYPE_LAYOUT(FParticleVertexFactoryShaderParameters, NonVirtual);
@@ -29,14 +29,19 @@ class FParticleVertexFactoryShaderParameters : public FLocalVertexFactoryShaderP
 	{
 		FPhysicalSimulationVertexFactory* SpriteVF = (FPhysicalSimulationVertexFactory*)VertexFactory;
 		//FLocalVertexFactoryShaderParametersBase::GetElementShaderBindingsBase(Scene, View, Shader, InputStreamType, FeatureLevel, VertexFactory, BatchElement, VertexFactoryUniformBuffer, ShaderBindings, VertexStreams);
+		FRHIUniformBuffer* VertexFactoryUniformBuffer = static_cast<FRHIUniformBuffer*>(BatchElement.VertexFactoryUserData);
+		// FLocalVertexFactoryShaderParametersBase::GetElementShaderBindingsBase is not exposed, so we have to re-write it:
 
-
-		ShaderBindings.Add(Shader->GetUniformBufferParameter<FParticleUniformParameters>(), SpriteVF->GetSpriteUniformBuffer());
+		if (SpriteVF->SupportsManualVertexFetch(FeatureLevel) || UseGPUScene(GMaxRHIShaderPlatform, FeatureLevel))
+		{
+			ShaderBindings.Add(Shader->GetUniformBufferParameter<FLocalVertexFactoryUniformShaderParameters>(), VertexFactoryUniformBuffer);
+		}
+		//ShaderBindings.Add(Shader->GetUniformBufferParameter<FParticleUniformParameters>(), SpriteVF->GetSpriteUniformBuffer());
 		ShaderBindings.Add(InstanceParticleSRV, SpriteVF->GetInstancePositionSRV());
 	}
 
 private:
-	LAYOUT_FIELD(FShaderParameter, InstanceParticleSRV);
+	LAYOUT_FIELD(FShaderResourceParameter, InstanceParticleSRV);
 };
 
 
@@ -53,9 +58,20 @@ void FPhysicalSimulationVertexFactory::InitRHI(FRHICommandListBase& RHICmdList)
 {
 	const bool bSupportsManualVertexFetch = SupportsManualVertexFetch(GetFeatureLevel());
 	FVertexDeclarationElementList Elements;
-	GetVertexElements(GetFeatureLevel(), bSupportsManualVertexFetch, Data, Elements, Streams);
+	//GetVertexElements(GetFeatureLevel(), bSupportsManualVertexFetch, Data, Elements, Streams);
+	//FVertexStreamList InOutStreams;
+	if (Data.PositionComponent.VertexBuffer != NULL)
+	{
+		Elements.Add(AccessStreamComponent(Data.PositionComponent, 0));//, InOutStreams));
+	}
+	if (Data.TextureCoordinates.Num())
+	{
+		Elements.Add(AccessStreamComponent(Data.TextureCoordinates[0], 1));//, InOutStreams));
+	}
 	AddPrimitiveIdStreamElement(EVertexInputStreamType::Default, Elements, 2, 2);
 	InitDeclaration(Elements);
+	InitResource();
+
 }
 
 bool FPhysicalSimulationVertexFactory::ShouldCompilePermutation(const FVertexFactoryShaderPermutationParameters& Parameters)
@@ -73,12 +89,19 @@ void FPhysicalSimulationVertexFactory::GetPSOPrecacheVertexFetchElements(EVertex
 	//Elements.Add(FVertexElement(0, 0, VET_Float2, 0, 0, false));
 }
 
-void FPhysicalSimulationVertexFactory::GetVertexElements(ERHIFeatureLevel::Type FeatureLevel, bool bSupportsManualVertexFetch, FStaticMeshDataType& Data, FVertexDeclarationElementList& Elements)
+/*void FPhysicalSimulationVertexFactory::GetVertexElements(ERHIFeatureLevel::Type FeatureLevel, bool bSupportsManualVertexFetch, FStaticMeshDataType& Data, FVertexDeclarationElementList& Elements)
 {
 	FVertexStreamList InOutStreams;
 	GetVertexElements(FeatureLevel, bSupportsManualVertexFetch, Data, Elements, InOutStreams);
+}*/
+
+void FPhysicalSimulationVertexFactory::SetUpVertexBuffer(const FStaticMeshLODResources& LODResources)
+{
+	LODResources.VertexBuffers.PositionVertexBuffer.BindPositionVertexBuffer(this, Data);
+	LODResources.VertexBuffers.StaticMeshVertexBuffer.BindTangentVertexBuffer(this, Data);
 }
 
+/*
 void FPhysicalSimulationVertexFactory::GetVertexElements(ERHIFeatureLevel::Type FeatureLevel, bool bSupportsManualVertexFetch, FStaticMeshDataType& Data, FVertexDeclarationElementList& Elements,
                                                          FVertexStreamList& InOutStreams)
 {
@@ -91,3 +114,4 @@ void FPhysicalSimulationVertexFactory::GetVertexElements(ERHIFeatureLevel::Type 
 		Elements.Add(AccessStreamComponent(Data.TextureCoordinates[0], 1, InOutStreams));
 	}
 }
+*/
