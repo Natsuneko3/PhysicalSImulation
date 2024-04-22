@@ -25,6 +25,7 @@ public:
 	virtual void PostInitialize() override;
 
 	TSharedPtr<FPhysicalSimulationViewExtension> FindOrCreateViewExtension(UPhysicalSimulationComponent* InComponent);
-	void RemoveViewExtension(FString InName);
-	TMap<FString,TSharedPtr<FPhysicalSimulationViewExtension>> PhysicalSolverViewExtensions;
+	void RemoveViewExtension(uint32 ID);
+	TMap<uint32,TSharedPtr<FPhysicalSimulationViewExtension>> PhysicalSolverViewExtensions;
+	TArray<FVector> OutParticle;
 };

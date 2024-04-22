@@ -1,3 +1,4 @@
+/*
 // Copyright Natsu Neko, Inc. All Rights Reserved.
 
 
@@ -7,7 +8,7 @@
 #include "MeshMaterialShader.h"
 
 //IMPLEMENT_GLOBAL_SHADER_PARAMETER_STRUCT(FParticleUniformParameters,"ParticleParameter")
-class FParticleVertexFactoryShaderParameters : public FLocalVertexFactoryShaderParametersBase
+class FParticleVertexFactoryShaderParameters : public FVertexFactoryShaderParameters
 {
 	DECLARE_TYPE_LAYOUT(FParticleVertexFactoryShaderParameters, NonVirtual);
 
@@ -48,7 +49,7 @@ private:
 IMPLEMENT_TYPE_LAYOUT(FParticleVertexFactoryShaderParameters);
 IMPLEMENT_VERTEX_FACTORY_PARAMETER_TYPE(FPhysicalSimulationVertexFactory, SF_Vertex, FParticleVertexFactoryShaderParameters);
 
-IMPLEMENT_VERTEX_FACTORY_PARAMETER_TYPE(FPhysicalSimulationVertexFactory, SF_Pixel, FParticleVertexFactoryShaderParameters);
+//IMPLEMENT_VERTEX_FACTORY_PARAMETER_TYPE(FPhysicalSimulationVertexFactory, SF_Pixel, FParticleVertexFactoryShaderParameters);
 
 IMPLEMENT_VERTEX_FACTORY_TYPE(FPhysicalSimulationVertexFactory, "/PluginShader/PhysicalSimulationVertexFactory.ush",
                               EVertexFactoryFlags::UsedWithMaterials
@@ -93,7 +94,7 @@ void FPhysicalSimulationVertexFactory::GetPSOPrecacheVertexFetchElements(EVertex
 {
 	FVertexStreamList InOutStreams;
 	GetVertexElements(FeatureLevel, bSupportsManualVertexFetch, Data, Elements, InOutStreams);
-}*/
+}#1#
 
 void FPhysicalSimulationVertexFactory::SetUpVertexBuffer(const FStaticMeshLODResources& LODResources)
 {
@@ -114,4 +115,5 @@ void FPhysicalSimulationVertexFactory::GetVertexElements(ERHIFeatureLevel::Type 
 		Elements.Add(AccessStreamComponent(Data.TextureCoordinates[0], 1, InOutStreams));
 	}
 }
+#1#
 */

@@ -28,7 +28,7 @@ class FPhysicalLiquidSolver:public FPhysicalSolverBase
 	float LastNumParticle;
 	uint32 DeadParticle;
 private:
-	TUniquePtr<FPhysicalSimulationVertexFactory> VertexFactory;
+	//TUniquePtr<FPhysicalSimulationVertexFactory> VertexFactory;
 	FPhysicalSolverContext* Context;
 	int32 AllocatedInstanceCounts = 0;
 	FRWBuffer ParticleIDBuffer;

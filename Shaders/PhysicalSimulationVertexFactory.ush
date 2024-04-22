@@ -1,5 +1,5 @@
-#include "/Engine/Private/VertexFactoryCommon.ush"
-#include "/Engine/Private/ParticleVertexFactoryCommon.ush"
+/*#include "/Engine/Private/VertexFactoryCommon.ush"
+#include "/Engine/Private/LocalVertexFactoryCommon.ush"
 
 
 Buffer<float>InstanceParticle;
@@ -23,16 +23,16 @@ struct FVertexFactoryInterpolantsVSToPS
 struct FVertexFactoryIntermediates
 {
 
-	/** The position of the vertex in translated world space. */
-	float3 WorldPosition;
-	/** Particle translated world space position and size. */
+	/** The position of the vertex in translated world space. #1#
+	float4 WorldPosition;
+	/** Particle translated world space position and size. #1#
 	float4 TranslatedWorldPositionAndSize;
 
-	/** The texture coordinate at this vertex. */
+	/** The texture coordinate at this vertex. #1#
 	float4 TexCoord;
 
 	float4 Color;
-	/** The velocity of the particle, XYZ: direction, W: speed. */
+	/** The velocity of the particle, XYZ: direction, W: speed. #1#
 	float4 ParticleVelocity;
 
 	float2 ParticleSize;
@@ -45,6 +45,10 @@ FPrimitiveSceneData GetPrimitiveData(FVertexFactoryIntermediates Intermediates)
 {
 	return Intermediates.SceneData.Primitive;
 }
+FInstanceSceneData GetInstanceData(FVertexFactoryIntermediates Intermediates)
+{
+	return Intermediates.SceneData.InstanceData;
+}
 
 FVertexFactoryIntermediates GetVertexFactoryIntermediates(FVertexFactoryInput Input)
 {
@@ -54,7 +58,7 @@ FVertexFactoryIntermediates GetVertexFactoryIntermediates(FVertexFactoryInput In
 	ParticlePosition.y = InstanceParticle[Input.InstanceId  * 7 + 2];
 	ParticlePosition.z = InstanceParticle[Input.InstanceId  * 7 + 3];
 	Intermediates.SceneData = VF_GPUSCENE_GET_INTERMEDIATES(Input);
-	Intermediates.WorldPosition = ParticlePosition + Input.Position.xyz;
+	Intermediates.WorldPosition = float4(ParticlePosition,0.f) + Input.Position;
 	Intermediates.ParticleSize = 1.0;
 	return  Intermediates;
 }
@@ -65,7 +69,7 @@ FMaterialVertexParameters GetMaterialVertexParameters(FVertexFactoryInput Input,
 	Result.SceneData = Intermediates.SceneData;
 	Result.WorldPosition = WorldPosition;
 	Result.VertexColor = 0.0;
-	Result.TangentToWorld = float3(0,1,0);
+	//Result.TangentToWorld = float3(0,1,0);
 	Result.Particle.MacroUV = 0.0;
 	Result.Particle.Color = Intermediates.Color;
 	Result.Particle.MotionBlurFade = 1.0f;
@@ -79,7 +83,7 @@ FMaterialVertexParameters GetMaterialVertexParameters(FVertexFactoryInput Input,
 	return Result;
 }
 
-/** Converts from vertex factory specific interpolants to a FMaterialPixelParameters, which is used by material inputs. */
+/** Converts from vertex factory specific interpolants to a FMaterialPixelParameters, which is used by material inputs. #1#
 FMaterialPixelParameters GetMaterialPixelParameters(FVertexFactoryInterpolantsVSToPS Interpolants, float4 SvPosition)
 {
 	// GetMaterialPixelParameters is responsible for fully initializing the result
@@ -116,7 +120,7 @@ float3 VertexFactoryGetPositionForVertexLighting(FVertexFactoryInput Input, FVer
  * @param Input - Vertex attributes.
  * @param Intermediates - Intermediates computed for this vertex.
  * @returns interpolants.
- */
+ #1#
 FVertexFactoryInterpolantsVSToPS VertexFactoryGetInterpolantsVSToPS( FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates, FMaterialVertexParameters VertexParameters )
 {
 	FVertexFactoryInterpolantsVSToPS Interpolants;
@@ -134,7 +138,7 @@ FVertexFactoryInterpolantsVSToPS VertexFactoryGetInterpolantsVSToPS( FVertexFact
  * @param Input - Vertex attributes.
  * @param Intermediates - Intermediates computed for this vertex.
  * @returns the previous position of this vertex in world space.
- */
+ #1#
 float4 VertexFactoryGetPreviousWorldPosition( FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates )
 {
 	return Intermediates.WorldPosition;
@@ -145,7 +149,7 @@ float4 VertexFactoryGetPreviousWorldPosition( FVertexFactoryInput Input, FVertex
  * @param Input - Vertex attributes.
  * @param Intermediates - Intermediates computed for this vertex.
  * @returns the tangent basis for this vertex in world space.
- */
+ #1#
 float3x3 VertexFactoryGetTangentToLocal( FVertexFactoryInput Input, FVertexFactoryIntermediates Intermediates )
 {
 	float3x3 TangentToLocal;
@@ -164,3 +168,11 @@ uint VertexFactoryGetPrimitiveId(FVertexFactoryInterpolantsVSToPS Interpolants)
 {
 	return 0;
 }
+uint VertexFactoryGetInstanceIdLoadIndex(FVertexFactoryIntermediates Intermediates)
+{
+	return GetSceneDataIntermediates(Intermediates).InstanceIdLoadIndex;
+}
+uint VertexFactoryGetViewIndex(FVertexFactoryIntermediates Intermediates)
+{
+	return GetSceneDataIntermediates(Intermediates).ViewIndex;
+}*/

@@ -67,7 +67,7 @@ void FPhysicalSimulationSceneProxy::GetDynamicMeshElements(const TArray<const FS
 			Collector.AddMesh(ViewIndex, Mesh);
 		}
 	}*/
-	ViewExtension->GetDynamicMeshElements(Views,ViewFamily,VisibilityMap,Collector,this);
+	//ViewExtension->GetDynamicMeshElements(Views,ViewFamily,VisibilityMap,Collector,this);
 }
 
 FPrimitiveViewRelevance FPhysicalSimulationSceneProxy::GetViewRelevance(const FSceneView* View) const

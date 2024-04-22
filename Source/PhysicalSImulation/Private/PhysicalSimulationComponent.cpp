@@ -22,6 +22,7 @@ UPhysicalSimulationComponent::UPhysicalSimulationComponent()
 		UStaticMesh* Mesh = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Plane"));
 		SetStaticMesh(Mesh);
 	}
+	Initial();
 
 }
 
@@ -49,21 +50,38 @@ void UPhysicalSimulationComponent::Initial()
 
 void UPhysicalSimulationComponent::InitializeComponent()
 {
-	Initial();
+
 }
 
 void UPhysicalSimulationComponent::BeginDestroy()
 {
 	Super::BeginDestroy();
-	if(PhysicalSolverViewExtension.IsValid())
+	if(GetWorld())
 	{
-		PhysicalSolverViewExtension.Reset();
+		UPhysicalSimulationSystem* SubSystem = GetWorld()->GetSubsystem<UPhysicalSimulationSystem>();
+		if(SubSystem)
+		{
+			SubSystem->RemoveViewExtension(GetUniqueID());
+		}
 	}
+
 }
 
 void UPhysicalSimulationComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+	UPhysicalSimulationSystem* SubSystem = GetWorld()->GetSubsystem<UPhysicalSimulationSystem>();
+	if(SubSystem)
+	{
+
+		for(int i = 0;i < SubSystem->OutParticle.Num();i++)
+		{
+			DrawDebugPoint(GetWorld(),SubSystem->OutParticle[i],2,FColor::Green);
+		}
+
+	}
+
+
 }
 
 void UPhysicalSimulationComponent::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)

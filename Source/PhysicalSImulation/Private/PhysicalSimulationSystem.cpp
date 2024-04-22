@@ -46,13 +46,13 @@ TSharedPtr<FPhysicalSimulationViewExtension> UPhysicalSimulationSystem::FindOrCr
 		PhysicalSolverViewExtensions.Add(InName,PhysicalSolverViewExtension);
 		return PhysicalSolverViewExtension;
 	}*/
-	FString ComponentName = InComponent->GetName();
-	TSharedPtr<FPhysicalSimulationViewExtension>* PhysicalSolverViewExtension = PhysicalSolverViewExtensions.Find(ComponentName);
+	uint32 ComponentID = InComponent->GetUniqueID();
+	TSharedPtr<FPhysicalSimulationViewExtension>* PhysicalSolverViewExtension = PhysicalSolverViewExtensions.Find(ComponentID);
 	if(!PhysicalSolverViewExtension)
 	{
-		UE_LOG(LogSimulation,Log,TEXT("%s:Create SceneViewExtensions"),*ComponentName)
+		UE_LOG(LogSimulation,Log,TEXT("%s:Create SceneViewExtensions"),*InComponent->GetName())
 		TSharedPtr<FPhysicalSimulationViewExtension> NewViewExtension = FSceneViewExtensions::NewExtension<FPhysicalSimulationViewExtension>(InComponent);
-		PhysicalSolverViewExtensions.Add(ComponentName,NewViewExtension);
+		PhysicalSolverViewExtensions.Add(ComponentID,NewViewExtension);
 		return NewViewExtension;
 	}
 	else
@@ -68,7 +68,7 @@ TSharedPtr<FPhysicalSimulationViewExtension> UPhysicalSimulationSystem::FindOrCr
 
 }
 
-void UPhysicalSimulationSystem::RemoveViewExtension(FString InName)
+void UPhysicalSimulationSystem::RemoveViewExtension(uint32 ID)
 {
-	PhysicalSolverViewExtensions.Remove(InName);
+	PhysicalSolverViewExtensions.Remove(ID);
 }
