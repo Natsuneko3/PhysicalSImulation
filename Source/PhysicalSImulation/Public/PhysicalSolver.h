@@ -52,7 +52,7 @@ enum class ESimulatorType : uint8
 	FLiuquidParameter LiuquidParameter;
 };*/
 
-struct FPhysicalSolverContext
+/*struct FPhysicalSolverContext
 {
 	FPhysicalSolverContext()
 	{
@@ -73,21 +73,24 @@ struct FPhysicalSolverContext
 	bool bSimulation = false;
 	FString ActorName;
 	UWorld* World;
-};
+};*/
 
 class FPhysicalSolverBase
 {
 
 public:
+	FPhysicalSolverBase(FPhysicalSimulationSceneProxy* InSceneProxy):SceneProxy(InSceneProxy){}
 	int Frame = 0;
-	virtual void SetParameter(FPhysicalSimulationSceneProxy* InSceneProxy){}
+	//virtual void SetParameter(FPhysicalSimulationSceneProxy* InSceneProxy){}
 	virtual void Initial(FRHICommandListBase& RHICmdList){}
 	virtual void Release(){}
 	virtual void Update_RenderThread(FRDGBuilder& GraphBuilder,FSceneView& InView){}
 	virtual void RenderParticle(){}
-	virtual void GetDynamicMeshElements(const TArray<const FSceneView*>& Views, const FSceneViewFamily& ViewFamily, uint32 VisibilityMap, FMeshElementCollector& Collector,const FPhysicalSimulationSceneProxy* SceneProxy){}
+	virtual void GetDynamicMeshElements(const TArray<const FSceneView*>& Views, const FSceneViewFamily& ViewFamily, uint32 VisibilityMap, FMeshElementCollector& Collector,const FPhysicalSimulationSceneProxy* InSceneProxy){}
 	FPhysicalSolverInitialed InitialedDelegate;
-private:
-	void SetupSolverBaseParameters(FSolverBaseParameter& Parameter);
+protected:
+	FPhysicalSimulationSceneProxy* SceneProxy;
+	void SetupSolverBaseParameters(FSolverBaseParameter& Parameter,FSceneView& InView);
+
 	
 };

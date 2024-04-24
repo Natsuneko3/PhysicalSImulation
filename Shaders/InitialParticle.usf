@@ -15,7 +15,7 @@ void SpawnParticleCS(uint DispatchThreadId : SV_DispatchThreadID, uint2 GroupThr
 	{
 		Context = SpawnParticle(DispatchThreadId);
 		OutPutParticle(DispatchThreadId,Context);
-		ParticleIDBuffer[DispatchThreadId] = 1;
+		ParticleIDBuffer[DispatchThreadId + 1] = 1;
 	}
 	else
 	{

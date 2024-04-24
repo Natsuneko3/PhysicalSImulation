@@ -16,7 +16,6 @@ UPhysicalSimulationComponent::UPhysicalSimulationComponent()
 {
 	PrimaryComponentTick.bCanEverTick = true;
 	bTickInEditor = true;
-	OutputTextures.Empty();
 	if (!GetStaticMesh())
 	{
 		UStaticMesh* Mesh = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Plane"));
@@ -32,7 +31,7 @@ UPhysicalSimulationComponent::~UPhysicalSimulationComponent()
 
 void UPhysicalSimulationComponent::Initial()
 {
-	if (Material)
+	/*if (Material)
 	{
 		UE_LOG(LogSimulation, Log, TEXT("Physical simulation initial"))
 		CreateSolverTextures();
@@ -41,21 +40,21 @@ void UPhysicalSimulationComponent::Initial()
 		if (SubSystem)
 		{
 			PhysicalSolverViewExtension = SubSystem->FindOrCreateViewExtension(this);
-		}*/
-	}
+		}#1#
+	}*/
 }
 
 void UPhysicalSimulationComponent::BeginDestroy()
 {
 	Super::BeginDestroy();
-	if (GetWorld())
+	/*if (GetWorld())
 	{
 		UPhysicalSimulationSystem* SubSystem = GetWorld()->GetSubsystem<UPhysicalSimulationSystem>();
 		if (SubSystem)
 		{
 			SubSystem->RemoveViewExtension(GetUniqueID());
 		}
-	}
+	}*/
 }
 
 void UPhysicalSimulationComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
@@ -74,6 +73,8 @@ void UPhysicalSimulationComponent::TickComponent(float DeltaTime, ELevelTick Tic
 void UPhysicalSimulationComponent::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
 	Super::PostEditChangeProperty(PropertyChangedEvent);
+
+
 	Initial();
 }
 
@@ -86,6 +87,24 @@ FPrimitiveSceneProxy* UPhysicalSimulationComponent::CreateSceneProxy()
 	return nullptr;
 }
 
+void UPhysicalSimulationComponent::SetTextureToMaterial()
+{
+	FPhysicalSimulationSceneProxy* PSSceneProxy = static_cast<FPhysicalSimulationSceneProxy*>(SceneProxy);
+	UMaterialInstanceDynamic* MID = CreateDynamicMaterialInstance(0, Material.Get());
+	int RTNum = 0;
+	for (int i = 0; i < PSSceneProxy->OutputTextures.Num(); i++)
+	{
+		if (PSSceneProxy->OutputTextures[i])
+		{
+			RTNum++;
+			FString RTName = "RT" + RTNum;
+			MID->SetTextureParameterValue(*RTName, PSSceneProxy->OutputTextures[i]);
+			SetMaterial(0, MID);
+		}
+	}
+}
+
+/*
 void UPhysicalSimulationComponent::SetupSolverParameter()
 {
 	UWorld* World = GetWorld();
@@ -186,7 +205,7 @@ void UPhysicalSimulationComponent::Create2DRenderTarget()
 	/*for(UTextureRenderTarget* RT: OutputTextures)
 	{
 		RT->ReleaseResource();
-	}*/
+	}#1#
 	OutputTextures.Empty();
 	UTextureRenderTarget2D* NewRenderTarget2D = NewObject<UTextureRenderTarget2D>();
 	check(NewRenderTarget2D);
@@ -213,4 +232,4 @@ void UPhysicalSimulationComponent::Create2DRenderTarget()
 	MID->SetTextureParameterValue(TEXT("RT"), OutputTextures[0]);
 	MID->SetTextureParameterValue(TEXT("RT2"), OutputTextures[1]);
 	SetMaterial(0, MID);
-}
+}*/

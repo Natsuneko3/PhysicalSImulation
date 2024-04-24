@@ -1,10 +1,12 @@
 #include "PhysicalLiquidSolver.h"
 #include "GPUSortManager.h"
 #include "PhysicalSimulationSceneProxy.h"
+
 #include "PhysicalSimulationSystem.h"
 #include "RenderGraphBuilder.h"
 #include "RenderGraphUtils.h"
 #include "ShaderParameterStruct.h"
+#include "PhysicalSolver.h"
 DECLARE_CYCLE_STAT(TEXT("Particle To Cell"),STAT_P2G,STATGROUP_PS)
 DECLARE_CYCLE_STAT(TEXT("Cell To Particle"),STAT_G2P,STATGROUP_PS)
 DECLARE_CYCLE_STAT(TEXT("Rasterize"),STAT_Rasterize,STATGROUP_PS)
@@ -102,29 +104,31 @@ IMPLEMENT_GLOBAL_SHADER(FTestShaderCS, "/PluginShader/test.usf", "MainCS", SF_Co
 IMPLEMENT_GLOBAL_SHADER(FSpawnParticleCS,  "/PluginShader/InitialParticle.usf", "SpawnParticleCS", SF_Compute);
 IMPLEMENT_GLOBAL_SHADER(FLiquidParticleCS, "/PluginShader/MPM.usf", "MainCS", SF_Compute);
 
-FPhysicalLiquidSolver::FPhysicalLiquidSolver()
+FPhysicalLiquidSolver::FPhysicalLiquidSolver(FPhysicalSimulationSceneProxy* InSceneProxy)
+: FPhysicalSolverBase(InSceneProxy)
 {
 	LastNumParticle = 0;
 	AllocatedInstanceCounts = 0;
-	GridSize = FIntVector(64);
+	GridSize = SceneProxy->GridSize;
 }
 
-void FPhysicalLiquidSolver::SetParameter(FPhysicalSimulationSceneProxy* InSceneProxy)
+void FPhysicalLiquidSolver::SetLiuquidParameter(FLiuquidParameter& Parameter,FSceneView& InView)
 {
-	GridSize = InSceneProxy->GridSize;
-	//Context = InContext;
+	Parameter.GravityScale = SceneProxy->LiquidSolverParameter->GravityScale;
+	Parameter.LifeTime = SceneProxy->LiquidSolverParameter->LifeTime;
+	SetupSolverBaseParameters(Parameter.SolverBaseParameter,InView);
 }
 
 void FPhysicalLiquidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder,FSceneView& InView)
 {
 	Frame++;
-	float DeltaTime = Context->SolverParameter->FluidParameter.SolverBaseParameter.dt;
+	float DeltaTime = SceneProxy->World->GetDeltaSeconds();
 	FRHICommandListImmediate& RHICmdList = GraphBuilder.RHICmdList;
-	float CurrentNumParticle = LastNumParticle + DeltaTime * Context->SpawnRate;
+	float CurrentNumParticle = LastNumParticle + DeltaTime * SceneProxy->LiquidSolverParameter->SpawnRate;
 	FTextureRHIRef TextureRHI;
-	if(Context->OutputTextures.Num() > 0)
+	if(SceneProxy->OutputTextures.Num() > 0)
 	{
-		TextureRHI = Context->OutputTextures[0]->GetResource()->GetTextureRHI();
+		TextureRHI = SceneProxy->OutputTextures[0]->GetResource()->GetTextureRHI();
 	}
 	else
 	{
@@ -148,7 +152,7 @@ void FPhysicalLiquidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder,FScene
 			{
 				float* ParticleDebug = (float*)ParticleReadback->Lock(LastNumParticle * NUMATTRIBUTE * sizeof(float));
 
-				UPhysicalSimulationSystem* SubSystem = Context->World->GetSubsystem<UPhysicalSimulationSystem>();
+				UPhysicalSimulationSystem* SubSystem = SceneProxy->World->GetSubsystem<UPhysicalSimulationSystem>();
 				if(SubSystem)
 				{
 					SubSystem->OutParticle.Empty();
@@ -229,9 +233,9 @@ void FPhysicalLiquidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder,FScene
 
 		TShaderMapRef<FLiquidParticleCS> LiquidComputeShader(ShaderMap);
 		FLiquidParticleCS::FParameters PassParameters;
+		SetLiuquidParameter(PassParameters.LiuquidParameter,InView);
 		PassParameters.ParticleIDBuffer = ParticleIDBuffer.UAV;
 		PassParameters.ParticleAttributeBuffer = ParticleAttributeBuffer.UAV;
-		PassParameters.LiuquidParameter = //Context->SolverParameter->LiuquidParameter;
 		PassParameters.RasterizeTexture = RasterizeTexture;
 		{
 			SCOPE_CYCLE_COUNTER(STAT_P2G);
@@ -266,7 +270,7 @@ void FPhysicalLiquidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder,FScene
 		EnqueueGPUReadback(RHICmdList);
 
 
-	}else if(Context->OutputTextures.Num() > 0)
+	}else if(SceneProxy->OutputTextures.Num() > 0)
 	{
 		FUnorderedAccessViewRHIRef RasterizeTexture = RHICmdList.CreateUnorderedAccessView(TextureRHI);
 
@@ -304,7 +308,7 @@ void FPhysicalLiquidSolver::Release()
 	ParticleAttributeBuffer.Release();
 }
 
-void FPhysicalLiquidSolver::GetDynamicMeshElements(const TArray<const FSceneView*>& Views, const FSceneViewFamily& ViewFamily, uint32 VisibilityMap, FMeshElementCollector& Collector,const FPhysicalSimulationSceneProxy* SceneProxy)
+void FPhysicalLiquidSolver::GetDynamicMeshElements(const TArray<const FSceneView*>& Views, const FSceneViewFamily& ViewFamily, uint32 VisibilityMap, FMeshElementCollector& Collector,const FPhysicalSimulationSceneProxy* InSceneProxy)
 {
 	/*FMeshBatch MeshBatch = Collector.AllocateMesh();
 	MeshBatch.bUseWireframeSelectionColoring = SceneProxy->IsSelected();

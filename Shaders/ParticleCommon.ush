@@ -24,8 +24,9 @@ ParticleContext SpawnParticle(uint DispatchThreadId)
 {
 	ParticleContext Particle;
 	Particle.Age = 0.0;
-	Particle.Position = float3(RandBBSfloat(float(DispatchThreadId)), RandBBSfloat(float(DispatchThreadId + 2)), RandBBSfloat(float(DispatchThreadId + 3))) * 10;
-	Particle.Position += 100;
+	Particle.Position = float3(RandBBSfloat(float(DispatchThreadId)), RandBBSfloat(float(DispatchThreadId + 2)), RandBBSfloat(float(DispatchThreadId + 3)));
+	Particle.Position = (Particle.Position * 2.0 - 1.0)* 100 ;
+	//Particle.Position += 100;
 	Particle.Velocity = float3(0, 0, -9.8);
 	return Particle;
 }

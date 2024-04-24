@@ -73,18 +73,19 @@ void FilterDeadParticle(uint DispatchThreadId , uint2 GroupThreadId , uint2 Grou
 }
 void ParticleToCell(uint DispatchThreadId )
 {
-	ParticleContext Particle = GetParticle(DispatchThreadId);
+	/*ParticleContext Particle = GetParticle(DispatchThreadId);
 
 	// if(Particle.Age == 0.0)
 	// {
 	// 	Particle = SpawnParticle(DispatchThreadId);
 	// }
-	OutPutParticle(DispatchThreadId,Particle);
+	OutPutParticle(DispatchThreadId,Particle);*/
 }
 void CellToParticle(uint DispatchThreadId )
 {
 	int active = 1;
 	ParticleContext Particle = GetParticle(DispatchThreadId);
+	GroupMemoryBarrierWithGroupSync();
 	Particle.Velocity += float3(0,0,-9.8);
 	Particle.Position += Particle.Velocity * dt;
 	Particle.Age += dt;
@@ -92,7 +93,7 @@ void CellToParticle(uint DispatchThreadId )
 	{
 		active = 0;
 		int DeadNum = 0;
-		InterlockedAdd(ParticleIDBuffer[0],active,DeadNum);
+		InterlockedAdd(ParticleIDBuffer[0],1,DeadNum);
 	}
 	ParticleIDBuffer[DispatchThreadId + 1] = active;
 	OutPutParticle(DispatchThreadId,Particle);

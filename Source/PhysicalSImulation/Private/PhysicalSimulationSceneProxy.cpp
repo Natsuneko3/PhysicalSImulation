@@ -2,13 +2,21 @@
 
 
 #include "PhysicalSimulationSceneProxy.h"
-
 #include "PhysicalSimulationComponent.h"
 #include "PhysicalSimulationSystem.h"
 #include "Engine/TextureRenderTargetVolume.h"
-
+#include "PhysicalSolver.h"
 DECLARE_CYCLE_STAT(TEXT("GetDynamicMeshElements"), STAT_PS_GetDynamicMeshElements, STATGROUP_PS)
+void FPhysicalSolverBase::SetupSolverBaseParameters(FSolverBaseParameter& Parameter,FSceneView& InView)
+{
+	Parameter.dt = SceneProxy->World->GetDeltaSeconds();
+	Parameter.dx = SceneProxy->Dx;
+	Parameter.Time = Frame;
+	Parameter.View = InView.ViewUniformBuffer;
+	Parameter.GridSize = FVector3f(SceneProxy->GridSize.X,SceneProxy->GridSize.Y,1);
+	Parameter.WarpSampler = TStaticSamplerState<SF_Bilinear, AM_Wrap, AM_Wrap, AM_Wrap>::GetRHI();
 
+}
 FPhysicalSimulationSceneProxy::FPhysicalSimulationSceneProxy(UPhysicalSimulationComponent* InComponent)
 	: FPrimitiveSceneProxy(InComponent), Component(InComponent)
 {
@@ -19,13 +27,16 @@ FPhysicalSimulationSceneProxy::FPhysicalSimulationSceneProxy(UPhysicalSimulation
 		switch (Component->SimulatorType)
 		{
 		case ESimulatorType::PlaneSmokeFluid:
-			PhysicalSolver = MakeShareable(new FPhysical2DFluidSolver);
+			PhysicalSolver = MakeShareable(new FPhysical2DFluidSolver(this));
+			Create2DRenderTarget();
 			break;
 		case ESimulatorType::CubeSmokeFluid:
-			PhysicalSolver = MakeShareable(new FPhysical3DFluidSolver);
+			PhysicalSolver = MakeShareable(new FPhysical3DFluidSolver(this));
+			Create3DRenderTarget();
 			break;
 		case ESimulatorType::Liquid:
-			PhysicalSolver = MakeShareable(new FPhysicalLiquidSolver); //new FPhysicalLiquidSolver;
+			PhysicalSolver = MakeShareable(new FPhysicalLiquidSolver(this)); //new FPhysicalLiquidSolver;
+			Create3DRenderTarget();
 			break;
 		}
 	}
@@ -37,6 +48,19 @@ FPhysicalSimulationSceneProxy::FPhysicalSimulationSceneProxy(UPhysicalSimulation
 	int y = FMath::Max(InComponent->GridSize.Y - 1, 8);
 	int z = FMath::Max(InComponent->GridSize.Z - 1, 8);
 	GridSize = FIntVector(x, y, z);
+	World = Component->GetWorld();
+	Dx = Component->Dx;
+	PlandFluidParameters = &Component->PlandFluidParameters;
+	LiquidSolverParameter = &Component->LiquidSolverParameter;
+}
+
+FPhysicalSimulationSceneProxy::~FPhysicalSimulationSceneProxy()
+{
+	FPrimitiveSceneProxy::DestroyRenderThreadResources();
+	if (ViewExtension)
+	{
+		ViewExtension->RemoveProxy(this);
+	}
 }
 
 SIZE_T FPhysicalSimulationSceneProxy::GetTypeHash() const
@@ -57,11 +81,7 @@ void FPhysicalSimulationSceneProxy::CreateRenderThreadResources(FRHICommandListB
 
 void FPhysicalSimulationSceneProxy::DestroyRenderThreadResources()
 {
-	FPrimitiveSceneProxy::DestroyRenderThreadResources();
-	if (ViewExtension)
-	{
-		ViewExtension->RemoveProxy(this);
-	}
+
 }
 
 // These setups associated volume mesh for built-in Unreal passes.

@@ -25,7 +25,7 @@ public:
 	virtual void PostInitialize() override;
 void AddSceneProxyToViewExtension(FPhysicalSimulationSceneProxy* InSceneProxy);
 	//TSharedPtr<FPhysicalSimulationViewExtension> FindOrCreateViewExtension(UPhysicalSimulationComponent* InComponent);
-	void RemoveViewExtension(uint32 ID);
+	//void RemoveViewExtension(uint32 ID);
 	TSharedPtr<FPhysicalSimulationViewExtension> PhysicalSolverViewExtension;
 	TArray<FVector> OutParticle;
 };

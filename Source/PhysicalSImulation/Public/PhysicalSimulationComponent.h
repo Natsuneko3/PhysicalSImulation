@@ -39,7 +39,8 @@ public:
 	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation", meta = (EditCondition = "bUsePhysicalSolver"))
 	ESimulatorType SimulatorType = ESimulatorType::PlaneSmokeFluid;
 
-
+	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation")
+	float Dx = 1;
 
 	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation|2D Smoke Fluid",meta = (EditCondition = "SimulatorType==ESimulatorType::PlaneSmokeFluid"))
 	FPlandFluidParameters PlandFluidParameters;
@@ -61,16 +62,19 @@ public:
 	float GravityScale = 20;
 	*/
 
-	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation|Liquid",meta = (EditCondition = "SimulatorType==ESimulatorType::Liquid"))
+	/*UPROPERTY(EditAnywhere,Category = "PhysicalSimulation|Liquid",meta = (EditCondition = "SimulatorType==ESimulatorType::Liquid"))
 	float SpawnRate = 60;
 
 	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation|Liquid",meta = (EditCondition = "SimulatorType==ESimulatorType::Liquid"))
-	float LifeTime = 2;
+	float LifeTime = 2;*/
 
+	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation|Liquid",meta = (EditCondition = "SimulatorType==ESimulatorType::Liquid"))
+	FLiquidSolverParameter LiquidSolverParameter;
 	UFUNCTION(BlueprintCallable,Category = "PhysicalSimulation")
 	void Initial();
 
 	virtual void BeginDestroy() override;
+
 	/*UPROPERTY(BlueprintReadOnly,Category = "PhysicalSimulation")
 	UTextureRenderTarget* SimulationTexture;
 
@@ -78,31 +82,30 @@ public:
 	UTextureRenderTarget* PressureTexture;*/
 
 	//FSolverParameter SolverParameter;
-	FPhysicalSolverContext PhysicalSolverContext;
-	void UpdateSolverContext();
+	//FPhysicalSolverContext PhysicalSolverContext;
+	//void UpdateSolverContext();
 protected:
 	
 
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 
-
 	virtual FPrimitiveSceneProxy* CreateSceneProxy() override;
 
-	void SetupSolverParameter();
+	//void SetupSolverParameter();
 
 
 	/*FVector3f LastOnwerPosition;
 	FVector3f CenterOnwerPosition;*/
 private:
 
-
-	void CreateSolverTextures();
+	void SetTextureToMaterial();
+	/*void CreateSolverTextures();
 	void Create3DRenderTarget();
-	void Create2DRenderTarget();
+	void Create2DRenderTarget();*/
 	TSharedPtr<FPhysicalSimulationViewExtension,ESPMode::ThreadSafe> PhysicalSolverViewExtension;
 
-	TArray<UTextureRenderTarget*> OutputTextures;
+	//TArray<UTextureRenderTarget*> OutputTextures;
 
 
 	

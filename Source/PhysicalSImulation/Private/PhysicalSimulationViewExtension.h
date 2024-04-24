@@ -40,26 +40,14 @@ public:
 	void RemoveProxy(FPhysicalSimulationSceneProxy* Proxy);
 
 	void Initial(FRHICommandListBase& RHICmdList);
-	/*void InitDelegate();
-	void ReleaseDelegate();
-	void Render_RenderThread(FPostOpaqueRenderParameters& Parameters);*/
 
-	void UpdateParameters(UPhysicalSimulationComponent* InComponent);
-	void Release();
 
 
 private:
 	//FPhysicalSolverContext* SolverContext;
-	TEnumAsByte<ERHIFeatureLevel::Type> FeatureLevel;
-	FPhysicalSolverContext* SolverContext;
 	FPostOpaqueRenderDelegate RenderDelegate;
 	//UPhysicalSimulationComponent* Component;
-	ESimulatorType LastType;
 	TArray<FPhysicalSimulationSceneProxy*> SceneProxies;
-
-	TSharedPtr<FPhysicalSolverBase> PhysicalSolver;
 	FDelegateHandle RenderDelegateHandle;
-	TArray<UTextureRenderTarget*> OutPutTextures;
-
 	TUniquePtr<FInstancedStaticMeshVertexFactory> VertexFactory;
 };

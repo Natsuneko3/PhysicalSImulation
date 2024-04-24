@@ -1,12 +1,12 @@
 #pragma once
 #include "PhysicalSolver.h"
 #include "RenderGraphResources.h"
-//#include "Physical2DFluid.generated.h"
+#include "Physical2DFluidSolver.generated.h"
 
-//USTRUCT(BlueprintType)
+USTRUCT(BlueprintType)
 struct FPlandFluidParameters
 {
-	//GENERATED_BODY()
+	GENERATED_BODY()
 	float VorticityMult = 100;
 	float NoiseFrequency = 5;
 	float NoiseIntensity = 50;
@@ -18,11 +18,9 @@ struct FPlandFluidParameters
 class FPhysical2DFluidSolver :public FPhysicalSolverBase
 {
 public:
-	FPhysical2DFluidSolver();
+	FPhysical2DFluidSolver(FPhysicalSimulationSceneProxy* InSceneProxy) ;
 
-
-	virtual void SetParameter(FPhysicalSimulationSceneProxy* InSceneProxy) override;
-
+	void SetSolverParameter(FFluidParameter& SolverParameter,FSceneView& InView);
 	virtual void Update_RenderThread(FRDGBuilder& GraphBuilder,FSceneView& InView) override;
 
 	virtual void Initial(FRHICommandListBase& RHICmdList) override;
@@ -30,7 +28,7 @@ public:
 	virtual void Release() override;
 	bool bIsInitial = false;
 
-	FFluidParameter* SolverParameter;
+
 	FIntPoint GridSize;
 	FPhysicalSimulationSceneProxy* SceneProxy;
 	//FPhysicalSolverContext* Context;

@@ -3,6 +3,7 @@
 #include "PhysicalSolver.h"
 #include "RHIGPUReadback.h"
 #include "Engine/InstancedStaticMesh.h"
+#include "PhysicalLiquidSolver.generated.h"
 
 BEGIN_SHADER_PARAMETER_STRUCT(FLiuquidParameter, PHYSICALSIMULATION_API)
 	SHADER_PARAMETER_STRUCT_INCLUDE(FSolverBaseParameter, SolverBaseParameter)
@@ -11,19 +12,28 @@ BEGIN_SHADER_PARAMETER_STRUCT(FLiuquidParameter, PHYSICALSIMULATION_API)
 END_SHADER_PARAMETER_STRUCT()
 
 DEFINE_LOG_CATEGORY_STATIC(LogSimulation, Log, All);
+USTRUCT(BlueprintType)
+struct FLiquidSolverParameter
+{
+	GENERATED_BODY()
+	float SpawnRate = 60;
+	float LifeTime = 2;
+	float GravityScale = 20;
+};
+//class FPhysicalSimulationSceneProxy;
 class FPhysicalLiquidSolver:public FPhysicalSolverBase
 {
 	public:
-	FPhysicalLiquidSolver();
+	FPhysicalLiquidSolver(FPhysicalSimulationSceneProxy* InSceneProxy);
 
 
-	virtual void SetParameter(FPhysicalSimulationSceneProxy* InSceneProxy) override;
+	void SetLiuquidParameter(FLiuquidParameter& Parameter,FSceneView& InView);
 
 	virtual void Update_RenderThread(FRDGBuilder& GraphBuilder,FSceneView& InView) override;
 
 	virtual void Initial(FRHICommandListBase& RHICmdList) override;
 	virtual void Release() override;
-	virtual void GetDynamicMeshElements(const TArray<const FSceneView*>& Views, const FSceneViewFamily& ViewFamily, uint32 VisibilityMap, FMeshElementCollector& Collector,const FPhysicalSimulationSceneProxy* SceneProxy) override;
+	virtual void GetDynamicMeshElements(const TArray<const FSceneView*>& Views, const FSceneViewFamily& ViewFamily, uint32 VisibilityMap, FMeshElementCollector& Collector,const FPhysicalSimulationSceneProxy* InSceneProxy) override;
 	void PostSimulation();
 
 	bool bIsInitial = false;

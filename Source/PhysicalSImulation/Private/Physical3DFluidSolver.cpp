@@ -1,13 +1,9 @@
 #include "Physical3DFluidSolver.h"
 
-FPhysical3DFluidSolver::FPhysical3DFluidSolver()
+FPhysical3DFluidSolver::FPhysical3DFluidSolver(FPhysicalSimulationSceneProxy* InSceneProxy): FPhysicalSolverBase(InSceneProxy)
 {
 }
 
-void FPhysical3DFluidSolver::SetParameter(FPhysicalSolverContext* Context)
-{
-
-}
 
 void FPhysical3DFluidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder,FSceneView& InView)
 {

@@ -27,7 +27,7 @@ FPhysicalSimulationViewExtension::FPhysicalSimulationViewExtension(const FAutoRe
 
 FPhysicalSimulationViewExtension::~FPhysicalSimulationViewExtension()
 {
-	Release();
+	
 }
 
 void FPhysicalSimulationViewExtension::BeginRenderViewFamily(FSceneViewFamily& InViewFamily)
@@ -51,8 +51,8 @@ void FPhysicalSimulationViewExtension::PreRenderView_RenderThread(FRDGBuilder& G
 	}*/
 	for(FPhysicalSimulationSceneProxy* SceneProxy : SceneProxies)
 	{
-		SceneProxy->PhysicalSolver->SetParameter(SolverContext);
-		PhysicalSolver->Update_RenderThread(GraphBuilder, InView);
+		//SceneProxy->PhysicalSolver->SetParameter(SceneProxy);
+		SceneProxy->PhysicalSolver->Update_RenderThread(GraphBuilder, InView);
 	}
 
 }
@@ -129,41 +129,13 @@ void FPhysicalSimulationViewExtension::RemoveProxy(FPhysicalSimulationSceneProxy
 		});
 }
 
+void FPhysicalSimulationViewExtension::Initial(FRHICommandListBase& RHICmdList)
+{
+}
+
 void FPhysicalSimulationViewExtension::PreRenderViewFamily_RenderThread(FRDGBuilder& GraphBuilder, FSceneViewFamily& InViewFamily)
 {
 	FSceneViewExtensionBase::PreRenderViewFamily_RenderThread(GraphBuilder, InViewFamily);
 }
 
 
-void FPhysicalSimulationViewExtension::Initial(FRHICommandListBase& RHICmdList)
-{
-	PhysicalSolver->Initial(RHICmdList);
-}
-
-
-void FPhysicalSimulationViewExtension::UpdateParameters(UPhysicalSimulationComponent* InComponent)
-{
-	Component = InComponent;
-	if(LastType != Component->SimulatorType)
-	{
-		PhysicalSolver->Release();
-		switch (Component->SimulatorType)
-		{
-		case ESimulatorType::PlaneSmokeFluid:
-			PhysicalSolver = MakeShareable(new FPhysical2DFluidSolver);
-			break;
-		case ESimulatorType::CubeSmokeFluid:
-			PhysicalSolver = MakeShareable(new FPhysical3DFluidSolver);
-			break;
-		case ESimulatorType::Liquid:
-			PhysicalSolver = MakeShareable(new FPhysicalLiquidSolver); //new FPhysicalLiquidSolver;
-			break;
-		}
-		LastType = Component->SimulatorType;
-	}
-}
-
-void FPhysicalSimulationViewExtension::Release()
-{
-	PhysicalSolver->Release();
-}

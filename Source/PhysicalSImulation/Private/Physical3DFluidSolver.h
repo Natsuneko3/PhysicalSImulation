@@ -4,9 +4,7 @@
 class FPhysical3DFluidSolver: public FPhysicalSolverBase
 {
 public:
-	FPhysical3DFluidSolver();
-
-	virtual void SetParameter(FPhysicalSolverContext* Context) override;
+	FPhysical3DFluidSolver(FPhysicalSimulationSceneProxy* InSceneProxy);
 
 	virtual void Update_RenderThread(FRDGBuilder& GraphBuilder,FSceneView& InView) override;
 

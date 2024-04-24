@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Physical2DFluidSolver.h"
+#include "PhysicalLiquidSolver.h"
 #include "PhysicalSolver.h"
 #include "UObject/Object.h"
 
@@ -18,6 +19,7 @@ class PHYSICALSIMULATION_API FPhysicalSimulationSceneProxy : public FPrimitiveSc
 {
 public:
 	FPhysicalSimulationSceneProxy( UPhysicalSimulationComponent* InComponent);
+	~FPhysicalSimulationSceneProxy();
 	 UStaticMesh* GetStaticMesh() const {return StaticMesh;}
 	 UMaterialInterface* GetMeterial() const{return  Material;}
 	bool bSimulation = false;
@@ -25,7 +27,11 @@ public:
 	FIntVector GridSize;
 	TArray<UTextureRenderTarget*> OutputTextures;
 	ERHIFeatureLevel::Type FeatureLevel;
-	FPlandFluidParameters* PlandFluidParameters;
+	const FPlandFluidParameters* PlandFluidParameters;
+	const FLiquidSolverParameter* LiquidSolverParameter;
+	UWorld* World;
+	float Dx;
+	//const UPhysicalSimulationComponent* GetComponent() {return Component;}
 protected:
 	//FPrimitiveSceneProxy Interface
 	virtual SIZE_T GetTypeHash() const override;
@@ -38,7 +44,7 @@ protected:
 	//End FPrimitiveSceneProxy Interface
 
 private:
-void Create3DRenderTarget();
+	void Create3DRenderTarget();
 	void Create2DRenderTarget();
 	TSharedPtr<class FPhysicalSimulationViewExtension>  ViewExtension;
 	const UPhysicalSimulationComponent* Component = nullptr;

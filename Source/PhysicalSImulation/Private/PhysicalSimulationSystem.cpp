@@ -40,15 +40,3 @@ void UPhysicalSimulationSystem::AddSceneProxyToViewExtension(FPhysicalSimulation
 {
 	PhysicalSolverViewExtension->AddProxy(InSceneProxy);
 }
-
-/*TSharedPtr<FPhysicalSimulationViewExtension> UPhysicalSimulationSystem::FindOrCreateViewExtension(UPhysicalSimulationComponent* InComponent)
-{
-
-
-
-}*/
-
-void UPhysicalSimulationSystem::RemoveViewExtension(uint32 ID)
-{
-	PhysicalSolverViewExtensions.Remove(ID);
-}
