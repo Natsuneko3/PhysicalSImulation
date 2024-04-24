@@ -5,20 +5,38 @@
 
 #include "PhysicalSimulationComponent.h"
 #include "PhysicalSimulationSystem.h"
+#include "Engine/TextureRenderTargetVolume.h"
 
-DECLARE_CYCLE_STAT(TEXT("GetDynamicMeshElements"),STAT_PS_GetDynamicMeshElements,STATGROUP_PS)
+DECLARE_CYCLE_STAT(TEXT("GetDynamicMeshElements"), STAT_PS_GetDynamicMeshElements, STATGROUP_PS)
 
 FPhysicalSimulationSceneProxy::FPhysicalSimulationSceneProxy(UPhysicalSimulationComponent* InComponent)
-:FPrimitiveSceneProxy(InComponent),Component(InComponent)
+	: FPrimitiveSceneProxy(InComponent), Component(InComponent)
 {
 	UPhysicalSimulationSystem* SubSystem = InComponent->GetWorld()->GetSubsystem<UPhysicalSimulationSystem>();
-	if(SubSystem)
+	if (SubSystem)
 	{
-		ViewExtension = SubSystem->FindOrCreateViewExtension(InComponent);
+		SubSystem->AddSceneProxyToViewExtension(this);
+		switch (Component->SimulatorType)
+		{
+		case ESimulatorType::PlaneSmokeFluid:
+			PhysicalSolver = MakeShareable(new FPhysical2DFluidSolver);
+			break;
+		case ESimulatorType::CubeSmokeFluid:
+			PhysicalSolver = MakeShareable(new FPhysical3DFluidSolver);
+			break;
+		case ESimulatorType::Liquid:
+			PhysicalSolver = MakeShareable(new FPhysicalLiquidSolver); //new FPhysicalLiquidSolver;
+			break;
+		}
 	}
-
+	bSimulation = Component->bSimulation;
 	StaticMesh = InComponent->GetStaticMesh();
 	Material = InComponent->Material.Get();
+	FeatureLevel = InComponent->GetWorld()->FeatureLevel;
+	int x = FMath::Max(InComponent->GridSize.X - 1, 8);
+	int y = FMath::Max(InComponent->GridSize.Y - 1, 8);
+	int z = FMath::Max(InComponent->GridSize.Z - 1, 8);
+	GridSize = FIntVector(x, y, z);
 }
 
 SIZE_T FPhysicalSimulationSceneProxy::GetTypeHash() const
@@ -29,26 +47,24 @@ SIZE_T FPhysicalSimulationSceneProxy::GetTypeHash() const
 
 void FPhysicalSimulationSceneProxy::CreateRenderThreadResources(FRHICommandListBase& RHICmdList)
 {
-	FPrimitiveSceneProxy::CreateRenderThreadResources( RHICmdList);
-	if(ViewExtension)
+	FPrimitiveSceneProxy::CreateRenderThreadResources(RHICmdList);
+	if (ViewExtension)
 	{
 		ViewExtension->AddProxy(this);
 		ViewExtension->Initial(RHICmdList);
 	}
-
-
 }
 
 void FPhysicalSimulationSceneProxy::DestroyRenderThreadResources()
 {
 	FPrimitiveSceneProxy::DestroyRenderThreadResources();
-	if(ViewExtension)
+	if (ViewExtension)
 	{
 		ViewExtension->RemoveProxy(this);
 	}
-
 }
-// This setups associated volume mesh for built-in Unreal passes.
+
+// These setups associated volume mesh for built-in Unreal passes.
 // Actual rendering is FPhysicalSimulationViewExtension::PreRenderView_RenderThread.
 void FPhysicalSimulationSceneProxy::GetDynamicMeshElements(const TArray<const FSceneView*>& Views, const FSceneViewFamily& ViewFamily, uint32 VisibilityMap, FMeshElementCollector& Collector) const
 {
@@ -67,7 +83,7 @@ void FPhysicalSimulationSceneProxy::GetDynamicMeshElements(const TArray<const FS
 			Collector.AddMesh(ViewIndex, Mesh);
 		}
 	}*/
-	//ViewExtension->GetDynamicMeshElements(Views,ViewFamily,VisibilityMap,Collector,this);
+	ViewExtension->GetDynamicMeshElements(Views, ViewFamily, VisibilityMap, Collector, this);
 }
 
 FPrimitiveViewRelevance FPhysicalSimulationSceneProxy::GetViewRelevance(const FSceneView* View) const
@@ -81,4 +97,42 @@ FPrimitiveViewRelevance FPhysicalSimulationSceneProxy::GetViewRelevance(const FS
 	Result.bUsesLightingChannels = GetLightingChannelMask() != GetDefaultLightingChannelMask();
 	Result.bRenderCustomDepth = ShouldRenderCustomDepth();
 	return Result;
+}
+
+void FPhysicalSimulationSceneProxy::Create3DRenderTarget()
+{
+	OutputTextures.Empty();
+	UTextureRenderTargetVolume* VolumeRT = NewObject<UTextureRenderTargetVolume>();
+	VolumeRT->InitAutoFormat(GridSize.X, GridSize.Y, GridSize.Z);
+	VolumeRT->OverrideFormat = PF_R32_FLOAT;
+	VolumeRT->ClearColor = FLinearColor::Black;
+	VolumeRT->bCanCreateUAV = true;
+	VolumeRT->UpdateResourceImmediate(true);
+
+	OutputTextures.Add(VolumeRT);
+}
+
+void FPhysicalSimulationSceneProxy::Create2DRenderTarget()
+{
+	OutputTextures.Empty();
+	UTextureRenderTarget2D* NewRenderTarget2D = NewObject<UTextureRenderTarget2D>();
+	check(NewRenderTarget2D);
+	NewRenderTarget2D->RenderTargetFormat = RTF_RGBA16f;
+	NewRenderTarget2D->ClearColor = FLinearColor::Red;
+	NewRenderTarget2D->bAutoGenerateMips = true;
+	NewRenderTarget2D->bCanCreateUAV = true;
+	NewRenderTarget2D->InitAutoFormat(GridSize.X, GridSize.Y);
+	NewRenderTarget2D->UpdateResourceImmediate(true);
+
+	UTextureRenderTarget2D* NewPressureRenderTarget2D = NewObject<UTextureRenderTarget2D>();
+	check(NewPressureRenderTarget2D);
+	NewPressureRenderTarget2D->RenderTargetFormat = RTF_R16f;
+	NewPressureRenderTarget2D->ClearColor = FLinearColor::Red;
+	NewPressureRenderTarget2D->bAutoGenerateMips = true;
+	NewPressureRenderTarget2D->bCanCreateUAV = true;
+	NewPressureRenderTarget2D->InitAutoFormat(GridSize.X, GridSize.Y);
+	NewPressureRenderTarget2D->UpdateResourceImmediate(true);
+
+	OutputTextures.Add(NewRenderTarget2D);
+	OutputTextures.Add(NewPressureRenderTarget2D);
 }

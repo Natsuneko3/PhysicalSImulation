@@ -109,13 +109,10 @@ FPhysicalLiquidSolver::FPhysicalLiquidSolver()
 	GridSize = FIntVector(64);
 }
 
-void FPhysicalLiquidSolver::SetParameter(FPhysicalSolverContext* InContext)
+void FPhysicalLiquidSolver::SetParameter(FPhysicalSimulationSceneProxy* InSceneProxy)
 {
-	int x = FMath::Max(InContext->SolverParameter->FluidParameter.SolverBaseParameter.GridSize.X - 1,8);
-	int y = FMath::Max(InContext->SolverParameter->FluidParameter.SolverBaseParameter.GridSize.Y - 1,8);
-	int z = FMath::Max(InContext->SolverParameter->FluidParameter.SolverBaseParameter.GridSize.Z - 1,8);
-	GridSize = FIntVector(x,y,z);
-	Context = InContext;
+	GridSize = InSceneProxy->GridSize;
+	//Context = InContext;
 }
 
 void FPhysicalLiquidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder,FSceneView& InView)
@@ -194,26 +191,6 @@ void FPhysicalLiquidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder,FScene
 		const int ParticleElement = int(CurrentNumParticle);
 		const FIntVector DispatchCount = FIntVector(FMath::DivideAndRoundUp(ParticleElement , 64), 1, 1);
 		const TShaderMapRef<FSpawnParticleCS> SpawnComputeShader(ShaderMap);
-		if(0)//(!AllocatedInstanceCounts)
-		{
-			AllocatedInstanceCounts = 1;
-			RHICmdList.ClearUAVUint(ParticleIDBuffer.UAV,FUintVector4(0));
-			RHICmdList.ClearUAVFloat(ParticleAttributeBuffer.UAV,FVector4f(0.0));
-
-			FSpawnParticleCS::FParameters Parameters;
-			Parameters.View = InView.ViewUniformBuffer;
-			Parameters.InAttributeBuffer = ParticleAttributeBuffer.SRV;
-			Parameters.InIDBuffer = ParticleIDBuffer.SRV;
-			Parameters.LastNumParticle = 1;
-			Parameters.ParticleIDBuffer = ParticleIDBuffer.UAV;
-			Parameters.ParticleAttributeBuffer = ParticleAttributeBuffer.UAV;
-
-			FComputeShaderUtils::Dispatch(RHICmdList,
-			SpawnComputeShader,
-			Parameters,
-			DispatchCount);
-
-		}else
 		{
 			//Spawn Or Initial Particle
 			if(LastNumParticle != CurrentNumParticle)
@@ -254,7 +231,7 @@ void FPhysicalLiquidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder,FScene
 		FLiquidParticleCS::FParameters PassParameters;
 		PassParameters.ParticleIDBuffer = ParticleIDBuffer.UAV;
 		PassParameters.ParticleAttributeBuffer = ParticleAttributeBuffer.UAV;
-		PassParameters.LiuquidParameter = Context->SolverParameter->LiuquidParameter;
+		PassParameters.LiuquidParameter = //Context->SolverParameter->LiuquidParameter;
 		PassParameters.RasterizeTexture = RasterizeTexture;
 		{
 			SCOPE_CYCLE_COUNTER(STAT_P2G);

@@ -1,4 +1,6 @@
 #include "Physical2DFluidSolver.h"
+
+#include "PhysicalSimulationSceneProxy.h"
 #include "PhysicalSolver.h"
 
 #include "RenderGraphBuilder.h"
@@ -118,13 +120,17 @@ FPhysical2DFluidSolver::FPhysical2DFluidSolver()
 	GridSize = FIntPoint(128);
 }
 
-void FPhysical2DFluidSolver::SetParameter(FPhysicalSolverContext* InContext)
+void FPhysical2DFluidSolver::SetParameter(FPhysicalSimulationSceneProxy* InSceneProxy)
 {
-	FIntPoint InSize = FIntPoint(Context->SolverParameter->FluidParameter.SolverBaseParameter.GridSize.X,
-	                             Context->SolverParameter->FluidParameter.SolverBaseParameter.GridSize.Y) - 1;
-	GridSize = InSize.ComponentMax(8); //FMath::Max(,);
-
-	Context = InContext;
+	GridSize = FIntPoint(InSceneProxy->GridSize.X,InSceneProxy->GridSize.Y);
+	SceneProxy = InSceneProxy;
+	SolverParameter->DensityDissipate = SceneProxy->PlandFluidParameters->DensityDissipate;
+	SolverParameter->GravityScale = SceneProxy->PlandFluidParameters->GravityScale;
+	SolverParameter->NoiseFrequency = SceneProxy->PlandFluidParameters->NoiseFrequency;
+	SolverParameter->NoiseIntensity = SceneProxy->PlandFluidParameters->NoiseIntensity;
+	SolverParameter->VelocityDissipate = SceneProxy->PlandFluidParameters->VelocityDissipate;
+	SolverParameter->VorticityMult = SceneProxy->PlandFluidParameters->VorticityMult;
+	SolverParameter->UseFFT = true;
 }
 
 void FPhysical2DFluidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder,FSceneView& InView)
@@ -133,19 +139,26 @@ void FPhysical2DFluidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder,FScen
 	RDG_EVENT_SCOPE(GraphBuilder, "PlaneFluidSolver");
 	RDG_GPU_STAT_SCOPE(GraphBuilder, PlaneFluidSolver);
 
-	for (UTextureRenderTarget* RT : Context->OutputTextures)
+	for (UTextureRenderTarget* RT : SceneProxy->OutputTextures)
 	{
 		if (!RT || !RT->GetResource() || !RT->GetResource()->GetTextureRHI())
 		{
 			return;
 		}
 	}
-	const FRDGTextureRef SimulationTexture = RegisterExternalTexture(GraphBuilder, Context->OutputTextures[0]->GetResource()->GetTextureRHI(),TEXT("SimulationTexture"));
-	const FRDGTextureRef PressureTexture = RegisterExternalTexture(GraphBuilder, Context->OutputTextures[1]->GetResource()->GetTextureRHI(),TEXT("PressureTexture"));
+
+	const FRDGTextureRef SimulationTexture = RegisterExternalTexture(GraphBuilder, SceneProxy->OutputTextures[0]->GetResource()->GetTextureRHI(),TEXT("SimulationTexture"));
+	const FRDGTextureRef PressureTexture = RegisterExternalTexture(GraphBuilder, SceneProxy->OutputTextures[1]->GetResource()->GetTextureRHI(),TEXT("PressureTexture"));
 	Frame++;
+
+	SolverParameter->SolverBaseParameter.dt = 0.02;
+	SolverParameter->SolverBaseParameter.dx = 1;
+	SolverParameter->SolverBaseParameter.View = InView.ViewUniformBuffer;
+	SolverParameter->SolverBaseParameter.GridSize = FVector3f(SceneProxy->GridSize);
+	SolverParameter->SolverBaseParameter.WarpSampler = TStaticSamplerState<SF_Bilinear, AM_Wrap, AM_Wrap, AM_Wrap>::GetRHI();
 	SolverParameter->SolverBaseParameter.Time = Frame;
 	//TODO:Need Change shader map based of platforms
-	auto ShaderMap = GetGlobalShaderMap(Context->FeatureLevel);
+	auto ShaderMap = GetGlobalShaderMap(SceneProxy->FeatureLevel);
 
 	FRDGTextureDesc TempDesc = FRDGTextureDesc::Create2D(GridSize, PF_FloatRGBA, FClearValueBinding::Black, TexCreate_ShaderResource | TexCreate_UAV | TexCreate_RenderTargetable);
 	FRDGTextureRef TempGrid = GraphBuilder.CreateTexture(TempDesc,TEXT("TempGrid"), ERDGTextureFlags::None);
@@ -167,15 +180,13 @@ void FPhysical2DFluidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder,FScen
 		InPassParameters->AdvectionDensity = bAdvectionDensity;
 		InPassParameters->IterationIndex = IterationIndex;
 		InPassParameters->FluidShaderType = ShaderType;
-		//UE_LOG(LogTemp,Log,TEXT("shadertype%i"),ShaderType);
-		InPassParameters->SimGridSRV = SimSRV;//? SimSRV : GraphBuilder.CreateSRV(SimulationTexture);
-		//InPassParameters->PressureGridSRV = PressureSRV; //? PressureSRV : GraphBuilder.CreateSRV(OutTextureArray[1]);
+		InPassParameters->SimGridSRV = SimSRV;
 		InPassParameters->SimSampler = TStaticSamplerState<SF_Bilinear, AM_Clamp, AM_Clamp, AM_Clamp>::GetRHI();
-		InPassParameters->SimGridUAV = SimUAV; //? SimUAV : GraphBuilder.CreateUAV(OutTextureArray[0]);
-		InPassParameters->PressureGridUAV = PressureUAV; //? PressureUAV : GraphBuilder.CreateUAV(OutTextureArray[1]);
+		InPassParameters->SimGridUAV = SimUAV;
+		InPassParameters->PressureGridUAV = PressureUAV;
 		InPassParameters->bUseFFTPressure = bUseFFT;
-		InPassParameters->WorldVelocity = Context->WorldVelocity;
-		InPassParameters->WorldPosition = Context->WorldPosition;
+		InPassParameters->WorldVelocity = FVector3f(0);//Context->WorldVelocity;
+		InPassParameters->WorldPosition = FVector3f(0);//Context->WorldPosition;
 		ShaderPrint::SetParameters(GraphBuilder, ShaderPrintData,InPassParameters->ShaderPrintUniformBuffer);
 	};
 

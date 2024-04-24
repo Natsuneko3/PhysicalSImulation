@@ -13,7 +13,7 @@ class UPhysicalSimulationComponent;
 class FPhysicalSimulationViewExtension : public FSceneViewExtensionBase
 {
 public:
-	FPhysicalSimulationViewExtension(const FAutoRegister& AutoRegister, UPhysicalSimulationComponent* InComponent);
+	FPhysicalSimulationViewExtension(const FAutoRegister& AutoRegister);
 	~FPhysicalSimulationViewExtension();
 
 
@@ -53,7 +53,7 @@ private:
 	TEnumAsByte<ERHIFeatureLevel::Type> FeatureLevel;
 	FPhysicalSolverContext* SolverContext;
 	FPostOpaqueRenderDelegate RenderDelegate;
-	UPhysicalSimulationComponent* Component;
+	//UPhysicalSimulationComponent* Component;
 	ESimulatorType LastType;
 	TArray<FPhysicalSimulationSceneProxy*> SceneProxies;
 

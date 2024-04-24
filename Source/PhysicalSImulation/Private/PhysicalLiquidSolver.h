@@ -4,6 +4,11 @@
 #include "RHIGPUReadback.h"
 #include "Engine/InstancedStaticMesh.h"
 
+BEGIN_SHADER_PARAMETER_STRUCT(FLiuquidParameter, PHYSICALSIMULATION_API)
+	SHADER_PARAMETER_STRUCT_INCLUDE(FSolverBaseParameter, SolverBaseParameter)
+	SHADER_PARAMETER(float,GravityScale)
+	SHADER_PARAMETER(float,LifeTime)
+END_SHADER_PARAMETER_STRUCT()
 
 DEFINE_LOG_CATEGORY_STATIC(LogSimulation, Log, All);
 class FPhysicalLiquidSolver:public FPhysicalSolverBase
@@ -11,7 +16,8 @@ class FPhysicalLiquidSolver:public FPhysicalSolverBase
 	public:
 	FPhysicalLiquidSolver();
 
-	virtual void SetParameter(FPhysicalSolverContext* InContext) override;
+
+	virtual void SetParameter(FPhysicalSimulationSceneProxy* InSceneProxy) override;
 
 	virtual void Update_RenderThread(FRDGBuilder& GraphBuilder,FSceneView& InView) override;
 
@@ -29,7 +35,8 @@ class FPhysicalLiquidSolver:public FPhysicalSolverBase
 	uint32 DeadParticle;
 private:
 	//TUniquePtr<FPhysicalSimulationVertexFactory> VertexFactory;
-	FPhysicalSolverContext* Context;
+	//FPhysicalSolverContext* Context;
+	//FLiuquidParameter
 	int32 AllocatedInstanceCounts = 0;
 	FRWBuffer ParticleIDBuffer;
 	FRWBuffer ParticleAttributeBuffer;

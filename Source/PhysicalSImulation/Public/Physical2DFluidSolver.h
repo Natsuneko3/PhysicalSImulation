@@ -3,13 +3,25 @@
 #include "RenderGraphResources.h"
 //#include "Physical2DFluid.generated.h"
 
+//USTRUCT(BlueprintType)
+struct FPlandFluidParameters
+{
+	//GENERATED_BODY()
+	float VorticityMult = 100;
+	float NoiseFrequency = 5;
+	float NoiseIntensity = 50;
+	float DensityDissipate = 0.2;
+	float VelocityDissipate = 0.05;
+	float GravityScale = 20;
+};
 
 class FPhysical2DFluidSolver :public FPhysicalSolverBase
 {
 public:
 	FPhysical2DFluidSolver();
 
-	virtual void SetParameter(FPhysicalSolverContext* InContext) override;
+
+	virtual void SetParameter(FPhysicalSimulationSceneProxy* InSceneProxy) override;
 
 	virtual void Update_RenderThread(FRDGBuilder& GraphBuilder,FSceneView& InView) override;
 
@@ -20,7 +32,7 @@ public:
 
 	FFluidParameter* SolverParameter;
 	FIntPoint GridSize;
-
-	FPhysicalSolverContext* Context;
+	FPhysicalSimulationSceneProxy* SceneProxy;
+	//FPhysicalSolverContext* Context;
 
 };

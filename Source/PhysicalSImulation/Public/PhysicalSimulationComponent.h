@@ -42,8 +42,9 @@ public:
 
 
 	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation|2D Smoke Fluid",meta = (EditCondition = "SimulatorType==ESimulatorType::PlaneSmokeFluid"))
-	float VorticityMult = 100;
+	FPlandFluidParameters PlandFluidParameters;
 
+	/*
 	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation|2D Smoke Fluid",meta = (EditCondition = "SimulatorType==ESimulatorType::PlaneSmokeFluid"))
 	float NoiseFrequency = 5;
 
@@ -58,6 +59,7 @@ public:
 
 	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation|2D Smoke Fluid",meta = (EditCondition = "SimulatorType==ESimulatorType::PlaneSmokeFluid"))
 	float GravityScale = 20;
+	*/
 
 	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation|Liquid",meta = (EditCondition = "SimulatorType==ESimulatorType::Liquid"))
 	float SpawnRate = 60;
@@ -68,7 +70,6 @@ public:
 	UFUNCTION(BlueprintCallable,Category = "PhysicalSimulation")
 	void Initial();
 
-	void InitializeComponent() override;
 	virtual void BeginDestroy() override;
 	/*UPROPERTY(BlueprintReadOnly,Category = "PhysicalSimulation")
 	UTextureRenderTarget* SimulationTexture;
@@ -76,7 +77,7 @@ public:
 	UPROPERTY(BlueprintReadOnly,Category = "PhysicalSimulation")
 	UTextureRenderTarget* PressureTexture;*/
 
-	FSolverParameter SolverParameter;
+	//FSolverParameter SolverParameter;
 	FPhysicalSolverContext PhysicalSolverContext;
 	void UpdateSolverContext();
 protected:

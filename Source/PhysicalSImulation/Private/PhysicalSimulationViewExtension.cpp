@@ -4,10 +4,10 @@
 #include "PhysicalSimulationSceneProxy.h"
 #include "ShaderPrintParameters.h"
 
-FPhysicalSimulationViewExtension::FPhysicalSimulationViewExtension(const FAutoRegister& AutoRegister, UPhysicalSimulationComponent* InComponent):
-	FSceneViewExtensionBase(AutoRegister), Component(InComponent)
+FPhysicalSimulationViewExtension::FPhysicalSimulationViewExtension(const FAutoRegister& AutoRegister):
+	FSceneViewExtensionBase(AutoRegister)
 {
-	switch (Component->SimulatorType)
+	/*switch (Component->SimulatorType)
 	{
 	case ESimulatorType::PlaneSmokeFluid:
 		PhysicalSolver = MakeShareable(new FPhysical2DFluidSolver);
@@ -20,7 +20,7 @@ FPhysicalSimulationViewExtension::FPhysicalSimulationViewExtension(const FAutoRe
 		break;
 	}
 	LastType = Component->SimulatorType;
-	FeatureLevel = InComponent->GetWorld()->FeatureLevel;
+	FeatureLevel = InComponent->GetWorld()->FeatureLevel;*/
 
 
 }
@@ -37,7 +37,7 @@ void FPhysicalSimulationViewExtension::BeginRenderViewFamily(FSceneViewFamily& I
 void FPhysicalSimulationViewExtension::PreRenderView_RenderThread(FRDGBuilder& GraphBuilder, FSceneView& InView)
 {
 
-	Component->UpdateSolverContext();
+	/*Component->UpdateSolverContext();
 	SolverContext = &Component->PhysicalSolverContext;
 	SolverContext->SolverParameter->FluidParameter.SolverBaseParameter.View = InView.ViewUniformBuffer;
 	SolverContext->SolverParameter->LiuquidParameter.SolverBaseParameter.View = InView.ViewUniformBuffer;
@@ -48,15 +48,26 @@ void FPhysicalSimulationViewExtension::PreRenderView_RenderThread(FRDGBuilder& G
 	if(Component->SimulatorType == ESimulatorType::Liquid)
 	{
 
+	}*/
+	for(FPhysicalSimulationSceneProxy* SceneProxy : SceneProxies)
+	{
+		SceneProxy->PhysicalSolver->SetParameter(SolverContext);
+		PhysicalSolver->Update_RenderThread(GraphBuilder, InView);
 	}
 
 }
 
 bool FPhysicalSimulationViewExtension::IsActiveThisFrame_Internal(const FSceneViewExtensionContext& Context) const
 {
-	if(Component)
+	if(SceneProxies.Num() > 0)
 	{
-		return Component->bSimulation;
+		for(FPhysicalSimulationSceneProxy* SceneProxy : SceneProxies)
+		{
+			if(SceneProxy->bSimulation)
+			{
+				return true;
+			}
+		}
 	}
 	return false;
 

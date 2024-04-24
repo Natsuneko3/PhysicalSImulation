@@ -36,12 +36,7 @@ BEGIN_SHADER_PARAMETER_STRUCT(FFluidParameter, PHYSICALSIMULATION_API)
 SHADER_PARAMETER(int,UseFFT)
 END_SHADER_PARAMETER_STRUCT()
 
-BEGIN_SHADER_PARAMETER_STRUCT(FLiuquidParameter, PHYSICALSIMULATION_API)
-	SHADER_PARAMETER_STRUCT_INCLUDE(FSolverBaseParameter, SolverBaseParameter)
-	SHADER_PARAMETER(float,GravityScale)
-SHADER_PARAMETER(float,LifeTime)
 
-END_SHADER_PARAMETER_STRUCT()
 DECLARE_MULTICAST_DELEGATE(FPhysicalSolverInitialed);
 UENUM()
 enum class ESimulatorType : uint8
@@ -51,11 +46,11 @@ enum class ESimulatorType : uint8
 	Liquid = 2
 };
 
-struct FSolverParameter
+/*struct FSolverParameter
 {
 	FFluidParameter FluidParameter;
 	FLiuquidParameter LiuquidParameter;
-};
+};*/
 
 struct FPhysicalSolverContext
 {
@@ -72,7 +67,7 @@ struct FPhysicalSolverContext
 	float SpawnRate;
 	FVector3f WorldVelocity;
 	FVector3f WorldPosition;
-	FSolverParameter* SolverParameter;
+	//FSolverParameter* SolverParameter;
 	ESimulatorType SimulatorType;
 	TArray<UTextureRenderTarget*> OutputTextures;
 	bool bSimulation = false;
@@ -85,12 +80,14 @@ class FPhysicalSolverBase
 
 public:
 	int Frame = 0;
-	virtual void SetParameter(FPhysicalSolverContext* InContext){}
+	virtual void SetParameter(FPhysicalSimulationSceneProxy* InSceneProxy){}
 	virtual void Initial(FRHICommandListBase& RHICmdList){}
 	virtual void Release(){}
 	virtual void Update_RenderThread(FRDGBuilder& GraphBuilder,FSceneView& InView){}
 	virtual void RenderParticle(){}
 	virtual void GetDynamicMeshElements(const TArray<const FSceneView*>& Views, const FSceneViewFamily& ViewFamily, uint32 VisibilityMap, FMeshElementCollector& Collector,const FPhysicalSimulationSceneProxy* SceneProxy){}
 	FPhysicalSolverInitialed InitialedDelegate;
+private:
+	void SetupSolverBaseParameters(FSolverBaseParameter& Parameter);
 	
 };

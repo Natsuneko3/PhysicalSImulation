@@ -17,13 +17,12 @@ UPhysicalSimulationComponent::UPhysicalSimulationComponent()
 	PrimaryComponentTick.bCanEverTick = true;
 	bTickInEditor = true;
 	OutputTextures.Empty();
-	if(!GetStaticMesh())
+	if (!GetStaticMesh())
 	{
 		UStaticMesh* Mesh = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Plane"));
 		SetStaticMesh(Mesh);
 	}
 	Initial();
-
 }
 
 UPhysicalSimulationComponent::~UPhysicalSimulationComponent()
@@ -31,57 +30,45 @@ UPhysicalSimulationComponent::~UPhysicalSimulationComponent()
 	PhysicalSolverViewExtension = nullptr;
 }
 
-
 void UPhysicalSimulationComponent::Initial()
 {
-	if( Material )
+	if (Material)
 	{
-		UE_LOG(LogSimulation,Log,TEXT("Physical simulation initial"))
+		UE_LOG(LogSimulation, Log, TEXT("Physical simulation initial"))
 		CreateSolverTextures();
 		UpdateSolverContext();
-		UPhysicalSimulationSystem* SubSystem = GetWorld()->GetSubsystem<UPhysicalSimulationSystem>();
-		if(SubSystem)
+		/*UPhysicalSimulationSystem* SubSystem = GetWorld()->GetSubsystem<UPhysicalSimulationSystem>();
+		if (SubSystem)
 		{
 			PhysicalSolverViewExtension = SubSystem->FindOrCreateViewExtension(this);
-		}
+		}*/
 	}
-
-}
-
-void UPhysicalSimulationComponent::InitializeComponent()
-{
-
 }
 
 void UPhysicalSimulationComponent::BeginDestroy()
 {
 	Super::BeginDestroy();
-	if(GetWorld())
+	if (GetWorld())
 	{
 		UPhysicalSimulationSystem* SubSystem = GetWorld()->GetSubsystem<UPhysicalSimulationSystem>();
-		if(SubSystem)
+		if (SubSystem)
 		{
 			SubSystem->RemoveViewExtension(GetUniqueID());
 		}
 	}
-
 }
 
 void UPhysicalSimulationComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 	UPhysicalSimulationSystem* SubSystem = GetWorld()->GetSubsystem<UPhysicalSimulationSystem>();
-	if(SubSystem)
+	if (SubSystem)
 	{
-
-		for(int i = 0;i < SubSystem->OutParticle.Num();i++)
+		for (int i = 0; i < SubSystem->OutParticle.Num(); i++)
 		{
-			DrawDebugPoint(GetWorld(),SubSystem->OutParticle[i],2,FColor::Green);
+			DrawDebugPoint(GetWorld(), SubSystem->OutParticle[i], 2, FColor::Green);
 		}
-
 	}
-
-
 }
 
 void UPhysicalSimulationComponent::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
@@ -92,11 +79,11 @@ void UPhysicalSimulationComponent::PostEditChangeProperty(FPropertyChangedEvent&
 
 FPrimitiveSceneProxy* UPhysicalSimulationComponent::CreateSceneProxy()
 {
-	if(Material)
+	if (Material)
 	{
 		return new FPhysicalSimulationSceneProxy(this);
 	}
-	return  nullptr;
+	return nullptr;
 }
 
 void UPhysicalSimulationComponent::SetupSolverParameter()
@@ -105,12 +92,13 @@ void UPhysicalSimulationComponent::SetupSolverParameter()
 
 	FSolverBaseParameter SolverBase;
 
-	if(World == nullptr)
+	if (World == nullptr)
 	{
 		SolverBase.dt = 0.002;
-	}else
+	}
+	else
 	{
-		SolverBase.dt =  GetWorld()->GetDeltaSeconds() * 2.0;
+		SolverBase.dt = GetWorld()->GetDeltaSeconds() * 2.0;
 	}
 
 	SolverBase.dx = 1.0; //1.0 / (float)GridSize.X;
@@ -138,7 +126,7 @@ void UPhysicalSimulationComponent::UpdateSolverContext()
 {
 	//PhysicalSolverContext.ActorName = "";
 	SetupSolverParameter();
-	if(GetOwner())
+	if (GetOwner())
 	{
 		PhysicalSolverContext.WorldVelocity = FVector3f(GetOwner()->GetVelocity());
 		PhysicalSolverContext.WorldPosition = FVector3f(GetOwner()->GetActorLocation());
@@ -155,7 +143,7 @@ void UPhysicalSimulationComponent::UpdateSolverContext()
 
 void UPhysicalSimulationComponent::CreateSolverTextures()
 {
-	UStaticMesh* Mesh ;
+	UStaticMesh* Mesh;
 	switch (SimulatorType)
 	{
 	case ESimulatorType::PlaneSmokeFluid:
@@ -187,11 +175,10 @@ void UPhysicalSimulationComponent::Create3DRenderTarget()
 	VolumeRT->UpdateResourceImmediate(true);
 
 	OutputTextures.Add(VolumeRT);
-	UMaterialInstanceDynamic* MID =  CreateDynamicMaterialInstance(0,Material.Get());
-	MID->SetTextureParameterValue(TEXT("RT"),OutputTextures[0]);
-	SetMaterial(0,MID);
+	UMaterialInstanceDynamic* MID = CreateDynamicMaterialInstance(0, Material.Get());
+	MID->SetTextureParameterValue(TEXT("RT"), OutputTextures[0]);
+	SetMaterial(0, MID);
 	//GetStaticMesh()->SetMaterial(0,MID);
-
 }
 
 void UPhysicalSimulationComponent::Create2DRenderTarget()
@@ -222,9 +209,8 @@ void UPhysicalSimulationComponent::Create2DRenderTarget()
 
 	OutputTextures.Add(NewRenderTarget2D);
 	OutputTextures.Add(NewPressureRenderTarget2D);
-	UMaterialInstanceDynamic* MID =  CreateDynamicMaterialInstance(0,Material.Get());
-	MID->SetTextureParameterValue(TEXT("RT"),OutputTextures[0]);
-	MID->SetTextureParameterValue(TEXT("RT2"),OutputTextures[1]);
-	SetMaterial(0,MID);
-
+	UMaterialInstanceDynamic* MID = CreateDynamicMaterialInstance(0, Material.Get());
+	MID->SetTextureParameterValue(TEXT("RT"), OutputTextures[0]);
+	MID->SetTextureParameterValue(TEXT("RT2"), OutputTextures[1]);
+	SetMaterial(0, MID);
 }

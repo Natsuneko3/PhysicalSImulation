@@ -23,9 +23,9 @@ public:
 
 	/** Called once all UWorldSubsystems have been initialized */
 	virtual void PostInitialize() override;
-
-	TSharedPtr<FPhysicalSimulationViewExtension> FindOrCreateViewExtension(UPhysicalSimulationComponent* InComponent);
+void AddSceneProxyToViewExtension(FPhysicalSimulationSceneProxy* InSceneProxy);
+	//TSharedPtr<FPhysicalSimulationViewExtension> FindOrCreateViewExtension(UPhysicalSimulationComponent* InComponent);
 	void RemoveViewExtension(uint32 ID);
-	TMap<uint32,TSharedPtr<FPhysicalSimulationViewExtension>> PhysicalSolverViewExtensions;
+	TSharedPtr<FPhysicalSimulationViewExtension> PhysicalSolverViewExtension;
 	TArray<FVector> OutParticle;
 };

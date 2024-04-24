@@ -3,6 +3,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Physical2DFluidSolver.h"
+#include "PhysicalSolver.h"
 #include "UObject/Object.h"
 
 
@@ -18,7 +20,12 @@ public:
 	FPhysicalSimulationSceneProxy( UPhysicalSimulationComponent* InComponent);
 	 UStaticMesh* GetStaticMesh() const {return StaticMesh;}
 	 UMaterialInterface* GetMeterial() const{return  Material;}
-
+	bool bSimulation = false;
+	TSharedPtr<FPhysicalSolverBase> PhysicalSolver;
+	FIntVector GridSize;
+	TArray<UTextureRenderTarget*> OutputTextures;
+	ERHIFeatureLevel::Type FeatureLevel;
+	FPlandFluidParameters* PlandFluidParameters;
 protected:
 	//FPrimitiveSceneProxy Interface
 	virtual SIZE_T GetTypeHash() const override;
@@ -31,6 +38,8 @@ protected:
 	//End FPrimitiveSceneProxy Interface
 
 private:
+void Create3DRenderTarget();
+	void Create2DRenderTarget();
 	TSharedPtr<class FPhysicalSimulationViewExtension>  ViewExtension;
 	const UPhysicalSimulationComponent* Component = nullptr;
 	UStaticMesh* StaticMesh;
