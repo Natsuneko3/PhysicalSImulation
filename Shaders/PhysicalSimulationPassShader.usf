@@ -1,0 +1,70 @@
+﻿
+#include "/Engine/Private/Common.ush"
+#include "/Engine/Private/Random.ush"
+
+#include "/Engine/Generated/Material.ush"
+#include "/Engine/Generated/VertexFactory.ush"
+
+struct FPSPassVSToPS
+{
+	float4 Position : SV_POSITION;
+	FVertexFactoryInterpolantsVSToPS FactoryInterpolants;
+};
+
+//-----------------------------------------------------------------------------------------------------------
+//#if VERTEXSHADER
+//-----------------------------------------------------------------------------------------------------------
+
+void MainVS(
+	FVertexFactoryInput Input,
+	out FPSPassVSToPS Output
+)
+{
+	ResolvedView = ResolveView();
+
+	FVertexFactoryIntermediates VFIntermediates = GetVertexFactoryIntermediates(Input);
+	float4 TranslatedWorldPosition = VertexFactoryGetWorldPosition(Input, VFIntermediates);
+	float3x3 TangentToLocal = VertexFactoryGetTangentToLocal(Input, VFIntermediates);
+	FMaterialVertexParameters VertexParameters = GetMaterialVertexParameters(Input, VFIntermediates, TranslatedWorldPosition.xyz, TangentToLocal);
+
+	Output.Position = mul(TranslatedWorldPosition, View.TranslatedWorldToClip);
+	Output.FactoryInterpolants = VertexFactoryGetInterpolantsVSToPS(Input, VFIntermediates, VertexParameters);
+}
+
+void MainPS(
+in INPUT_POSITION_QUALIFIERS float4 SvPosition : SV_Position,
+in FVertexFactoryInterpolantsVSToPS FactoryInterpolants,
+out float4 OutColor0 : SV_Target0
+	)
+{
+#if INSTANCED_STEREO
+	ResolvedView = ResolveView(Input.EyeIndex);
+#else
+	ResolvedView = ResolveView();
+#endif
+
+	// Manual clipping here (alpha-test, etc)
+	FMaterialPixelParameters MaterialParameters = GetMaterialPixelParameters(Input, SvPosition);
+	FPixelMaterialInputs PixelMaterialInputs;
+
+#if USE_WORLD_POSITION_EXCLUDING_SHADER_OFFSETS
+	float4 ScreenPosition = SvPositionToResolvedScreenPosition(SvPosition);
+	float3 TranslatedWorldPosition = SvPositionToResolvedTranslatedWorld(SvPosition);
+	CalcMaterialParametersEx(MaterialParameters, PixelMaterialInputs, SvPosition, ScreenPosition, bIsFrontFace, TranslatedWorldPosition, PixelPositionExcludingWPO);
+#else
+	CalcMaterialParameters(MaterialParameters, PixelMaterialInputs, SvPosition, bIsFrontFace);
+#endif
+
+#if OUTPUT_PIXEL_DEPTH_OFFSET
+	ApplyPixelDepthOffsetToMaterialParameters(MaterialParameters, PixelMaterialInputs, OutDepth);
+#endif
+
+#if MATERIALBLENDING_MASKED_USING_COVERAGE
+	OutCoverage = DiscardMaterialWithPixelCoverage(MaterialParameters, PixelMaterialInputs);
+#endif
+
+	float Anisotropy = GetMaterialAnisotropy(PixelMaterialInputs);
+	float3 WorldTangent = MaterialParameters.WorldTangent;
+
+	GBufferF = EncodeWorldTangentAndAnisotropy(WorldTangent, Anisotropy);
+}
