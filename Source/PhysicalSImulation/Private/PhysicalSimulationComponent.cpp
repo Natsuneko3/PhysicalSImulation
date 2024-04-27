@@ -22,6 +22,7 @@ UPhysicalSimulationComponent::UPhysicalSimulationComponent()
 		SetStaticMesh(Mesh);
 	}
 	Initial();
+
 }
 
 UPhysicalSimulationComponent::~UPhysicalSimulationComponent()
@@ -42,6 +43,13 @@ void UPhysicalSimulationComponent::Initial()
 			PhysicalSolverViewExtension = SubSystem->FindOrCreateViewExtension(this);
 		}#1#
 	}*/
+	UTextureRenderTargetVolume* VolumeRT = NewObject<UTextureRenderTargetVolume>();
+	VolumeRT->InitAutoFormat(GridSize.X, GridSize.Y, GridSize.Z);
+	VolumeRT->OverrideFormat = PF_R32_FLOAT;
+	VolumeRT->ClearColor = FLinearColor::Black;
+	VolumeRT->bCanCreateUAV = true;
+	VolumeRT->UpdateResourceImmediate(true);
+	TestTexture = VolumeRT;
 }
 
 void UPhysicalSimulationComponent::BeginDestroy()
@@ -82,6 +90,7 @@ FPrimitiveSceneProxy* UPhysicalSimulationComponent::CreateSceneProxy()
 {
 	if (Material)
 	{
+
 		return new FPhysicalSimulationSceneProxy(this);
 	}
 	return nullptr;

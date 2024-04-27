@@ -36,25 +36,15 @@ void FPhysicalSimulationViewExtension::BeginRenderViewFamily(FSceneViewFamily& I
 
 void FPhysicalSimulationViewExtension::PreRenderView_RenderThread(FRDGBuilder& GraphBuilder, FSceneView& InView)
 {
-
-	/*Component->UpdateSolverContext();
-	SolverContext = &Component->PhysicalSolverContext;
-	SolverContext->SolverParameter->FluidParameter.SolverBaseParameter.View = InView.ViewUniformBuffer;
-	SolverContext->SolverParameter->LiuquidParameter.SolverBaseParameter.View = InView.ViewUniformBuffer;
-	SolverContext->FeatureLevel = InView.FeatureLevel;
-
-	PhysicalSolver->SetParameter(SolverContext);
-	PhysicalSolver->Update_RenderThread(GraphBuilder, InView);
-	if(Component->SimulatorType == ESimulatorType::Liquid)
-	{
-
-	}*/
 	for(FPhysicalSimulationSceneProxy* SceneProxy : SceneProxies)
 	{
 		//SceneProxy->PhysicalSolver->SetParameter(SceneProxy);
-		SceneProxy->PhysicalSolver->Update_RenderThread(GraphBuilder, InView);
-	}
+		if(SceneProxy !=nullptr)
+		{
+			SceneProxy->PhysicalSolver->Update_RenderThread(GraphBuilder, InView);
+		}
 
+	}
 }
 
 bool FPhysicalSimulationViewExtension::IsActiveThisFrame_Internal(const FSceneViewExtensionContext& Context) const
@@ -118,15 +108,11 @@ void FPhysicalSimulationViewExtension::AddProxy(FPhysicalSimulationSceneProxy* P
 
 void FPhysicalSimulationViewExtension::RemoveProxy(FPhysicalSimulationSceneProxy* Proxy)
 {
-	ENQUEUE_RENDER_COMMAND(FRemovePhysicalSimulationProxyCommand)(
-		[this, Proxy](FRHICommandListImmediate& RHICmdList)
-		{
-			auto Idx = SceneProxies.Find(Proxy);
-			if (Idx != INDEX_NONE)
-			{
-				SceneProxies.Remove(Proxy);
-			}
-		});
+	auto Idx = SceneProxies.Find(Proxy);
+	if (Idx != INDEX_NONE)
+	{
+		SceneProxies.Remove(Proxy);
+	}
 }
 
 void FPhysicalSimulationViewExtension::Initial(FRHICommandListBase& RHICmdList)

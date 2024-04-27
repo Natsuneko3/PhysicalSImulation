@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "DynamicMeshBuilder.h"
 #include "Engine/TextureRenderTarget.h"
 #include "UObject/Object.h"
 #include "HAL/IConsoleManager.h"
@@ -45,35 +46,160 @@ enum class ESimulatorType : uint8
 	CubeSmokeFluid = 1,
 	Liquid = 2
 };
-
-/*struct FSolverParameter
+using FPSSpriteVertex = FDynamicMeshVertex;
+class FPSSpriteVertexBuffer : public FVertexBuffer
 {
-	FFluidParameter FluidParameter;
-	FLiuquidParameter LiuquidParameter;
-};*/
 
-/*struct FPhysicalSolverContext
+public:
+	//Buffers
+	FVertexBuffer PositionBuffer;
+	FVertexBuffer TangentBuffer;
+	FVertexBuffer TexCoordBuffer;
+	FVertexBuffer ColorBuffer;
+	FIndexBuffer IndexBuffer;
+
+	//SRVs for Manual Fetch on platforms that support it
+	FShaderResourceViewRHIRef TangentBufferSRV;
+	FShaderResourceViewRHIRef TexCoordBufferSRV;
+	FShaderResourceViewRHIRef ColorBufferSRV;
+	FShaderResourceViewRHIRef PositionBufferSRV;
+
+	//Vertex data
+	TArray<FPSSpriteVertex> Vertices;
+
+	//Ctor
+	FPSSpriteVertexBuffer()
+		: bDynamicUsage(true)
+		, NumAllocatedVertices(0)
+	{}
+
+	/* Marks this buffer as dynamic, so it gets initialized as so. */
+	void SetDynamicUsage(bool bInDynamicUsage);
+
+	/* Initializes the buffers with the given number of vertices to accommodate. */
+	void CreateBuffers(FRHICommandListBase& RHICmdList, int32 NumVertices);
+
+	/* Clear all the buffers currently being used. */
+	void ReleaseBuffers();
+
+	/* Moves all the PaperVertex data onto the RHI buffers. */
+	void CommitVertexData(FRHICommandListBase& RHICmdList);
+
+	// FRenderResource interface
+	virtual void InitRHI(FRHICommandListBase& RHICmdList) override;
+	virtual void ReleaseRHI() override;
+	virtual void InitResource(FRHICommandListBase& RHICmdList) override;
+	virtual void ReleaseResource() override;
+	// End of FRenderResource interface
+
+	/* True if generating a commit would require a reallocation of the buffers. */
+	FORCEINLINE bool CommitRequiresBufferRecreation() const { return NumAllocatedVertices != Vertices.Num(); }
+
+	/* Checks if the buffer has been initialized. */
+	FORCEINLINE bool IsInitialized() const { return NumAllocatedVertices > 0; }
+
+	/* Obtain the index buffer initialized for this buffer. */
+	FORCEINLINE const FIndexBuffer* GetIndexPtr() const { return &IndexBuffer; }
+
+private:
+	/* Indicates if this buffer will be configured for dynamic usage. */
+	bool bDynamicUsage;
+
+	/* Amount of vertices allocated on the vertex buffer. */
+	int32 NumAllocatedVertices;
+};
+
+class FPSSpriteVertexFactory : public FLocalVertexFactory
 {
-	FPhysicalSolverContext()
+public:
+	FPSSpriteVertexFactory(ERHIFeatureLevel::Type FeatureLevel);
+
+	/* Initializes this factory with a given vertex buffer. */
+	void Init(FRHICommandListBase& RHICmdList, const FPSSpriteVertexBuffer* InVertexBuffer);
+
+private:
+	/* Vertex buffer used to initialize this factory. */
+	const FPSSpriteVertexBuffer* VertexBuffer;
+};
+
+class FPSCubeVertexBuffer : public FRenderResource
+{
+public:
+	FStaticMeshVertexBuffers Buffers;
+
+	FPSCubeVertexBuffer()
 	{
-		WorldVelocity = FVector3f(0);
-		WorldPosition = FVector3f(0);
-		SimulatorType = ESimulatorType::PlaneSmokeFluid;
-		SpawnRate = 0.0;
-		bSimulation = false;
-	};
 
-	ERHIFeatureLevel::Type FeatureLevel;
-	float SpawnRate;
-	FVector3f WorldVelocity;
-	FVector3f WorldPosition;
-	//FSolverParameter* SolverParameter;
-	ESimulatorType SimulatorType;
-	TArray<UTextureRenderTarget*> OutputTextures;
-	bool bSimulation = false;
-	FString ActorName;
-	UWorld* World;
-};*/
+		TArray<FDynamicMeshVertex> Vertices;
+
+		// Vertex position constructed in the shader
+		Vertices.Add(FDynamicMeshVertex(FVector3f(-3.0f,  1.0f, 0.5f)));
+		Vertices.Add(FDynamicMeshVertex(FVector3f( 1.0f, -3.0f, 0.5f)));
+		Vertices.Add(FDynamicMeshVertex(FVector3f( 1.0f,  1.0f, 0.5f)));
+
+		Buffers.PositionVertexBuffer.Init(Vertices.Num());
+		Buffers.StaticMeshVertexBuffer.Init(Vertices.Num(), 1);
+
+		for (int32 i = 0; i < Vertices.Num(); i++)
+		{
+			const FDynamicMeshVertex& Vertex = Vertices[i];
+
+			Buffers.PositionVertexBuffer.VertexPosition(i) = Vertex.Position;
+			Buffers.StaticMeshVertexBuffer.SetVertexTangents(i, Vertex.TangentX.ToFVector3f(), Vertex.GetTangentY(), Vertex.TangentZ.ToFVector3f());
+			Buffers.StaticMeshVertexBuffer.SetVertexUV(i, 0, Vertex.TextureCoordinate[0]);
+		}
+	}
+
+	virtual void InitRHI(FRHICommandListBase& RHICmdList) override
+	{
+		Buffers.PositionVertexBuffer.InitResource(RHICmdList);
+		Buffers.StaticMeshVertexBuffer.InitResource(RHICmdList);
+	}
+
+	virtual void ReleaseRHI() override
+	{
+		Buffers.PositionVertexBuffer.ReleaseResource();
+		Buffers.StaticMeshVertexBuffer.ReleaseResource();
+	}
+};
+
+//static TGlobalResource<FPSCubeVertexBuffer> GPSCubeVertexBuffer;
+
+class FPSCubeVertexFactory final : public FLocalVertexFactory
+{
+public:
+	FPSCubeVertexFactory(ERHIFeatureLevel::Type InFeatureLevel,FPSCubeVertexBuffer* InVertexBuffer)
+		: FLocalVertexFactory(InFeatureLevel, "FSingleTriangleMeshVertexFactory"),
+	VertexBuffer(InVertexBuffer)
+	{}
+
+	~FPSCubeVertexFactory()
+	{
+		ReleaseResource();
+	}
+
+	virtual void InitRHI(FRHICommandListBase& RHICmdList) override
+	{
+		//FPSCubeVertexBuffer* VertexBuffer = &GPSCubeVertexBuffer;
+		FLocalVertexFactory::FDataType NewData;
+		VertexBuffer->Buffers.PositionVertexBuffer.BindPositionVertexBuffer(this, NewData);
+		VertexBuffer->Buffers.StaticMeshVertexBuffer.BindTangentVertexBuffer(this, NewData);
+		VertexBuffer->Buffers.StaticMeshVertexBuffer.BindPackedTexCoordVertexBuffer(this, NewData);
+		VertexBuffer->Buffers.StaticMeshVertexBuffer.BindLightMapVertexBuffer(this, NewData, 0);
+		FColorVertexBuffer::BindDefaultColorVertexBuffer(this, NewData, FColorVertexBuffer::NullBindStride::ZeroForDefaultBufferBind);
+		// Don't call SetData(), because that ends up calling UpdateRHI(), and if the resource has already been initialized
+		// (e.g. when switching the feature level in the editor), that calls InitRHI(), resulting in an infinite loop.
+		Data = NewData;
+		//FLocalVertexFactory::InitRHI(RHICmdList);
+	}
+
+	bool HasIncompatibleFeatureLevel(ERHIFeatureLevel::Type InFeatureLevel)
+	{
+		return InFeatureLevel != GetFeatureLevel();
+	}
+
+	FPSCubeVertexBuffer* VertexBuffer;
+};
 
 class FPhysicalSolverBase
 {
@@ -91,6 +217,6 @@ public:
 protected:
 	FPhysicalSimulationSceneProxy* SceneProxy;
 	void SetupSolverBaseParameters(FSolverBaseParameter& Parameter,FSceneView& InView);
-
-	
+	TUniquePtr<FPSCubeVertexBuffer> SpriteVertexBuffer;
+	TUniquePtr<FPSCubeVertexFactory> CubeVertexFactory;
 };

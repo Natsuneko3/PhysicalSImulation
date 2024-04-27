@@ -25,7 +25,7 @@ class FPhysicalLiquidSolver:public FPhysicalSolverBase
 {
 	public:
 	FPhysicalLiquidSolver(FPhysicalSimulationSceneProxy* InSceneProxy);
-
+~FPhysicalLiquidSolver();
 
 	void SetLiuquidParameter(FLiuquidParameter& Parameter,FSceneView& InView);
 
@@ -44,9 +44,7 @@ class FPhysicalLiquidSolver:public FPhysicalSolverBase
 	float LastNumParticle;
 	uint32 DeadParticle;
 private:
-	//TUniquePtr<FPhysicalSimulationVertexFactory> VertexFactory;
-	//FPhysicalSolverContext* Context;
-	//FLiuquidParameter
+	void DrawCube();
 	int32 AllocatedInstanceCounts = 0;
 	FRWBuffer ParticleIDBuffer;
 	FRWBuffer ParticleAttributeBuffer;

@@ -61,14 +61,6 @@ public:
 	DECLARE_GLOBAL_SHADER(F2DFluidCS);
 	SHADER_USE_PARAMETER_STRUCT(F2DFluidCS, FGlobalShader);
 
-	// class FInitial	  : SHADER_PERMUTATION_BOOL("INIT");
-	// class FPreVel	  : SHADER_PERMUTATION_BOOL("PREVELOCITY");
-	// class FIteratePressure	  : SHADER_PERMUTATION_BOOL("ITERATEPRESSURE");
-	// class FFFTPressure	  : SHADER_PERMUTATION_BOOL("FFTSOLVERPRESSUREX");
-	//
-	// class FAdvection	  : SHADER_PERMUTATION_BOOL("ADVECTION");
-	// using FPermutationDomain = TShaderPermutationDomain<FInitial,FPreVel,FAdvection,FIteratePressure
-	// ,FFFTPressure>;
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters,)
 
 		SHADER_PARAMETER(int, AdvectionDensity)

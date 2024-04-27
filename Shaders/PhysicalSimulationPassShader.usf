@@ -5,6 +5,7 @@
 #include "/Engine/Generated/Material.ush"
 #include "/Engine/Generated/VertexFactory.ush"
 
+Texture2D<float> InTexture1;
 struct FPSPassVSToPS
 {
 	float4 Position : SV_POSITION;
@@ -44,16 +45,16 @@ out float4 OutColor0 : SV_Target0
 #endif
 
 	// Manual clipping here (alpha-test, etc)
-	FMaterialPixelParameters MaterialParameters = GetMaterialPixelParameters(Input, SvPosition);
+	FMaterialPixelParameters MaterialParameters = GetMaterialPixelParameters(FactoryInterpolants, SvPosition);
 	FPixelMaterialInputs PixelMaterialInputs;
 
-#if USE_WORLD_POSITION_EXCLUDING_SHADER_OFFSETS
+/*#if USE_WORLD_POSITION_EXCLUDING_SHADER_OFFSETS
 	float4 ScreenPosition = SvPositionToResolvedScreenPosition(SvPosition);
 	float3 TranslatedWorldPosition = SvPositionToResolvedTranslatedWorld(SvPosition);
 	CalcMaterialParametersEx(MaterialParameters, PixelMaterialInputs, SvPosition, ScreenPosition, bIsFrontFace, TranslatedWorldPosition, PixelPositionExcludingWPO);
 #else
 	CalcMaterialParameters(MaterialParameters, PixelMaterialInputs, SvPosition, bIsFrontFace);
-#endif
+#endif*/
 
 #if OUTPUT_PIXEL_DEPTH_OFFSET
 	ApplyPixelDepthOffsetToMaterialParameters(MaterialParameters, PixelMaterialInputs, OutDepth);
@@ -66,5 +67,5 @@ out float4 OutColor0 : SV_Target0
 	float Anisotropy = GetMaterialAnisotropy(PixelMaterialInputs);
 	float3 WorldTangent = MaterialParameters.WorldTangent;
 
-	GBufferF = EncodeWorldTangentAndAnisotropy(WorldTangent, Anisotropy);
+	//GBufferF = EncodeWorldTangentAndAnisotropy(WorldTangent, Anisotropy);
 }
