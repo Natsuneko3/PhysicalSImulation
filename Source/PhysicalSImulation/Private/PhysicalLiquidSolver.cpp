@@ -126,10 +126,8 @@ FPhysicalLiquidSolver::FPhysicalLiquidSolver(FPhysicalSimulationSceneProxy* InSc
 	ENQUEUE_RENDER_COMMAND(InitPSVertexFactory)(
 		[this](FRHICommandListImmediate& RHICmdList)
 		{
-			SpriteVertexBuffer = MakeUnique<FPSCubeVertexBuffer>();
-			SpriteVertexBuffer->InitResource(RHICmdList);
-			CubeVertexFactory = MakeUnique<FPSCubeVertexFactory>(SceneProxy->FeatureLevel, SpriteVertexBuffer.Get());
-			CubeVertexFactory->InitResource(RHICmdList);
+
+			Initial(RHICmdList);
 		});
 }
 
@@ -406,6 +404,11 @@ void FPhysicalLiquidSolver::Release()
 
 void FPhysicalLiquidSolver::Initial(FRHICommandListBase& RHICmdList)
 {
+	SpriteVertexBuffer = MakeUnique<FPSCubeVertexBuffer>();
+	SpriteVertexBuffer->InitResource(RHICmdList);
+	CubeVertexFactory = MakeUnique<FPSCubeVertexFactory>(SceneProxy->FeatureLevel, SpriteVertexBuffer.Get());
+	CubeVertexFactory->InitResource(RHICmdList);
+
 	ParticleIDBuffer.Initialize(RHICmdList,TEXT("InitialIDBuffer"), sizeof(int), 1, PF_R32_UINT, ERHIAccess::UAVCompute);
 	ParticleAttributeBuffer.Initialize(RHICmdList,TEXT("InitialParticleBuffer"), sizeof(float), NUMATTRIBUTE, PF_R32_FLOAT, ERHIAccess::UAVCompute);
 	float* Particle = (float*)RHICmdList.LockBuffer(ParticleAttributeBuffer.Buffer, 0, sizeof(float), RLM_WriteOnly);
