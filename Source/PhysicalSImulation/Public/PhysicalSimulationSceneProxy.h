@@ -31,9 +31,9 @@ public:
 	const FLiquidSolverParameter* LiquidSolverParameter;
 	UWorld* World;
 	float Dx;
-	//const UPhysicalSimulationComponent* GetComponent() {return Component;}
+
 protected:
-	//FPrimitiveSceneProxy Interface
+
 	virtual SIZE_T GetTypeHash() const override;
 
 	virtual void CreateRenderThreadResources(FRHICommandListBase& RHICmdList) override;
