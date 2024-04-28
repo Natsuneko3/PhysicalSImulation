@@ -5,12 +5,12 @@ FPhysical3DFluidSolver::FPhysical3DFluidSolver(FPhysicalSimulationSceneProxy* In
 }
 
 
-void FPhysical3DFluidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder,FSceneView& InView)
+void FPhysical3DFluidSolver::PreRenderView_RenderThread(FRDGBuilder& GraphBuilder,FSceneView& InView)
 {
 
 }
 
-void FPhysical3DFluidSolver::Initial(FRHICommandListBase& RHICmdList)
+void FPhysical3DFluidSolver::Initial(FRHICommandListImmediate& RHICmdList)
 {
 
 }

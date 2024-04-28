@@ -21,9 +21,9 @@ public:
 	FPhysical2DFluidSolver(FPhysicalSimulationSceneProxy* InSceneProxy) ;
 
 	void SetSolverParameter(FFluidParameter& SolverParameter,FSceneView& InView);
-	virtual void Update_RenderThread(FRDGBuilder& GraphBuilder,FSceneView& InView) override;
+	virtual void PreRenderView_RenderThread(FRDGBuilder& GraphBuilder,FSceneView& InView) override;
 
-	virtual void Initial(FRHICommandListBase& RHICmdList) override;
+	virtual void Initial(FRHICommandListImmediate& RHICmdList) override;
 
 	virtual void Release() override;
 	bool bIsInitial = false;

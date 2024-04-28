@@ -127,7 +127,7 @@ void FPhysical2DFluidSolver::SetSolverParameter(FFluidParameter& SolverParameter
 
 }
 
-void FPhysical2DFluidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder,FSceneView& InView)
+void FPhysical2DFluidSolver::PreRenderView_RenderThread(FRDGBuilder& GraphBuilder,FSceneView& InView)
 {
 	DECLARE_GPU_STAT(PlaneFluidSolver)
 	RDG_EVENT_SCOPE(GraphBuilder, "PlaneFluidSolver");
@@ -389,7 +389,7 @@ void FPhysical2DFluidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder,FScen
 	}
 }
 
-void FPhysical2DFluidSolver::Initial(FRHICommandListBase& RHICmdList)
+void FPhysical2DFluidSolver::Initial(FRHICommandListImmediate& RHICmdList)
 {
 	Frame = 0;
 	//SetParameter(Context->SolverParameter);

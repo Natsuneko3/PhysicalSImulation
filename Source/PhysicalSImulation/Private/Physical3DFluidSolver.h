@@ -6,9 +6,9 @@ class FPhysical3DFluidSolver: public FPhysicalSolverBase
 public:
 	FPhysical3DFluidSolver(FPhysicalSimulationSceneProxy* InSceneProxy);
 
-	virtual void Update_RenderThread(FRDGBuilder& GraphBuilder,FSceneView& InView) override;
+	virtual void PreRenderView_RenderThread(FRDGBuilder& GraphBuilder,FSceneView& InView) override;
 
-	virtual void Initial(FRHICommandListBase& RHICmdList) override;
+	virtual void Initial(FRHICommandListImmediate& RHICmdList) override;
 
 
 	bool bIsInitial = false;

@@ -48,7 +48,7 @@ void FPhysicalSimulationViewExtension::PreRenderView_RenderThread(FRDGBuilder& G
 		//SceneProxy->PhysicalSolver->SetParameter(SceneProxy);
 		if (SceneProxy != nullptr)
 		{
-			SceneProxy->PhysicalSolver->Update_RenderThread(GraphBuilder, InView);
+			SceneProxy->PhysicalSolver->PreRenderView_RenderThread(GraphBuilder, InView);
 		}
 	}
 }
@@ -122,14 +122,16 @@ void FPhysicalSimulationViewExtension::RemoveProxy(FPhysicalSimulationSceneProxy
 
 void FPhysicalSimulationViewExtension::Render_RenderThread(FPostOpaqueRenderParameters& Parameters)
 {
-	for (FPhysicalSimulationSceneProxy* SceneProxy : SceneProxies)
+
+	/*for (FPhysicalSimulationSceneProxy* SceneProxy : SceneProxies)
 	{
+		//SceneProxy.A
 		//SceneProxy->PhysicalSolver->SetParameter(SceneProxy);
 		if (SceneProxy != nullptr && SceneProxy->bSimulation)
 		{
 			SceneProxy->PhysicalSolver->Render_RenderThread(Parameters);
 		}
-	}
+	}*/
 }
 
 void FPhysicalSimulationViewExtension::Initial(FRHICommandListBase& RHICmdList)

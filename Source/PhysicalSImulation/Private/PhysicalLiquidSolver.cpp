@@ -142,7 +142,7 @@ void FPhysicalLiquidSolver::SetLiuquidParameter(FLiuquidParameter& Parameter, FS
 	SetupSolverBaseParameters(Parameter.SolverBaseParameter, InView);
 }
 
-void FPhysicalLiquidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder, FSceneView& InView)
+void FPhysicalLiquidSolver::PreRenderView_RenderThread(FRDGBuilder& GraphBuilder, FSceneView& InView)
 {
 	if (!SpriteVertexBuffer.IsValid() || !CubeVertexFactory.IsValid())
 	{
@@ -150,11 +150,21 @@ void FPhysicalLiquidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder, FScen
 	}
 	Frame++;
 	float DeltaTime = SceneProxy->World->GetDeltaSeconds();
-	FRHICommandListImmediate& RHICmdList = GraphBuilder.RHICmdList;
+	if(!ParticleIDBuffer && !ParticleAttributeBuffer)
+	{
+		FRDGBufferDesc IntBufferDesc = FRDGBufferDesc::CreateBufferDesc(sizeof(uint32), 1);
+		FRDGBufferDesc floatBufferDesc = FRDGBufferDesc::CreateBufferDesc(sizeof(float), NUMATTRIBUTE);
+		ParticleIDBuffer = GraphBuilder.CreateBuffer(IntBufferDesc,TEXT("IDBuffer"));
+		ParticleAttributeBuffer = GraphBuilder.CreateBuffer(floatBufferDesc,TEXT("AttrbuteBuffer"));
+		AddClearUAVPass(GraphBuilder,GraphBuilder.CreateUAV(ParticleIDBuffer),0);
+		AddClearUAVPass(GraphBuilder,GraphBuilder.CreateUAV(ParticleAttributeBuffer),0.0);
+	}
+
 	float CurrentNumParticle = LastNumParticle + DeltaTime * SceneProxy->LiquidSolverParameter->SpawnRate;
 	const FRDGTextureDesc Desc = FRDGTextureDesc::Create3D(GridSize, PF_G16R16F, FClearValueBinding::None, TexCreate_ShaderResource | TexCreate_UAV);
 	RasterizeTexture = GraphBuilder.CreateTexture(Desc,TEXT("LiuquidRasterize3DTexture"));
-
+	FRDGTextureUAVRef RasterizeTextureUAV= GraphBuilder.CreateUAV(RasterizeTexture);
+	AddClearUAVPass(GraphBuilder,RasterizeTextureUAV,0.f);
 
 	const auto ShaderMap = GetGlobalShaderMap(InView.FeatureLevel);
 	int DeadParticleNum = 0;
@@ -214,12 +224,13 @@ void FPhysicalLiquidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder, FScen
 		//Spawn Or Initial Particle
 		if (LastNumParticle != CurrentNumParticle)
 		{
-			FRDGBufferRef LastIDBuffer = GraphBuilder.CreateBuffer(FRDGBufferDesc::CreateBufferDesc(sizeof(int), LastNumParticle),TEXT("NextIDBUffer"));
-			FRDGBufferRef LastParticleBuffer = GraphBuilder.CreateBuffer(FRDGBufferDesc::CreateBufferDesc(sizeof(float), LastNumParticle * NUMATTRIBUTE),TEXT("NextIDBUffer"));;
+			LastNumParticle == 0? 1:LastNumParticle;
+			FRDGBufferRef LastIDBuffer = GraphBuilder.CreateBuffer(FRDGBufferDesc::CreateBufferDesc(sizeof(int), LastNumParticle),TEXT("LastIDBUffer"));
+			FRDGBufferRef LastParticleBuffer = GraphBuilder.CreateBuffer(FRDGBufferDesc::CreateBufferDesc(sizeof(float), LastNumParticle * NUMATTRIBUTE),TEXT("LastIDBUffer"));;
 			AddCopyBufferPass(GraphBuilder, LastIDBuffer, ParticleIDBuffer);
 			AddCopyBufferPass(GraphBuilder, LastParticleBuffer, ParticleAttributeBuffer);
-			ParticleIDBuffer = GraphBuilder.CreateBuffer(FRDGBufferDesc::CreateBufferDesc(sizeof(int), CurrentNumParticle),TEXT("NextIDBUffer"));
-			ParticleAttributeBuffer = GraphBuilder.CreateBuffer(FRDGBufferDesc::CreateBufferDesc(sizeof(float), CurrentNumParticle * NUMATTRIBUTE),TEXT("NextIDBUffer"));
+			ParticleIDBuffer = GraphBuilder.CreateBuffer(FRDGBufferDesc::CreateBufferDesc(sizeof(int), CurrentNumParticle),TEXT("CenterIDBUffer"));
+			ParticleAttributeBuffer = GraphBuilder.CreateBuffer(FRDGBufferDesc::CreateBufferDesc(sizeof(float), CurrentNumParticle * NUMATTRIBUTE),TEXT("CenterIDBUffer"));
 
 			/*NextIDBuffer.Initialize(RHICmdList,TEXT("NextIDBuffer"), sizeof(int), ParticleElement, PF_R32_UINT, ERHIAccess::UAVCompute, BUF_Static | BUF_SourceCopy);
 			NextParticleBuffer.Initialize(RHICmdList,TEXT("NextParticleBuffer"), sizeof(float), ParticleElement * NUMATTRIBUTE, PF_R32_FLOAT, ERHIAccess::UAVCompute);*/
@@ -259,7 +270,7 @@ void FPhysicalLiquidSolver::Update_RenderThread(FRDGBuilder& GraphBuilder, FScen
 		PassParameters->ParticleIDBufferSRV = GraphBuilder.CreateSRV(ParticleIDBuffer);
 		PassParameters->ParticleIDBuffer = GraphBuilder.CreateUAV(ParticleIDBuffer);
 		PassParameters->ParticleAttributeBuffer = GraphBuilder.CreateUAV(ParticleAttributeBuffer);
-		PassParameters->RasterizeTexture = GraphBuilder.CreateUAV(RasterizeTexture);
+		PassParameters->RasterizeTexture =RasterizeTextureUAV;
 		PassParameters->ShaderType = 0;
 
 		GraphBuilder.AddPass(
@@ -349,11 +360,8 @@ void FPhysicalLiquidSolver::Initial(FRHICommandListImmediate& RHICmdList)
 	CubeVertexFactory = MakeUnique<FPSCubeVertexFactory>(SceneProxy->FeatureLevel, SpriteVertexBuffer.Get());
 	CubeVertexFactory->InitResource(RHICmdList);
 
-	FRDGBuilder GraphBuilder(RHICmdList);
-	FRDGBufferDesc IntBufferDesc = FRDGBufferDesc::CreateBufferDesc(sizeof(int), 1);
-	FRDGBufferDesc floatBufferDesc = FRDGBufferDesc::CreateBufferDesc(sizeof(float), NUMATTRIBUTE);
-	ParticleIDBuffer = GraphBuilder.CreateBuffer(IntBufferDesc,TEXT("IDBuffer"));
-	ParticleAttributeBuffer = GraphBuilder.CreateBuffer(floatBufferDesc,TEXT("AttrbuteBuffer"));
+	//FRDGBuilder GraphBuilder(RHICmdList);
+
 	/*ParticleIDBuffer.Initialize(RHICmdList,TEXT("InitialIDBuffer"), sizeof(int), 1, PF_R32_UINT, ERHIAccess::UAVCompute);
 	ParticleAttributeBuffer.Initialize(RHICmdList,TEXT("InitialParticleBuffer"), sizeof(float), NUMATTRIBUTE, PF_R32_FLOAT, ERHIAccess::UAVCompute);
 	float* Particle = (float*)RHICmdList.LockBuffer(ParticleAttributeBuffer.Buffer, 0, sizeof(float), RLM_WriteOnly);
@@ -447,9 +455,9 @@ void FPhysicalLiquidSolver::Render_RenderThread(FPostOpaqueRenderParameters& Par
 					                    MeshBatch.Elements[0].PrimitiveIdMode = PrimID_ForceZero;
 
 					                    //Combine vertex buffer and its shader for rendering
-					                    FPhysicalSimulationMeshProcessor PassMeshProcessor(InView->Family->Scene->GetRenderScene(), InView, DynamicMeshPassContext);
+					                    /*FPhysicalSimulationMeshProcessor PassMeshProcessor(InView->Family->Scene->GetRenderScene(), InView, DynamicMeshPassContext);
 					                    const uint64 DefaultBatchElementMask = ~0ull;
-					                    PassMeshProcessor.AddMeshBatch(MeshBatch, DefaultBatchElementMask, InSceneProxy);
+					                    PassMeshProcessor.AddMeshBatch(MeshBatch, DefaultBatchElementMask, InSceneProxy);*/
 				                    }
 				);
 			}

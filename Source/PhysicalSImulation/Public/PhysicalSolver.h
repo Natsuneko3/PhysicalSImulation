@@ -210,7 +210,8 @@ public:
 	//virtual void SetParameter(FPhysicalSimulationSceneProxy* InSceneProxy){}
 	virtual void Initial(FRHICommandListImmediate& RHICmdList){}
 	virtual void Release(){}
-	virtual void Update_RenderThread(FRDGBuilder& GraphBuilder,FSceneView& InView){}
+	virtual void PreRenderView_RenderThread(FRDGBuilder& GraphBuilder,FSceneView& InView){}
+	virtual void PreRenderViewFamily_RenderThread(FRDGBuilder& GraphBuilder, FSceneViewFamily& InViewFamily) {}
 	virtual void GetDynamicMeshElements(const TArray<const FSceneView*>& Views, const FSceneViewFamily& ViewFamily, uint32 VisibilityMap, FMeshElementCollector& Collector,const FPhysicalSimulationSceneProxy* InSceneProxy){}
 	virtual void Render_RenderThread(FPostOpaqueRenderParameters& Parameters){}
 	FPhysicalSolverInitialed InitialedDelegate;
