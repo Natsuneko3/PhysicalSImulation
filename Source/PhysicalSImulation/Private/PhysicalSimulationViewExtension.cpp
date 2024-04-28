@@ -21,13 +21,20 @@ FPhysicalSimulationViewExtension::FPhysicalSimulationViewExtension(const FAutoRe
 	}
 	LastType = Component->SimulatorType;
 	FeatureLevel = InComponent->GetWorld()->FeatureLevel;*/
-
-
+	if (!RenderDelegateHandle.IsValid())
+	{
+		const FName RendererModuleName("Renderer");
+		IRendererModule* RendererModule = FModuleManager::GetModulePtr<IRendererModule>(RendererModuleName);
+		if (RendererModule)
+		{
+			RenderDelegate.BindRaw(this, &FPhysicalSimulationViewExtension::Render_RenderThread);
+			RenderDelegateHandle = RendererModule->RegisterPostOpaqueRenderDelegate(RenderDelegate);
+		}
+	}
 }
 
 FPhysicalSimulationViewExtension::~FPhysicalSimulationViewExtension()
 {
-	
 }
 
 void FPhysicalSimulationViewExtension::BeginRenderViewFamily(FSceneViewFamily& InViewFamily)
@@ -36,34 +43,32 @@ void FPhysicalSimulationViewExtension::BeginRenderViewFamily(FSceneViewFamily& I
 
 void FPhysicalSimulationViewExtension::PreRenderView_RenderThread(FRDGBuilder& GraphBuilder, FSceneView& InView)
 {
-	for(FPhysicalSimulationSceneProxy* SceneProxy : SceneProxies)
+	for (FPhysicalSimulationSceneProxy* SceneProxy : SceneProxies)
 	{
 		//SceneProxy->PhysicalSolver->SetParameter(SceneProxy);
-		if(SceneProxy !=nullptr)
+		if (SceneProxy != nullptr)
 		{
 			SceneProxy->PhysicalSolver->Update_RenderThread(GraphBuilder, InView);
 		}
-
 	}
 }
 
 bool FPhysicalSimulationViewExtension::IsActiveThisFrame_Internal(const FSceneViewExtensionContext& Context) const
 {
-	if(SceneProxies.Num() > 0)
+	if (SceneProxies.Num() > 0)
 	{
-		for(FPhysicalSimulationSceneProxy* SceneProxy : SceneProxies)
+		for (FPhysicalSimulationSceneProxy* SceneProxy : SceneProxies)
 		{
-			if(SceneProxy->bSimulation)
+			if (SceneProxy->bSimulation)
 			{
 				return true;
 			}
 		}
 	}
 	return false;
-
 }
 
-void FPhysicalSimulationViewExtension::GetDynamicMeshElements(const TArray<const FSceneView*>& Views, const FSceneViewFamily& ViewFamily, uint32 VisibilityMap, FMeshElementCollector& Collector,const FPhysicalSimulationSceneProxy* SceneProxy) const
+void FPhysicalSimulationViewExtension::GetDynamicMeshElements(const TArray<const FSceneView*>& Views, const FSceneViewFamily& ViewFamily, uint32 VisibilityMap, FMeshElementCollector& Collector, const FPhysicalSimulationSceneProxy* SceneProxy) const
 {
 	//PhysicalSolver->GetDynamicMeshElements(Views,ViewFamily,VisibilityMap,Collector,SceneProxy);
 }
@@ -115,6 +120,18 @@ void FPhysicalSimulationViewExtension::RemoveProxy(FPhysicalSimulationSceneProxy
 	}
 }
 
+void FPhysicalSimulationViewExtension::Render_RenderThread(FPostOpaqueRenderParameters& Parameters)
+{
+	for (FPhysicalSimulationSceneProxy* SceneProxy : SceneProxies)
+	{
+		//SceneProxy->PhysicalSolver->SetParameter(SceneProxy);
+		if (SceneProxy != nullptr && SceneProxy->bSimulation)
+		{
+			SceneProxy->PhysicalSolver->Render_RenderThread(Parameters);
+		}
+	}
+}
+
 void FPhysicalSimulationViewExtension::Initial(FRHICommandListBase& RHICmdList)
 {
 }
@@ -123,5 +140,3 @@ void FPhysicalSimulationViewExtension::PreRenderViewFamily_RenderThread(FRDGBuil
 {
 	FSceneViewExtensionBase::PreRenderViewFamily_RenderThread(GraphBuilder, InViewFamily);
 }
-
-

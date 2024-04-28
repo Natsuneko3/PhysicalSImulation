@@ -208,11 +208,11 @@ public:
 	FPhysicalSolverBase(FPhysicalSimulationSceneProxy* InSceneProxy):SceneProxy(InSceneProxy){}
 	int Frame = 0;
 	//virtual void SetParameter(FPhysicalSimulationSceneProxy* InSceneProxy){}
-	virtual void Initial(FRHICommandListBase& RHICmdList){}
+	virtual void Initial(FRHICommandListImmediate& RHICmdList){}
 	virtual void Release(){}
 	virtual void Update_RenderThread(FRDGBuilder& GraphBuilder,FSceneView& InView){}
-	virtual void RenderParticle(){}
 	virtual void GetDynamicMeshElements(const TArray<const FSceneView*>& Views, const FSceneViewFamily& ViewFamily, uint32 VisibilityMap, FMeshElementCollector& Collector,const FPhysicalSimulationSceneProxy* InSceneProxy){}
+	virtual void Render_RenderThread(FPostOpaqueRenderParameters& Parameters){}
 	FPhysicalSolverInitialed InitialedDelegate;
 protected:
 	FPhysicalSimulationSceneProxy* SceneProxy;

@@ -31,9 +31,10 @@ class FPhysicalLiquidSolver:public FPhysicalSolverBase
 
 	virtual void Update_RenderThread(FRDGBuilder& GraphBuilder,FSceneView& InView) override;
 
-	virtual void Initial(FRHICommandListBase& RHICmdList) override;
+	virtual void Initial(FRHICommandListImmediate& RHICmdList) override;
 	virtual void Release() override;
 	virtual void GetDynamicMeshElements(const TArray<const FSceneView*>& Views, const FSceneViewFamily& ViewFamily, uint32 VisibilityMap, FMeshElementCollector& Collector,const FPhysicalSimulationSceneProxy* InSceneProxy) override;
+	virtual void Render_RenderThread(FPostOpaqueRenderParameters& Parameters) override;
 	void PostSimulation();
 
 	bool bIsInitial = false;
@@ -46,9 +47,10 @@ class FPhysicalLiquidSolver:public FPhysicalSolverBase
 private:
 	void DrawCube();
 	int32 AllocatedInstanceCounts = 0;
-	FRWBuffer ParticleIDBuffer;
-	FRWBuffer ParticleAttributeBuffer;
-	FRHIGPUMemoryReadback* ParticleReadback = nullptr;
-	FRHIGPUMemoryReadback* ParticleIDReadback = nullptr;
-	void EnqueueGPUReadback(FRHICommandListImmediate& RHICmdList);
+	FRDGBufferRef ParticleIDBuffer;
+	FRDGBufferRef ParticleAttributeBuffer;
+	FRDGTextureRef RasterizeTexture;
+	FRHIGPUBufferReadback* ParticleReadback = nullptr;
+	FRHIGPUBufferReadback* ParticleIDReadback = nullptr;
+	void EnqueueGPUReadback(FRDGBuilder& GraphBuilder);
 };

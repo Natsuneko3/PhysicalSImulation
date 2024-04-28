@@ -86,7 +86,7 @@ void ParticleToCell(uint DispatchThreadId )
 void CellToParticle(uint DispatchThreadId )
 {
 	int active = 1;
-	ParticleContext Particle = GetParticle(ParticleAttributeBufferSRV,DispatchThreadId);
+	ParticleContext Particle = GetParticle(DispatchThreadId);
 	GroupMemoryBarrierWithGroupSync();
 	Particle.Velocity += float3(0,0,-9.8);
 	Particle.Position += Particle.Velocity * dt;

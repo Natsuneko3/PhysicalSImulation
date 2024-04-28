@@ -38,7 +38,7 @@ public:
 	void GetDynamicMeshElements(const TArray<const FSceneView*>& Views, const FSceneViewFamily& ViewFamily, uint32 VisibilityMap, FMeshElementCollector& Collector,const FPhysicalSimulationSceneProxy* SceneProxy) const;
 	void AddProxy(FPhysicalSimulationSceneProxy* Proxy);
 	void RemoveProxy(FPhysicalSimulationSceneProxy* Proxy);
-
+	void Render_RenderThread(FPostOpaqueRenderParameters& Parameters);
 	void Initial(FRHICommandListBase& RHICmdList);
 
 
