@@ -66,6 +66,6 @@ out float4 OutColor0 : SV_Target0
 
 	float Anisotropy = GetMaterialAnisotropy(PixelMaterialInputs);
 	float3 WorldTangent = MaterialParameters.WorldTangent;
-
+	OutColor0 = float4(1,0,0,0);
 	//GBufferF = EncodeWorldTangentAndAnisotropy(WorldTangent, Anisotropy);
 }

@@ -33,7 +33,6 @@ class FPhysicalLiquidSolver:public FPhysicalSolverBase
 
 	virtual void Initial(FRHICommandListImmediate& RHICmdList) override;
 	virtual void Release() override;
-	virtual void GetDynamicMeshElements(const TArray<const FSceneView*>& Views, const FSceneViewFamily& ViewFamily, uint32 VisibilityMap, FMeshElementCollector& Collector,const FPhysicalSimulationSceneProxy* InSceneProxy) override;
 	virtual void Render_RenderThread(FPostOpaqueRenderParameters& Parameters) override;
 	void PostSimulation();
 

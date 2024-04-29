@@ -1,7 +1,7 @@
 ﻿#include  "/Engine/Public/Platform.ush"
 #include "/Engine/Private/Random.ush"
 RWBuffer<float> ParticleAttributeBuffer;
-RWBuffer<int> ParticleIDBuffer;
+RWBuffer<uint> ParticleIDBuffer;
 
 float3 GridSize;
 float dt;

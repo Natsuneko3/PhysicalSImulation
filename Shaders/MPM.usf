@@ -12,7 +12,7 @@ int ShaderType;
 RWTexture3D<float> RasterizeTexture;
 float GravityScale;
 float LifeTime;
-Buffer<int> ParticleIDBufferSRV;
+Buffer<uint> ParticleIDBufferSRV;
 Buffer<float> ParticleAttributeBufferSRV;
 void FilterDeadParticle(uint DispatchThreadId , uint2 GroupThreadId , uint2 GroupID)
 {

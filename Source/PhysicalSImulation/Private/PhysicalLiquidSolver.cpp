@@ -25,12 +25,7 @@ TAutoConsoleVariable<int32> CVarPhysicalParticleDebug(
 	TEXT("1: Print particle Position and Velocity \n"),
 	ECVF_Default);
 
-BEGIN_SHADER_PARAMETER_STRUCT(FPSShaderParametersPS,)
-	SHADER_PARAMETER_STRUCT_REF(FViewUniformShaderParameters, View)
-	SHADER_PARAMETER_RDG_TEXTURE_SRV(Texture2D, InTexture1)
-	SHADER_PARAMETER_RDG_UNIFORM_BUFFER(FInstanceCullingGlobalUniforms, InstanceCulling)
-	RENDER_TARGET_BINDING_SLOTS()
-END_SHADER_PARAMETER_STRUCT()
+
 
 class FSpawnParticleCS : public FGlobalShader
 {
@@ -68,7 +63,7 @@ public:
 		SHADER_PARAMETER(int, ShaderType)
 		SHADER_PARAMETER_RDG_BUFFER_SRV(Buffer<int>, ParticleIDBufferSRV)
 		SHADER_PARAMETER_RDG_BUFFER_SRV(Buffer<float>, ParticleAttributeBufferSRV)
-		SHADER_PARAMETER_RDG_BUFFER_UAV(RWBuffer<int>, ParticleIDBuffer)
+		SHADER_PARAMETER_RDG_BUFFER_UAV(RWBuffer<uint32>, ParticleIDBuffer)
 		SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture3D<int>, RasterizeTexture)
 		SHADER_PARAMETER_RDG_BUFFER_UAV(RWBuffer<float>, ParticleAttributeBuffer)
 	END_SHADER_PARAMETER_STRUCT()
@@ -144,27 +139,30 @@ void FPhysicalLiquidSolver::SetLiuquidParameter(FLiuquidParameter& Parameter, FS
 
 void FPhysicalLiquidSolver::PreRenderView_RenderThread(FRDGBuilder& GraphBuilder, FSceneView& InView)
 {
-	if (!SpriteVertexBuffer.IsValid() || !CubeVertexFactory.IsValid())
+	if (!PSVertexBuffer.IsValid() || !PSVertexFactory.IsValid())
 	{
 		return;
 	}
 	Frame++;
 	float DeltaTime = SceneProxy->World->GetDeltaSeconds();
-	if(!ParticleIDBuffer && !ParticleAttributeBuffer)
+	/*FRDGBufferUAVRef ParticleIDBufferUAV = GraphBuilder.CreateUAV(ParticleIDBuffer,PF_R32_UINT);
+	FRDGBufferUAVRef ParticleAttributeBufferUAV = GraphBuilder.CreateUAV(ParticleAttributeBuffer,PF_R16F);*/
+
+	if (!ParticleIDBuffer && !ParticleAttributeBuffer)
 	{
 		FRDGBufferDesc IntBufferDesc = FRDGBufferDesc::CreateBufferDesc(sizeof(uint32), 1);
 		FRDGBufferDesc floatBufferDesc = FRDGBufferDesc::CreateBufferDesc(sizeof(float), NUMATTRIBUTE);
 		ParticleIDBuffer = GraphBuilder.CreateBuffer(IntBufferDesc,TEXT("IDBuffer"));
 		ParticleAttributeBuffer = GraphBuilder.CreateBuffer(floatBufferDesc,TEXT("AttrbuteBuffer"));
-		AddClearUAVPass(GraphBuilder,GraphBuilder.CreateUAV(ParticleIDBuffer),0);
-		AddClearUAVPass(GraphBuilder,GraphBuilder.CreateUAV(ParticleAttributeBuffer),0.0);
+		AddClearUAVPass(GraphBuilder, GraphBuilder.CreateUAV(ParticleIDBuffer,PF_R32_UINT), 0);
+		AddClearUAVPass(GraphBuilder, GraphBuilder.CreateUAV(ParticleAttributeBuffer,PF_R16F), 0.0);
 	}
 
 	float CurrentNumParticle = LastNumParticle + DeltaTime * SceneProxy->LiquidSolverParameter->SpawnRate;
 	const FRDGTextureDesc Desc = FRDGTextureDesc::Create3D(GridSize, PF_G16R16F, FClearValueBinding::None, TexCreate_ShaderResource | TexCreate_UAV);
 	RasterizeTexture = GraphBuilder.CreateTexture(Desc,TEXT("LiuquidRasterize3DTexture"));
-	FRDGTextureUAVRef RasterizeTextureUAV= GraphBuilder.CreateUAV(RasterizeTexture);
-	AddClearUAVPass(GraphBuilder,RasterizeTextureUAV,0.f);
+	FRDGTextureUAVRef RasterizeTextureUAV = GraphBuilder.CreateUAV(RasterizeTexture);
+	AddClearUAVPass(GraphBuilder, RasterizeTextureUAV, 0.f);
 
 	const auto ShaderMap = GetGlobalShaderMap(InView.FeatureLevel);
 	int DeadParticleNum = 0;
@@ -224,25 +222,21 @@ void FPhysicalLiquidSolver::PreRenderView_RenderThread(FRDGBuilder& GraphBuilder
 		//Spawn Or Initial Particle
 		if (LastNumParticle != CurrentNumParticle)
 		{
-			LastNumParticle == 0? 1:LastNumParticle;
-			FRDGBufferRef LastIDBuffer = GraphBuilder.CreateBuffer(FRDGBufferDesc::CreateBufferDesc(sizeof(int), LastNumParticle),TEXT("LastIDBUffer"));
+			LastNumParticle = FMath::Max(1,LastNumParticle);
+			FRDGBufferRef LastIDBuffer = GraphBuilder.CreateBuffer(FRDGBufferDesc::CreateBufferDesc(sizeof(uint32), LastNumParticle),TEXT("LastIDBUffer"));
 			FRDGBufferRef LastParticleBuffer = GraphBuilder.CreateBuffer(FRDGBufferDesc::CreateBufferDesc(sizeof(float), LastNumParticle * NUMATTRIBUTE),TEXT("LastIDBUffer"));;
 			AddCopyBufferPass(GraphBuilder, LastIDBuffer, ParticleIDBuffer);
 			AddCopyBufferPass(GraphBuilder, LastParticleBuffer, ParticleAttributeBuffer);
-			ParticleIDBuffer = GraphBuilder.CreateBuffer(FRDGBufferDesc::CreateBufferDesc(sizeof(int), CurrentNumParticle),TEXT("CenterIDBUffer"));
+			ParticleIDBuffer = GraphBuilder.CreateBuffer(FRDGBufferDesc::CreateBufferDesc(sizeof(uint32), CurrentNumParticle),TEXT("CenterIDBUffer"));
 			ParticleAttributeBuffer = GraphBuilder.CreateBuffer(FRDGBufferDesc::CreateBufferDesc(sizeof(float), CurrentNumParticle * NUMATTRIBUTE),TEXT("CenterIDBUffer"));
 
-			/*NextIDBuffer.Initialize(RHICmdList,TEXT("NextIDBuffer"), sizeof(int), ParticleElement, PF_R32_UINT, ERHIAccess::UAVCompute, BUF_Static | BUF_SourceCopy);
-			NextParticleBuffer.Initialize(RHICmdList,TEXT("NextParticleBuffer"), sizeof(float), ParticleElement * NUMATTRIBUTE, PF_R32_FLOAT, ERHIAccess::UAVCompute);*/
-			/*NextIDBuffer.Initialize(TEXT("NextIDBuffer"), sizeof(int), ParticleElement, PF_R32_SINT, ERHIAccess::UAVCompute, BUF_Static | BUF_SourceCopy);
-			NextParticleBuffer.Initialize(TEXT("NextParticleBuffer"), sizeof(float), ParticleElement * NUMATTRIBUTE, PF_R32_FLOAT, ERHIAccess::UAVCompute);*/
 			//TODO the new buffer need to initial?
 			FSpawnParticleCS::FParameters* Parameters = GraphBuilder.AllocParameters<FSpawnParticleCS::FParameters>();
 			Parameters->InAttributeBuffer = GraphBuilder.CreateSRV(LastIDBuffer); //ParticleAttributeBuffer.SRV;
 			Parameters->InIDBuffer = GraphBuilder.CreateSRV(LastParticleBuffer); //ParticleIDBuffer.SRV;
 			Parameters->LastNumParticle = CurrentNumParticle;
-			Parameters->ParticleIDBuffer = GraphBuilder.CreateUAV(ParticleIDBuffer); //NextIDBuffer.UAV;
-			Parameters->ParticleAttributeBuffer = GraphBuilder.CreateUAV(ParticleAttributeBuffer); //NextParticleBuffer.UAV;
+			Parameters->ParticleIDBuffer = GraphBuilder.CreateUAV(ParticleIDBuffer,PF_R32_UINT); //NextIDBuffer.UAV;
+			Parameters->ParticleAttributeBuffer = GraphBuilder.CreateUAV(ParticleAttributeBuffer,PF_R16F); //NextParticleBuffer.UAV;
 			GraphBuilder.AddPass(
 				RDG_EVENT_NAME("DrawPSCubeMesh"),
 				Parameters,
@@ -255,22 +249,16 @@ void FPhysicalLiquidSolver::PreRenderView_RenderThread(FRDGBuilder& GraphBuilder
 				});
 
 
-			/*Swap(NextIDBuffer, ParticleIDBuffer);
-			Swap(NextParticleBuffer, ParticleAttributeBuffer);*/
 		}
-
-
-		//ClearRenderTarget(RHICmdList, TextureRHI);
-		//FUnorderedAccessViewRHIRef RasterizeTexture = RHICreateUnorderedAccessView(TextureRHI); //RHICmdList.CreateUnorderedAccessView(TextureRHI);
 
 		TShaderMapRef<FLiquidParticleCS> LiquidComputeShader(ShaderMap);
 		FLiquidParticleCS::FParameters* PassParameters = GraphBuilder.AllocParameters<FLiquidParticleCS::FParameters>();
 		SetLiuquidParameter(PassParameters->LiuquidParameter, InView);
 		PassParameters->ParticleAttributeBufferSRV = GraphBuilder.CreateSRV(ParticleAttributeBuffer); //ParticleAttributeBuffer.SRV;
 		PassParameters->ParticleIDBufferSRV = GraphBuilder.CreateSRV(ParticleIDBuffer);
-		PassParameters->ParticleIDBuffer = GraphBuilder.CreateUAV(ParticleIDBuffer);
-		PassParameters->ParticleAttributeBuffer = GraphBuilder.CreateUAV(ParticleAttributeBuffer);
-		PassParameters->RasterizeTexture =RasterizeTextureUAV;
+		PassParameters->ParticleIDBuffer = GraphBuilder.CreateUAV(ParticleIDBuffer,PF_R32_UINT);
+		PassParameters->ParticleAttributeBuffer = GraphBuilder.CreateUAV(ParticleAttributeBuffer, PF_R32_FLOAT);
+		PassParameters->RasterizeTexture = RasterizeTextureUAV;
 		PassParameters->ShaderType = 0;
 
 		GraphBuilder.AddPass(
@@ -335,78 +323,27 @@ void FPhysicalLiquidSolver::Release()
 {
 	/*ParticleIDBuffer.Release();
 	ParticleAttributeBuffer.Release();*/
-	if (SpriteVertexBuffer)
+	if (PSVertexBuffer)
 	{
-		SpriteVertexBuffer->ReleaseResource();
+		PSVertexBuffer->ReleaseResource();
 	}
 	else
 	{
-		SpriteVertexBuffer.Reset();
+		PSVertexBuffer.Reset();
 	}
-	if (CubeVertexFactory)
+	if (PSVertexFactory)
 	{
-		CubeVertexFactory->ReleaseResource();
+		PSVertexFactory->ReleaseResource();
 	}
 	else
 	{
-		CubeVertexFactory.Reset();
+		PSVertexFactory.Reset();
 	}
 }
 
 void FPhysicalLiquidSolver::Initial(FRHICommandListImmediate& RHICmdList)
 {
-	SpriteVertexBuffer = MakeUnique<FPSCubeVertexBuffer>();
-	SpriteVertexBuffer->InitResource(RHICmdList);
-	CubeVertexFactory = MakeUnique<FPSCubeVertexFactory>(SceneProxy->FeatureLevel, SpriteVertexBuffer.Get());
-	CubeVertexFactory->InitResource(RHICmdList);
-
-	//FRDGBuilder GraphBuilder(RHICmdList);
-
-	/*ParticleIDBuffer.Initialize(RHICmdList,TEXT("InitialIDBuffer"), sizeof(int), 1, PF_R32_UINT, ERHIAccess::UAVCompute);
-	ParticleAttributeBuffer.Initialize(RHICmdList,TEXT("InitialParticleBuffer"), sizeof(float), NUMATTRIBUTE, PF_R32_FLOAT, ERHIAccess::UAVCompute);
-	float* Particle = (float*)RHICmdList.LockBuffer(ParticleAttributeBuffer.Buffer, 0, sizeof(float), RLM_WriteOnly);
-	int* ID = (int*)RHICmdList.LockBuffer(ParticleIDBuffer.Buffer, 0, sizeof(int), RLM_WriteOnly);
-	ID[0] = 0;
-	for (int i = 0; i < NUMATTRIBUTE; i++)
-	{
-		Particle[i] = (float)i;
-	}
-	RHICmdList.UnlockBuffer(ParticleIDBuffer.Buffer);
-	RHICmdList.UnlockBuffer(ParticleAttributeBuffer.Buffer);*/
-}
-
-
-void FPhysicalLiquidSolver::GetDynamicMeshElements(const TArray<const FSceneView*>& Views, const FSceneViewFamily& ViewFamily, uint32 VisibilityMap, FMeshElementCollector& Collector, const FPhysicalSimulationSceneProxy* InSceneProxy)
-{
-	/*FMeshBatch MeshBatch = Collector.AllocateMesh();
-	MeshBatch.bUseWireframeSelectionColoring = SceneProxy->IsSelected();
-	MeshBatch.VertexFactory = VertexFactory.Get();
-	MeshBatch.MaterialRenderProxy = SceneProxy->GetMeterial()->GetRenderProxy();
-	MeshBatch.ReverseCulling = false;
-	MeshBatch.Type = PT_TriangleList;
-	MeshBatch.DepthPriorityGroup = SDPG_World;
-	MeshBatch.bCanApplyViewModeOverrides = true;
-	MeshBatch.bUseForMaterial = true;
-	MeshBatch.CastShadow = false;
-	MeshBatch.bUseForDepthPass = false;
-
-	const FStaticMeshLODResources& LODModel = SceneProxy->GetStaticMesh()->GetRenderData()->LODResources[0];
-	VertexFactory->SetUpVertexBuffer(LODModel);
-	VertexFactory->InitResource();
-	FMeshBatchElement& BatchElement = MeshBatch.Elements[0];
-	BatchElement.PrimitiveUniformBuffer = SceneProxy->GetUniformBuffer();
-	BatchElement.IndexBuffer = &LODModel.IndexBuffer;
-	BatchElement.FirstIndex = 0;
-	BatchElement.MinVertexIndex = 0;
-	BatchElement.NumInstances = LastNumParticle;
-	BatchElement.MaxVertexIndex = LODModel.GetNumVertices() - 1;
-	BatchElement.NumPrimitives = LODModel.GetNumTriangles();
-	BatchElement.VertexFactoryUserData = VertexFactory->GetUniformBuffer();
-	for(int i = 0;i< Views.Num();i++)
-	{
-		Collector.AddMesh(i,MeshBatch);
-		//INC_DWORD_STAT_BY(STAT_PSParticlePolys, LastNumParticle * LODModel.GetNumTriangles());
-	}*/
+	InitialPlaneMesh(RHICmdList);
 }
 
 void FPhysicalLiquidSolver::Render_RenderThread(FPostOpaqueRenderParameters& Parameters)
@@ -422,7 +359,7 @@ void FPhysicalLiquidSolver::Render_RenderThread(FPostOpaqueRenderParameters& Par
 	PSShaderPamaters->InTexture1 = GraphBuilder.CreateSRV(RasterizeTexture);
 	PSShaderPamaters->View = View->ViewUniformBuffer; // RHICmdList.CreateShaderResourceView(TextureRHI,0);
 	PSShaderPamaters->InstanceCulling = FInstanceCullingContext::CreateDummyInstanceCullingUniformBuffer(GraphBuilder);
-	PSShaderPamaters->RenderTargets[0] = FRenderTargetBinding(Parameters.ColorTexture, ERenderTargetLoadAction::EClear);
+	PSShaderPamaters->RenderTargets[0] = FRenderTargetBinding(Parameters.ColorTexture, ERenderTargetLoadAction::ENoAction);
 	auto DrawCubeMesh = [&](FPhysicalSimulationSceneProxy* InSceneProxy)
 	{
 		GraphBuilder.AddPass(
@@ -433,9 +370,9 @@ void FPhysicalLiquidSolver::Render_RenderThread(FPostOpaqueRenderParameters& Par
 				DrawDynamicMeshPass(*InView, RHICmdList,
 				                    [&](FDynamicPassMeshDrawListContext* DynamicMeshPassContext)
 				                    {
-					                    FMeshBatch MeshBatch; // = Collector.AllocateMesh();
-					                    MeshBatch.bUseWireframeSelectionColoring = InSceneProxy->IsSelected();
-					                    MeshBatch.VertexFactory = CubeVertexFactory.Get();
+					                    FMeshBatch MeshBatch; 
+					                    
+					                    MeshBatch.VertexFactory = PSVertexFactory.Get();
 					                    MeshBatch.MaterialRenderProxy = InSceneProxy->GetMeterial()->GetRenderProxy();
 					                    MeshBatch.ReverseCulling = false;
 					                    MeshBatch.Type = PT_TriangleList;
@@ -445,19 +382,17 @@ void FPhysicalLiquidSolver::Render_RenderThread(FPostOpaqueRenderParameters& Par
 					                    MeshBatch.CastShadow = false;
 					                    MeshBatch.bUseForDepthPass = false;
 
-
-					                    MeshBatch.Elements[0].IndexBuffer = &GScreenRectangleIndexBuffer;
+					                    MeshBatch.Elements[0].IndexBuffer = PSVertexBuffer->GetIndexPtr();
 					                    MeshBatch.Elements[0].FirstIndex = 0;
-					                    MeshBatch.Elements[0].NumPrimitives = 1;
+					                    MeshBatch.Elements[0].NumPrimitives = 2;
 					                    MeshBatch.Elements[0].MinVertexIndex = 0;
-					                    MeshBatch.Elements[0].MaxVertexIndex = 2;
-					                    MeshBatch.Elements[0].PrimitiveUniformBuffer = GIdentityPrimitiveUniformBuffer.GetUniformBufferRHI();
-					                    MeshBatch.Elements[0].PrimitiveIdMode = PrimID_ForceZero;
+					                    MeshBatch.Elements[0].MaxVertexIndex = 3;
+					                    MeshBatch.Elements[0].VertexFactoryUserData = PSVertexFactory->GetUniformBuffer();//GIdentityPrimitiveUniformBuffer.GetUniformBufferRHI();
 
 					                    //Combine vertex buffer and its shader for rendering
-					                    /*FPhysicalSimulationMeshProcessor PassMeshProcessor(InView->Family->Scene->GetRenderScene(), InView, DynamicMeshPassContext);
+					                    FPhysicalSimulationMeshProcessor PassMeshProcessor(InView->Family->Scene->GetRenderScene(), InView, DynamicMeshPassContext);
 					                    const uint64 DefaultBatchElementMask = ~0ull;
-					                    PassMeshProcessor.AddMeshBatch(MeshBatch, DefaultBatchElementMask, InSceneProxy);*/
+					                    PassMeshProcessor.AddMeshBatch(MeshBatch, DefaultBatchElementMask, InSceneProxy);
 				                    }
 				);
 			}

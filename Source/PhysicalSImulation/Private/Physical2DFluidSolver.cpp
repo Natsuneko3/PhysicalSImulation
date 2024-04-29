@@ -1,5 +1,7 @@
 #include "Physical2DFluidSolver.h"
 
+#include "MeshPassProcessor.inl"
+#include "PhysicalSimulationMeshProcessor.h"
 #include "PhysicalSimulationSceneProxy.h"
 #include "PhysicalSolver.h"
 
@@ -10,14 +12,15 @@
 #include "Engine/TextureRenderTarget2D.h"
 #include "Runtime/Renderer/Private/SceneRendering.h"
 
-DECLARE_CYCLE_STAT(TEXT("PreVelocitySolver"),STAT_PreVelocitySolver,STATGROUP_PS)
-DECLARE_CYCLE_STAT(TEXT("AdvectionVelocity"),STAT_AdvectionVelocity,STATGROUP_PS)
-DECLARE_CYCLE_STAT(TEXT("ComputeDivergence"),STAT_ComputeDivergence,STATGROUP_PS)
-DECLARE_CYCLE_STAT(TEXT("FFTY"),STAT_FFTY,STATGROUP_PS)
-DECLARE_CYCLE_STAT(TEXT("FFTX"),STAT_FFTX,STATGROUP_PS)
-DECLARE_CYCLE_STAT(TEXT("InvFFTX"),STAT_InvFFTX,STATGROUP_PS)
-DECLARE_CYCLE_STAT(TEXT("InvFFTY"),STAT_InvFFTY,STATGROUP_PS)
-DECLARE_CYCLE_STAT(TEXT("AdvectionDensity"),STAT_AdvectionDensity,STATGROUP_PS)
+DECLARE_CYCLE_STAT(TEXT("PreVelocitySolver"), STAT_PreVelocitySolver, STATGROUP_PS)
+DECLARE_CYCLE_STAT(TEXT("AdvectionVelocity"), STAT_AdvectionVelocity, STATGROUP_PS)
+DECLARE_CYCLE_STAT(TEXT("ComputeDivergence"), STAT_ComputeDivergence, STATGROUP_PS)
+DECLARE_CYCLE_STAT(TEXT("FFTY"), STAT_FFTY, STATGROUP_PS)
+DECLARE_CYCLE_STAT(TEXT("FFTX"), STAT_FFTX, STATGROUP_PS)
+DECLARE_CYCLE_STAT(TEXT("InvFFTX"), STAT_InvFFTX, STATGROUP_PS)
+DECLARE_CYCLE_STAT(TEXT("InvFFTY"), STAT_InvFFTY, STATGROUP_PS)
+DECLARE_CYCLE_STAT(TEXT("AdvectionDensity"), STAT_AdvectionDensity, STATGROUP_PS)
+
 enum EShadertype
 {
 	PreVel,
@@ -76,7 +79,7 @@ public:
 
 		SHADER_PARAMETER(FVector3f, WorldVelocity)
 		SHADER_PARAMETER(FVector3f, WorldPosition)
-	SHADER_PARAMETER_STRUCT_INCLUDE(ShaderPrint::FShaderParameters, ShaderPrintUniformBuffer)
+		SHADER_PARAMETER_STRUCT_INCLUDE(ShaderPrint::FShaderParameters, ShaderPrintUniformBuffer)
 
 		SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D, PressureGridUAV)
 	END_SHADER_PARAMETER_STRUCT()
@@ -107,15 +110,14 @@ IMPLEMENT_SHADER_TYPE(template<>, FFFTSolvePoissonCS<128>, TEXT("/PluginShader/F
 
 
 FPhysical2DFluidSolver::FPhysical2DFluidSolver(FPhysicalSimulationSceneProxy* InSceneProxy)
-: FPhysicalSolverBase(InSceneProxy)
+	: FPhysicalSolverBase(InSceneProxy)
 {
 	Frame = 0;
-	GridSize = FIntPoint(InSceneProxy->GridSize.X,InSceneProxy->GridSize.Y);
+	GridSize = FIntPoint(InSceneProxy->GridSize.X, InSceneProxy->GridSize.Y);
 }
 
-void FPhysical2DFluidSolver::SetSolverParameter(FFluidParameter& SolverParameter,FSceneView& InView)
+void FPhysical2DFluidSolver::SetSolverParameter(FFluidParameter& SolverParameter, FSceneView& InView)
 {
-
 	SolverParameter.DensityDissipate = SceneProxy->PlandFluidParameters->DensityDissipate;
 	SolverParameter.GravityScale = SceneProxy->PlandFluidParameters->GravityScale;
 	SolverParameter.NoiseFrequency = SceneProxy->PlandFluidParameters->NoiseFrequency;
@@ -123,11 +125,10 @@ void FPhysical2DFluidSolver::SetSolverParameter(FFluidParameter& SolverParameter
 	SolverParameter.VelocityDissipate = SceneProxy->PlandFluidParameters->VelocityDissipate;
 	SolverParameter.VorticityMult = SceneProxy->PlandFluidParameters->VorticityMult;
 	SolverParameter.UseFFT = true;
-	SetupSolverBaseParameters(SolverParameter.SolverBaseParameter,InView);
-
+	SetupSolverBaseParameters(SolverParameter.SolverBaseParameter, InView);
 }
 
-void FPhysical2DFluidSolver::PreRenderView_RenderThread(FRDGBuilder& GraphBuilder,FSceneView& InView)
+void FPhysical2DFluidSolver::PreRenderView_RenderThread(FRDGBuilder& GraphBuilder, FSceneView& InView)
 {
 	DECLARE_GPU_STAT(PlaneFluidSolver)
 	RDG_EVENT_SCOPE(GraphBuilder, "PlaneFluidSolver");
@@ -141,8 +142,12 @@ void FPhysical2DFluidSolver::PreRenderView_RenderThread(FRDGBuilder& GraphBuilde
 		}
 	}
 	Frame++;
-	const FRDGTextureRef SimulationTexture = RegisterExternalTexture(GraphBuilder, SceneProxy->OutputTextures[0]->GetResource()->GetTextureRHI(),TEXT("SimulationTexture"));
-	const FRDGTextureRef PressureTexture = RegisterExternalTexture(GraphBuilder, SceneProxy->OutputTextures[1]->GetResource()->GetTextureRHI(),TEXT("PressureTexture"));
+	if (!SimulationTexture && !PressureTexture)
+	{
+		SimulationTexture = GraphBuilder.CreateTexture(FRDGTextureDesc::Create2D(GridSize, PF_FloatRGBA, FClearValueBinding::Black, TexCreate_ShaderResource | TexCreate_UAV | TexCreate_RenderTargetable),TEXT("SimulationTexture"),
+		                                               ERDGTextureFlags::None);
+		PressureTexture = GraphBuilder.CreateTexture(FRDGTextureDesc::Create2D(GridSize, PF_FloatRGBA, FClearValueBinding::Black, TexCreate_ShaderResource | TexCreate_UAV | TexCreate_RenderTargetable),TEXT("PressureTexture"), ERDGTextureFlags::None);
+	}
 
 
 	//TODO:Need Change shader map based of platforms
@@ -162,10 +167,10 @@ void FPhysical2DFluidSolver::PreRenderView_RenderThread(FRDGBuilder& GraphBuilde
 	FShaderPrintData ShaderPrintData = ShaderPrint::CreateShaderPrintData(GraphBuilder, ShaderPrintSetup);
 
 	F2DFluidCS::FParameters* PassParameters = GraphBuilder.AllocParameters<F2DFluidCS::FParameters>();
-	SetSolverParameter(PassParameters->FluidParameter,InView);
+	SetSolverParameter(PassParameters->FluidParameter, InView);
 
-	auto SetParameter = [this,&GraphBuilder,ShaderPrintData,SimulationTexture](F2DFluidCS::FParameters* InPassParameters, bool bAdvectionDensity, int IterationIndex
-	                                                 , FRDGTextureUAVRef SimUAV, FRDGTextureUAVRef PressureUAV, FRDGTextureSRVRef SimSRV, int ShaderType)
+	auto SetParameter = [this,&GraphBuilder,ShaderPrintData](F2DFluidCS::FParameters* InPassParameters, bool bAdvectionDensity, int IterationIndex
+	                                                         , FRDGTextureUAVRef SimUAV, FRDGTextureUAVRef PressureUAV, FRDGTextureSRVRef SimSRV, int ShaderType)
 	{
 		//InPassParameters->FluidParameter = *SolverParameter;
 
@@ -173,20 +178,20 @@ void FPhysical2DFluidSolver::PreRenderView_RenderThread(FRDGBuilder& GraphBuilde
 		InPassParameters->IterationIndex = IterationIndex;
 		InPassParameters->FluidShaderType = ShaderType;
 		InPassParameters->SimGridSRV = SimSRV;
-		InPassParameters->SimSampler = TStaticSamplerState<SF_Bilinear, AM_Clamp, AM_Clamp, AM_Clamp>::GetRHI();
+		InPassParameters->SimSampler = TStaticSamplerState<SF_Bilinear>::GetRHI();
 		InPassParameters->SimGridUAV = SimUAV;
 		InPassParameters->PressureGridUAV = PressureUAV;
 		InPassParameters->bUseFFTPressure = bUseFFT;
-		InPassParameters->WorldVelocity = FVector3f(0);//Context->WorldVelocity;
-		InPassParameters->WorldPosition = FVector3f(0);//Context->WorldPosition;
-		ShaderPrint::SetParameters(GraphBuilder, ShaderPrintData,InPassParameters->ShaderPrintUniformBuffer);
+		InPassParameters->WorldVelocity = FVector3f(0); //Context->WorldVelocity;
+		InPassParameters->WorldPosition = FVector3f(0); //Context->WorldPosition;
+		ShaderPrint::SetParameters(GraphBuilder, ShaderPrintData, InPassParameters->ShaderPrintUniformBuffer);
 	};
 
 	//PreVelocitySolver
 	{
 		SCOPE_CYCLE_COUNTER(STAT_PreVelocitySolver);
 
-		SetParameter(PassParameters, false, 0, SimUAV, PressureUAV, SimSRV,  PreVel);
+		SetParameter(PassParameters, false, 0, SimUAV, PressureUAV, SimSRV, PreVel);
 		//PermutationVector.Set<F2DFluidCS::FPreVel>(true);
 		TShaderMapRef<F2DFluidCS> ComputeShader(ShaderMap);
 
@@ -213,25 +218,8 @@ void FPhysical2DFluidSolver::PreRenderView_RenderThread(FRDGBuilder& GraphBuilde
 			SimSRV = GraphBuilder.CreateSRV(TempGrid);
 			//PressureSRV = GraphBuilder.CreateSRV(PressureTexture);
 		}
-		SetParameter(PassParameters, false, 0, SimUAV, PressureUAV, SimSRV,  Advection);
+		SetParameter(PassParameters, false, 0, SimUAV, PressureUAV, SimSRV, Advection);
 		TShaderMapRef<F2DFluidCS> ComputeShader(ShaderMap);
-
-		/*
-		GraphBuilder.AddPass(
-						RDG_EVENT_NAME("AdvectionVelocity"),
-						PassParameters,
-						ERDGPassFlags::Compute ,
-						[this ,ComputeShader,SimUAV,PassParameters,PressureUAV,SimulationTexture](FRHICommandList& RHICmdList)
-					{
-							RHICmdList.Transition(FRHITransitionInfo(SimulationTexture->GetRHI(), ERHIAccess::UAVCompute, ERHIAccess::SRVCompute));
-							SimSRV = GraphBuilder.CreateSRV(SimulationTexture);
-
-
-							FComputeShaderUtils::Dispatch(RHICmdList,
-										 ComputeShader,
-										 *PassParameters,
-										 FComputeShaderUtils::GetGroupCount(FIntVector(GridSize.X, GridSize.Y, 1), ThreadNum));
-					});*/
 
 		FComputeShaderUtils::AddPass(GraphBuilder,
 		                             RDG_EVENT_NAME("AdvectionVelocity"),
@@ -241,18 +229,13 @@ void FPhysical2DFluidSolver::PreRenderView_RenderThread(FRDGBuilder& GraphBuilde
 		                             FComputeShaderUtils::GetGroupCount(FIntVector(GridSize.X, GridSize.Y, 1), ThreadNum));
 	}
 
-
+	//Solver Pressure Fleid
 	if (bUseFFT)
 	{
-		//FRDGTextureUAVRef TempUAV =  GraphBuilder.CreateUAV(PressureTexture);
 		{
 			SCOPE_CYCLE_COUNTER(STAT_ComputeDivergence);
-			//F2DFluidCS::FParameters* PassParameters = GraphBuilder.AllocParameters<F2DFluidCS::FParameters>();
-			//AddCopyTexturePass(GraphBuilder,OutTextureArray[0],SimulationTexture);
-			/*SimSRV = GraphBuilder.CreateSRV(SimulationTexture);
-			PressureSRV = GraphBuilder.CreateSRV(PressureTexture);*/
 
-			SetParameter(PassParameters, false, 0, SimUAV, PressureUAV, SimSRV,  ComputeDivergence);
+			SetParameter(PassParameters, false, 0, SimUAV, PressureUAV, SimSRV, ComputeDivergence);
 			//PermutationVector.Set<F2DFluidCS::FAdvection>(true);
 			TShaderMapRef<F2DFluidCS> ComputeShader(ShaderMap);
 
@@ -264,7 +247,7 @@ void FPhysical2DFluidSolver::PreRenderView_RenderThread(FRDGBuilder& GraphBuilde
 			                             PassParameters,
 			                             FComputeShaderUtils::GetGroupCount(FIntVector(GridSize.X, GridSize.Y, 1), ThreadNum));
 		}
-		//FRDGTextureSRVRef DivSRV = GraphBuilder.CreateSRV(PressureTexture);
+
 		//FFT Y
 		FFFTSolvePoissonCS<256>::FParameters* FFTPassParameters = GraphBuilder.AllocParameters<FFFTSolvePoissonCS<256>::FParameters>();
 		{
@@ -319,7 +302,7 @@ void FPhysical2DFluidSolver::PreRenderView_RenderThread(FRDGBuilder& GraphBuilde
 			                             ERDGPassFlags::Compute,
 			                             ComputeShader,
 			                             FFTPassParameters,
-			                             FIntVector(GridSize.Y, 1, 1)); //FComputeShaderUtils::GetGroupCount( FIntVector(GridSize.X,GridSize.Y,1),FIntVector(GridSize.X ,1,1)));
+			                             FIntVector(GridSize.Y, 1, 1));
 		}
 
 		//Inv FFT Y
@@ -337,7 +320,7 @@ void FPhysical2DFluidSolver::PreRenderView_RenderThread(FRDGBuilder& GraphBuilde
 			                             ERDGPassFlags::Compute,
 			                             ComputeShader,
 			                             FFTPassParameters,
-			                             FIntVector(GridSize.X, 1, 1)); //FComputeShaderUtils::GetGroupCount( FIntVector(GridSize.X,GridSize.Y,1),FIntVector(GridSize.X ,1,1)));
+			                             FIntVector(GridSize.X, 1, 1));
 		}
 	}
 	else
@@ -346,7 +329,7 @@ void FPhysical2DFluidSolver::PreRenderView_RenderThread(FRDGBuilder& GraphBuilde
 		{
 			//F2DFluidCS::FParameters* PassParameters = GraphBuilder.AllocParameters<F2DFluidCS::FParameters>();
 
-			SetParameter(PassParameters, false, i, SimUAV, PressureUAV, SimSRV,  IteratePressure);
+			SetParameter(PassParameters, false, i, SimUAV, PressureUAV, SimSRV, IteratePressure);
 
 			F2DFluidCS::FPermutationDomain PermutationVector;
 			//PermutationVector.Set<F2DFluidCS::FIteratePressure>(true);
@@ -367,16 +350,14 @@ void FPhysical2DFluidSolver::PreRenderView_RenderThread(FRDGBuilder& GraphBuilde
 	//Advection Density
 	{
 		SCOPE_CYCLE_COUNTER(STAT_AdvectionDensity);
-		//F2DFluidCS::FParameters* PassParameters = GraphBuilder.AllocParameters<F2DFluidCS::FParameters>();
 
-		//GraphBuilder.RHICmdList.Transition(FRHITransitionInfo(SimulationTexture->GetRHI(), ERHIAccess::UAVCompute, ERHIAccess::SRVCompute));
 		if (RHIGetInterfaceType() < ERHIInterfaceType::D3D12)
 		{
 			AddCopyTexturePass(GraphBuilder, SimulationTexture, TempGrid);
 			SimSRV = GraphBuilder.CreateSRV(TempGrid);
 		}
 
-		SetParameter(PassParameters, true, 0, SimUAV, PressureUAV, SimSRV,  Advection);
+		SetParameter(PassParameters, true, 0, SimUAV, PressureUAV, SimSRV, Advection);
 		TShaderMapRef<F2DFluidCS> ComputeShader(ShaderMap);
 
 
@@ -391,9 +372,60 @@ void FPhysical2DFluidSolver::PreRenderView_RenderThread(FRDGBuilder& GraphBuilde
 
 void FPhysical2DFluidSolver::Initial(FRHICommandListImmediate& RHICmdList)
 {
-	Frame = 0;
-	//SetParameter(Context->SolverParameter);
 	InitialedDelegate.Broadcast();
+
+	InitialPlaneMesh(RHICmdList);
+}
+
+void FPhysical2DFluidSolver::Render_RenderThread(FPostOpaqueRenderParameters& Parameters)
+{
+	const FSceneView* View = static_cast<FSceneView*>(Parameters.Uid);
+	FRDGBuilder& GraphBuilder = *Parameters.GraphBuilder;
+	FPSShaderParametersPS* PSShaderPamaters = GraphBuilder.AllocParameters<FPSShaderParametersPS>();
+	if (!SimulationTexture)
+	{
+		return;
+	}
+
+	PSShaderPamaters->InTexture1 = GraphBuilder.CreateSRV(SimulationTexture);
+	PSShaderPamaters->View = View->ViewUniformBuffer; // RHICmdList.CreateShaderResourceView(TextureRHI,0);
+	PSShaderPamaters->InstanceCulling = FInstanceCullingContext::CreateDummyInstanceCullingUniformBuffer(GraphBuilder);
+	PSShaderPamaters->RenderTargets[0] = FRenderTargetBinding(Parameters.ColorTexture, ERenderTargetLoadAction::ENoAction);
+	GraphBuilder.AddPass(
+		RDG_EVENT_NAME("DrawPSCubeMesh"),
+		PSShaderPamaters,
+		ERDGPassFlags::Raster, [this,&InView = View,&InSceneProxy = SceneProxy](FRHICommandListImmediate& RHICmdList)
+		{
+			DrawDynamicMeshPass(*InView, RHICmdList,
+			                    [&](FDynamicPassMeshDrawListContext* DynamicMeshPassContext)
+			                    {
+				                    FMeshBatch MeshBatch;
+
+				                    MeshBatch.VertexFactory = PSVertexFactory.Get();
+				                    MeshBatch.MaterialRenderProxy = InSceneProxy->GetMeterial()->GetRenderProxy();
+				                    MeshBatch.ReverseCulling = false;
+				                    MeshBatch.Type = PT_TriangleList;
+				                    MeshBatch.DepthPriorityGroup = SDPG_World;
+				                    MeshBatch.bCanApplyViewModeOverrides = true;
+				                    MeshBatch.bUseForMaterial = true;
+				                    MeshBatch.CastShadow = false;
+				                    MeshBatch.bUseForDepthPass = false;
+
+				                    MeshBatch.Elements[0].IndexBuffer = PSVertexBuffer->GetIndexPtr();
+				                    MeshBatch.Elements[0].FirstIndex = 0;
+				                    MeshBatch.Elements[0].NumPrimitives = 2;
+				                    MeshBatch.Elements[0].MinVertexIndex = 0;
+				                    MeshBatch.Elements[0].MaxVertexIndex = 3;
+				                    MeshBatch.Elements[0].VertexFactoryUserData = PSVertexFactory->GetUniformBuffer(); //GIdentityPrimitiveUniformBuffer.GetUniformBufferRHI();
+
+				                    //Combine vertex buffer and its shader for rendering
+				                    FPhysicalSimulationMeshProcessor PassMeshProcessor(InView->Family->Scene->GetRenderScene(), InView, DynamicMeshPassContext);
+				                    const uint64 DefaultBatchElementMask = ~0ull;
+				                    PassMeshProcessor.AddMeshBatch(MeshBatch, DefaultBatchElementMask, InSceneProxy);
+			                    }
+			);
+		}
+	);
 }
 
 void FPhysical2DFluidSolver::Release()

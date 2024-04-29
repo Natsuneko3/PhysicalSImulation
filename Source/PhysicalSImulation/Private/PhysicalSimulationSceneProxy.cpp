@@ -11,12 +11,12 @@
 #include "PhysicalSolver.h"
 DECLARE_CYCLE_STAT(TEXT("GetDynamicMeshElements"), STAT_PS_GetDynamicMeshElements, STATGROUP_PS)
 
-void FPSSpriteVertexBuffer::SetDynamicUsage(bool bInDynamicUsage)
+void FPSVertexBuffer::SetDynamicUsage(bool bInDynamicUsage)
 {
 	bDynamicUsage = bInDynamicUsage;
 }
 
-void FPSSpriteVertexBuffer::CreateBuffers(FRHICommandListBase& RHICmdList, int32 InNumVertices)
+void FPSVertexBuffer::CreateBuffers(FRHICommandListBase& RHICmdList, int32 InNumVertices)
 {
 	//Make sure we don't have dangling buffers
 	if (NumAllocatedVertices > 0)
@@ -80,7 +80,7 @@ void FPSSpriteVertexBuffer::CreateBuffers(FRHICommandListBase& RHICmdList, int32
 	}
 }
 
-void FPSSpriteVertexBuffer::ReleaseBuffers()
+void FPSVertexBuffer::ReleaseBuffers()
 {
 	PositionBuffer.ReleaseRHI();
 	TangentBuffer.ReleaseRHI();
@@ -96,7 +96,7 @@ void FPSSpriteVertexBuffer::ReleaseBuffers()
 	NumAllocatedVertices = 0;
 }
 
-void FPSSpriteVertexBuffer::CommitVertexData(FRHICommandListBase& RHICmdList)
+void FPSVertexBuffer::CommitVertexData(FRHICommandListBase& RHICmdList)
 {
 	if (Vertices.Num())
 	{
@@ -165,13 +165,13 @@ void FPSSpriteVertexBuffer::CommitVertexData(FRHICommandListBase& RHICmdList)
 	}
 }
 
-void FPSSpriteVertexBuffer::InitRHI(FRHICommandListBase& RHICmdList)
+void FPSVertexBuffer::InitRHI(FRHICommandListBase& RHICmdList)
 {
 	//Automatically try to create the data and use it
 	CommitVertexData(RHICmdList);
 }
 
-void FPSSpriteVertexBuffer::ReleaseRHI()
+void FPSVertexBuffer::ReleaseRHI()
 {
 	PositionBuffer.ReleaseRHI();
 	TangentBuffer.ReleaseRHI();
@@ -185,7 +185,7 @@ void FPSSpriteVertexBuffer::ReleaseRHI()
 	PositionBufferSRV.SafeRelease();
 }
 
-void FPSSpriteVertexBuffer::InitResource(FRHICommandListBase& RHICmdList)
+void FPSVertexBuffer::InitResource(FRHICommandListBase& RHICmdList)
 {
 	FRenderResource::InitResource(RHICmdList);
 	PositionBuffer.InitResource(RHICmdList);
@@ -195,7 +195,7 @@ void FPSSpriteVertexBuffer::InitResource(FRHICommandListBase& RHICmdList)
 	IndexBuffer.InitResource(RHICmdList);
 }
 
-void FPSSpriteVertexBuffer::ReleaseResource()
+void FPSVertexBuffer::ReleaseResource()
 {
 	FRenderResource::ReleaseResource();
 	PositionBuffer.ReleaseResource();
@@ -210,31 +210,48 @@ FPSSpriteVertexFactory::FPSSpriteVertexFactory(ERHIFeatureLevel::Type FeatureLev
 {
 }
 
-void FPSSpriteVertexFactory::Init(FRHICommandListBase& RHICmdList, const FPSSpriteVertexBuffer* InVertexBuffer)
+
+FPSVertexFactory::FPSVertexFactory(ERHIFeatureLevel::Type FeatureLevel): FLocalVertexFactory(FeatureLevel, "FPhysicalVertexFactory")
 {
-	FLocalVertexFactory::FDataType VertexData;
-	VertexData.NumTexCoords = 1;
-
-	//SRV setup
-	VertexData.LightMapCoordinateIndex = 0;
-	VertexData.TangentsSRV = InVertexBuffer->TangentBufferSRV;
-	VertexData.TextureCoordinatesSRV = InVertexBuffer->TexCoordBufferSRV;
-	VertexData.ColorComponentsSRV = InVertexBuffer->ColorBufferSRV;
-	VertexData.PositionComponentSRV = InVertexBuffer->PositionBufferSRV;
-
-	// Vertex Streams
-	VertexData.PositionComponent = FVertexStreamComponent(&InVertexBuffer->PositionBuffer, 0, sizeof(FVector3f), VET_Float3, EVertexStreamUsage::Default);
-	VertexData.TangentBasisComponents[0] = FVertexStreamComponent(&InVertexBuffer->TangentBuffer, 0, 2 * sizeof(FPackedNormal), VET_PackedNormal, EVertexStreamUsage::ManualFetch);
-	VertexData.TangentBasisComponents[1] = FVertexStreamComponent(&InVertexBuffer->TangentBuffer, sizeof(FPackedNormal), 2 * sizeof(FPackedNormal), VET_PackedNormal, EVertexStreamUsage::ManualFetch);
-	VertexData.ColorComponent = FVertexStreamComponent(&InVertexBuffer->ColorBuffer, 0, sizeof(FColor), VET_Color, EVertexStreamUsage::ManualFetch);
-	VertexData.TextureCoordinates.Add(FVertexStreamComponent(&InVertexBuffer->TexCoordBuffer, 0, sizeof(FVector2f), VET_Float2, EVertexStreamUsage::ManualFetch));
-
-	SetData(RHICmdList, VertexData);
-	VertexBuffer = InVertexBuffer;
-
-	InitResource(RHICmdList);
 }
 
+void FPSVertexFactory::Init(const FPSVertexBuffer* InVertexBuffer)
+{
+	if (IsInRenderingThread())
+	{
+		FLocalVertexFactory::FDataType VertexData;
+		VertexData.NumTexCoords = 1;
+
+		//SRV setup
+		VertexData.LightMapCoordinateIndex = 0;
+		VertexData.TangentsSRV = InVertexBuffer->TangentBufferSRV;
+		VertexData.TextureCoordinatesSRV = InVertexBuffer->TexCoordBufferSRV;
+		VertexData.ColorComponentsSRV = InVertexBuffer->ColorBufferSRV;
+		VertexData.PositionComponentSRV = InVertexBuffer->PositionBufferSRV;
+
+		// Vertex Streams
+		VertexData.PositionComponent = FVertexStreamComponent(&InVertexBuffer->PositionBuffer, 0, sizeof(FVector3f), VET_Float3, EVertexStreamUsage::Default);
+		VertexData.TangentBasisComponents[0] = FVertexStreamComponent(&InVertexBuffer->TangentBuffer, 0, 2 * sizeof(FPackedNormal), VET_PackedNormal, EVertexStreamUsage::ManualFetch);
+		VertexData.TangentBasisComponents[1] = FVertexStreamComponent(&InVertexBuffer->TangentBuffer, sizeof(FPackedNormal), 2 * sizeof(FPackedNormal), VET_PackedNormal, EVertexStreamUsage::ManualFetch);
+		VertexData.ColorComponent = FVertexStreamComponent(&InVertexBuffer->ColorBuffer, 0, sizeof(FColor), VET_Color, EVertexStreamUsage::ManualFetch);
+		VertexData.TextureCoordinates.Add(FVertexStreamComponent(&InVertexBuffer->TexCoordBuffer, 0, sizeof(FVector2f), VET_Float2, EVertexStreamUsage::ManualFetch));
+
+		SetData(VertexData);
+		VertexBuffer = InVertexBuffer;
+
+		InitResource();
+	}
+	else
+	{
+		FPSVertexFactory* ThisFactory = this;
+		ENQUEUE_RENDER_COMMAND(SpriteVertexFactoryInit)(
+			[ThisFactory, InVertexBuffer](FRHICommandListImmediate& RHICmdList)
+		{
+			ThisFactory->Init(InVertexBuffer);
+		});
+	}
+}
+///////////////////FPhysicalSolverBase/////////////////////
 void FPhysicalSolverBase::SetupSolverBaseParameters(FSolverBaseParameter& Parameter,FSceneView& InView)
 {
 	Parameter.dt = SceneProxy->World->GetDeltaSeconds();
@@ -245,6 +262,24 @@ void FPhysicalSolverBase::SetupSolverBaseParameters(FSolverBaseParameter& Parame
 	Parameter.WarpSampler = TStaticSamplerState<SF_Bilinear, AM_Wrap, AM_Wrap, AM_Wrap>::GetRHI();
 
 }
+
+void FPhysicalSolverBase::InitialPlaneMesh(FRHICommandListImmediate& RHICmdList)
+{
+	TArray<FPSSpriteVertex> Vertices;
+	Vertices.Add(FDynamicMeshVertex(FVector3f(0.f)));
+	Vertices.Add(FDynamicMeshVertex(FVector3f(0.f,1.f,0.f)));
+	Vertices.Add(FDynamicMeshVertex(FVector3f(1.f,0.f,0.f)));
+	Vertices.Add(FDynamicMeshVertex(FVector3f(1.f,1.f,0.f)));
+
+	PSVertexBuffer = MakeUnique<FPSVertexBuffer>();
+	PSVertexBuffer->Vertices = Vertices;
+	//Inner will do the InitRHI()
+	PSVertexBuffer->InitResource(RHICmdList);
+
+	PSVertexFactory = MakeUnique<FPSVertexFactory>(SceneProxy->FeatureLevel);
+	PSVertexFactory->Init(PSVertexBuffer.Get());
+}
+
 FPhysicalSimulationSceneProxy::FPhysicalSimulationSceneProxy(UPhysicalSimulationComponent* InComponent)
 	: FPrimitiveSceneProxy(InComponent), Component(InComponent)
 {
@@ -284,6 +319,7 @@ FPhysicalSimulationSceneProxy::FPhysicalSimulationSceneProxy(UPhysicalSimulation
 	Dx = Component->Dx;
 	PlandFluidParameters = &Component->PlandFluidParameters;
 	LiquidSolverParameter = &Component->LiquidSolverParameter;
+
 }
 
 FPhysicalSimulationSceneProxy::~FPhysicalSimulationSceneProxy()

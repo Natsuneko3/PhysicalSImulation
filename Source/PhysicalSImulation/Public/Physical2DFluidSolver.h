@@ -15,22 +15,25 @@ struct FPlandFluidParameters
 	float GravityScale = 20;
 };
 
-class FPhysical2DFluidSolver :public FPhysicalSolverBase
+class FPhysical2DFluidSolver : public FPhysicalSolverBase
 {
 public:
-	FPhysical2DFluidSolver(FPhysicalSimulationSceneProxy* InSceneProxy) ;
+	FPhysical2DFluidSolver(FPhysicalSimulationSceneProxy* InSceneProxy);
 
-	void SetSolverParameter(FFluidParameter& SolverParameter,FSceneView& InView);
-	virtual void PreRenderView_RenderThread(FRDGBuilder& GraphBuilder,FSceneView& InView) override;
+
+	virtual void PreRenderView_RenderThread(FRDGBuilder& GraphBuilder, FSceneView& InView) override;
 
 	virtual void Initial(FRHICommandListImmediate& RHICmdList) override;
-
+	virtual void Render_RenderThread(FPostOpaqueRenderParameters& Parameters) override;
 	virtual void Release() override;
 	bool bIsInitial = false;
 
 
 	FIntPoint GridSize;
 	FPhysicalSimulationSceneProxy* SceneProxy;
-	//FPhysicalSolverContext* Context;
 
+private:
+	void SetSolverParameter(FFluidParameter& SolverParameter, FSceneView& InView);
+	FRDGTextureRef SimulationTexture;
+	FRDGTextureRef PressureTexture;
 };
