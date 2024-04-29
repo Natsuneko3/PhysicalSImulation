@@ -288,9 +288,19 @@ FPhysicalSimulationSceneProxy::FPhysicalSimulationSceneProxy(UPhysicalSimulation
 	int y = FMath::Max(InComponent->GridSize.Y - 1, 8);
 	int z = FMath::Max(InComponent->GridSize.Z - 1, 8);
 	GridSize = FIntVector(x, y, z);
+	//OutputTextures.Add(InComponent->TestTexture);
+	bSimulation = Component->bSimulation;
+	StaticMesh = InComponent->GetStaticMesh();
+	Material = InComponent->Material.Get();
+	FeatureLevel = InComponent->GetWorld()->FeatureLevel;
+
+	World = Component->GetWorld();
+	Dx = Component->Dx;
+	PlandFluidParameters = &Component->PlandFluidParameters;
+	LiquidSolverParameter = &Component->LiquidSolverParameter;
+
 	if (SubSystem)
 	{
-		SubSystem->AddSceneProxyToViewExtension(this);
 		//Create3DRenderTarget();
 		switch (Component->SimulatorType)
 		{
@@ -308,31 +318,15 @@ FPhysicalSimulationSceneProxy::FPhysicalSimulationSceneProxy(UPhysicalSimulation
 			break;
 		}
 		ViewExtension = SubSystem->PhysicalSolverViewExtension;
-	}
-	OutputTextures.Add(InComponent->TestTexture);
-	bSimulation = Component->bSimulation;
-	StaticMesh = InComponent->GetStaticMesh();
-	Material = InComponent->Material.Get();
-	FeatureLevel = InComponent->GetWorld()->FeatureLevel;
 
-	World = Component->GetWorld();
-	Dx = Component->Dx;
-	PlandFluidParameters = &Component->PlandFluidParameters;
-	LiquidSolverParameter = &Component->LiquidSolverParameter;
+	}
+
 
 }
 
 FPhysicalSimulationSceneProxy::~FPhysicalSimulationSceneProxy()
 {
-	ENQUEUE_RENDER_COMMAND(InitPSVertexFactory)(
-		[this](FRHICommandListImmediate& RHICmdList)
-		{
-			if (ViewExtension)
-			{
-				ViewExtension->RemoveProxy(this);
-			}
-		});
-
+	ViewExtension.Reset();
 }
 
 SIZE_T FPhysicalSimulationSceneProxy::GetTypeHash() const
@@ -344,16 +338,17 @@ SIZE_T FPhysicalSimulationSceneProxy::GetTypeHash() const
 void FPhysicalSimulationSceneProxy::CreateRenderThreadResources(FRHICommandListBase& RHICmdList)
 {
 	FPrimitiveSceneProxy::CreateRenderThreadResources(RHICmdList);
-	/*if (ViewExtension)
+	if(ViewExtension)
 	{
-		ViewExtension->AddProxy(this);
-		ViewExtension->Initial(RHICmdList);
-	}*/
+		ViewExtension->AddProxy(this,RHICmdList);
+	}
+
 }
 
 void FPhysicalSimulationSceneProxy::DestroyRenderThreadResources()
 {
-
+	if(ViewExtension)
+		ViewExtension->RemoveProxy(this);
 }
 
 // These setups associated volume mesh for built-in Unreal passes.

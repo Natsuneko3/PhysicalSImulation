@@ -7,11 +7,23 @@ USTRUCT(BlueprintType)
 struct FPlandFluidParameters
 {
 	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere,Category = "PlandFluidParameters")
 	float VorticityMult = 100;
+
+	UPROPERTY(EditAnywhere,Category = "PlandFluidParameters")
 	float NoiseFrequency = 5;
+
+	UPROPERTY(EditAnywhere,Category = "PlandFluidParameters")
 	float NoiseIntensity = 50;
+
+	UPROPERTY(EditAnywhere,Category = "PlandFluidParameters")
 	float DensityDissipate = 0.2;
+
+	UPROPERTY(EditAnywhere,Category = "PlandFluidParameters")
 	float VelocityDissipate = 0.05;
+
+	UPROPERTY(EditAnywhere,Category = "PlandFluidParameters")
 	float GravityScale = 20;
 };
 

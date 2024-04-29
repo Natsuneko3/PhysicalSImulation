@@ -1,16 +1,20 @@
 #include  "/Engine/Public/Platform.ush"
-RWTexture3D<int> OutTestShader;
+RWTexture2D<int> OutTestShader;
 int Time;
-[numthreads(THREADGROUP_SIZEX, THREADGROUP_SIZEY, 8)]
-void MainCS(uint3 DispatchThreadID : SV_DispatchThreadID)
+//[numthreads(THREADGROUP_SIZEX, THREADGROUP_SIZEY, 8)]
+/*void MainCS(uint3 DispatchThreadID : SV_DispatchThreadID)
 {
 	float Cell = 0.0;
 	float2 CenterPoint = float2(sin(Time*0.01),cos(Time*0.01))*10 + float2(250,150);
 	float Point = distance(float3(DispatchThreadID.x,DispatchThreadID.y,DispatchThreadID.z),float3(255,255,255));//length(float3(DispatchThreadID) - float3(CenterPoint.x,CenterPoint.y,255));
 Point = length(float3(DispatchThreadID.x,DispatchThreadID.y,DispatchThreadID.z) - float3(255.0,255.0,255.0)) - 200;
 	OutTestShader[DispatchThreadID] =  saturate(Point);
-}
+}*/
 
+void MainPS(out float4 OutWorldNormal : SV_Target0)
+{
+	OutWorldNormal = float4(1,0,0,0);
+}
 
 float trace()
 {
@@ -68,10 +72,10 @@ float trace()
 		float3 Position = CurrLocalPos / WorldGridExtents + .5;
 		float4 VolumeSample = VolumeTexture.SampleLevel(VolumeTextureSampler, Position, 0);
 		SignedDistance = VolumeSample.r;
-		if (abs(SignedDistance) >  Tolerance && Position.x >= 0 && Position.x <= 1 && Position.y >= 0 && Position.y <= 1 && Position.z >= 0 && Position.z <= 1)
+		if (abs(SignedDistance) > Tolerance && Position.x >= 0 && Position.x <= 1 && Position.y >= 0 && Position.y <= 1 && Position.z >= 0 && Position.z <= 1)
 		{
 			FinalPos = Position;
-			RetVal = 1;//float4(normalize(VolumeSample.gba), 1);
+			RetVal = 1; //float4(normalize(VolumeSample.gba), 1);
 			Whitewater = VolumeSample.g;
 			Depth = t * dot(OriginalRayDir, CameraDirectionVector);
 			break;

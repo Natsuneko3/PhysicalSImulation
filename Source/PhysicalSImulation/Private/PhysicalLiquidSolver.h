@@ -16,8 +16,14 @@ USTRUCT(BlueprintType)
 struct FLiquidSolverParameter
 {
 	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere,Category = "LiquidSolverParameter")
 	float SpawnRate = 60;
+
+	UPROPERTY(EditAnywhere,Category = "LiquidSolverParameter")
 	float LifeTime = 2;
+
+	UPROPERTY(EditAnywhere,Category = "LiquidSolverParameter")
 	float GravityScale = 20;
 };
 //class FPhysicalSimulationSceneProxy;

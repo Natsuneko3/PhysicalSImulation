@@ -38,5 +38,5 @@ void UPhysicalSimulationSystem::PostInitialize()
 
 void UPhysicalSimulationSystem::AddSceneProxyToViewExtension(FPhysicalSimulationSceneProxy* InSceneProxy)
 {
-	PhysicalSolverViewExtension->AddProxy(InSceneProxy);
+	//PhysicalSolverViewExtension->AddProxy(InSceneProxy);
 }
