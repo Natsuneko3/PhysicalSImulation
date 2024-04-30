@@ -1,4 +1,4 @@
-#include  "/Engine/Public/Platform.ush"
+#include  "/Engine/Private/Common.ush"
 RWTexture2D<int> OutTestShader;
 int Time;
 //[numthreads(THREADGROUP_SIZEX, THREADGROUP_SIZEY, 8)]
@@ -10,6 +10,12 @@ int Time;
 Point = length(float3(DispatchThreadID.x,DispatchThreadID.y,DispatchThreadID.z) - float3(255.0,255.0,255.0)) - 200;
 	OutTestShader[DispatchThreadID] =  saturate(Point);
 }*/
+
+void MainVS(in float4 InPosition : ATTRIBUTE0, out float4 OutPosition : SV_Position)
+{
+	float4 WorldPos = mul(InPosition, View.TranslatedWorldToClip);
+	OutPosition = SvPositionToScreenPosition(InPosition);//mul(WorldPos,View.ClipToView);//mul(WorldPos, LWCHackToFloat(PrimaryView.WorldToClip));
+}
 
 void MainPS(out float4 OutWorldNormal : SV_Target0)
 {

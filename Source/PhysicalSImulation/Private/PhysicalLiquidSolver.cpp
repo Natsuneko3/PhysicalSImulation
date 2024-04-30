@@ -84,6 +84,7 @@ public:
 	}
 };
 
+
 class FTestShaderCS : public FGlobalShader
 {
 public:
@@ -106,10 +107,51 @@ public:
 		OutEnvironment.SetDefine(TEXT("THREADGROUP_SIZEY"), 8);*/
 	}
 };
+class FTestVS : public FGlobalShader
+{
+	DECLARE_GLOBAL_SHADER(FTestVS);
+	SHADER_USE_PARAMETER_STRUCT(FTestVS, FGlobalShader)
+
+	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
+		SHADER_PARAMETER_STRUCT_REF(FViewUniformShaderParameters, View)
+	END_SHADER_PARAMETER_STRUCT()
+
+	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
+	{
+		return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
+	}
+	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)
+	{
+		FGlobalShader::ModifyCompilationEnvironment(Parameters, OutEnvironment);
+
+	}
+};
+class FTestPS : public FGlobalShader
+{
+public:
+	DECLARE_GLOBAL_SHADER(FTestPS);
+	SHADER_USE_PARAMETER_STRUCT(FTestPS, FGlobalShader);
+
+	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)
+	{
+	}
+
+	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
+	{
+		return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
+	}
+
+	BEGIN_SHADER_PARAMETER_STRUCT(FParameters,)
+
+		RENDER_TARGET_BINDING_SLOTS()
+	END_SHADER_PARAMETER_STRUCT()
+};
 
 IMPLEMENT_GLOBAL_SHADER(FTestShaderCS, "/PluginShader/test.usf", "MainPS", SF_Pixel);
 IMPLEMENT_GLOBAL_SHADER(FSpawnParticleCS, "/PluginShader/InitialParticle.usf", "SpawnParticleCS", SF_Compute);
 IMPLEMENT_GLOBAL_SHADER(FLiquidParticleCS, "/PluginShader/MPM.usf", "MainCS", SF_Compute);
+IMPLEMENT_GLOBAL_SHADER(FTestVS, "/Plugin/VdbVolume/Private/VdbPrincipled.usf", "MainVS", SF_Vertex);
+IMPLEMENT_GLOBAL_SHADER(FTestPS, "/Plugin/VdbVolume/Private/VdbPrincipled.usf", "MainPS", SF_Pixel);
 
 FPhysicalLiquidSolver::FPhysicalLiquidSolver(FPhysicalSimulationSceneProxy* InSceneProxy)
 	: FPhysicalSolverBase(InSceneProxy)
@@ -337,11 +379,108 @@ void FPhysicalLiquidSolver::Render_RenderThread(FPostOpaqueRenderParameters& Par
 		PixelShader,
 		TestPama,
 		FIntRect(0, 0, Parameters.ColorTexture->Desc.Extent.X, Parameters.ColorTexture->Desc.Extent.Y));*/
+	FBufferRHIRef VertexBufferRHI;
+	FBufferRHIRef IndexBufferRHI;
+	if (VertexBufferRHI == nullptr || !VertexBufferRHI.IsValid())
+	{
+		// Setup vertex buffer
+		TResourceArray<FFilterVertex, VERTEXBUFFER_ALIGNMENT> Vertices;
+		Vertices.SetNumUninitialized(8);
+
+		FVector3f BboxMin(0, 0, 0);
+		FVector3f BboxMax(1, 1, 1);
+
+		// Front face
+		Vertices[0].Position = FVector4f(BboxMin.X, BboxMin.Y, BboxMin.Z, 1.f);	Vertices[0].UV = FVector2f(0.f, 0.f);
+		Vertices[1].Position = FVector4f(BboxMax.X, BboxMin.Y, BboxMin.Z, 1.f);	Vertices[1].UV = FVector2f(1.f, 0.f);
+		Vertices[2].Position = FVector4f(BboxMin.X, BboxMax.Y, BboxMin.Z, 1.f);	Vertices[2].UV = FVector2f(0.f, 1.f);
+		Vertices[3].Position = FVector4f(BboxMax.X, BboxMax.Y, BboxMin.Z, 1.f);	Vertices[3].UV = FVector2f(1.f, 1.f);
+		// Back face		   FVector4f
+		Vertices[4].Position = FVector4f(BboxMin.X, BboxMin.Y, BboxMax.Z, 1.f);	Vertices[0].UV = FVector2f(1.f, 1.f);
+		Vertices[5].Position = FVector4f(BboxMax.X, BboxMin.Y, BboxMax.Z, 1.f);	Vertices[1].UV = FVector2f(1.f, 0.f);
+		Vertices[6].Position = FVector4f(BboxMin.X, BboxMax.Y, BboxMax.Z, 1.f);	Vertices[2].UV = FVector2f(0.f, 1.f);
+		Vertices[7].Position = FVector4f(BboxMax.X, BboxMax.Y, BboxMax.Z, 1.f);	Vertices[3].UV = FVector2f(0.f, 0.f);
+
+		FRHIResourceCreateInfo CreateInfoVB(TEXT("VdbVolumeMeshVB"), &Vertices);
+		VertexBufferRHI = RHICreateVertexBuffer(Vertices.GetResourceDataSize(), BUF_Static, CreateInfoVB);
+	}
+
+	if (IndexBufferRHI == nullptr || !IndexBufferRHI.IsValid())
+	{
+		// Setup index buffer
+		const uint16 Indices[] = {
+			// bottom face
+			0, 1, 2,
+			1, 3, 2,
+			// right face
+			1, 5, 3,
+			3, 5, 7,
+			// front face
+			3, 7, 6,
+			2, 3, 6,
+			// left face
+			2, 4, 0,
+			2, 6, 4,
+			// back face
+			0, 4, 5,
+			1, 0, 5,
+			// top face
+			5, 4, 6,
+			5, 6, 7 };
+
+		TResourceArray<uint16, INDEXBUFFER_ALIGNMENT> IndexBuffer;
+		const uint32 NumIndices = UE_ARRAY_COUNT(Indices);
+		IndexBuffer.AddUninitialized(NumIndices);
+		FMemory::Memcpy(IndexBuffer.GetData(), Indices, NumIndices * sizeof(uint16));
+
+		FRHIResourceCreateInfo CreateInfoIB(TEXT("VdbVolumeMeshIB"), &IndexBuffer);
+		IndexBufferRHI = RHICreateIndexBuffer(sizeof(uint16), IndexBuffer.GetResourceDataSize(), BUF_Static, CreateInfoIB);
+
+    }
+
+	FGlobalShaderMap* GlobalShaderMap = GetGlobalShaderMap(GMaxRHIFeatureLevel);
+	TShaderMapRef<FTestVS> VertexShader(GlobalShaderMap);
+	TShaderMapRef<FTestPS> PixelShader(GlobalShaderMap);
+	const FIntRect& ViewportRect = Parameters.ViewportRect;
+	FTestPS::FParameters* PSParameters = GraphBuilder.AllocParameters<FTestPS::FParameters>();
+	PSParameters->RenderTargets[0] = FRenderTargetBinding(Parameters.ColorTexture, ERenderTargetLoadAction::ELoad);
 	GraphBuilder.AddPass(
+				RDG_EVENT_NAME("DrawPSCubeMesh"),
+				PSParameters,
+				ERDGPassFlags::Raster | ERDGPassFlags::NeverCull,
+				[this, PSParameters, VertexShader, PixelShader, ViewportRect, View,VertexBufferRHI,IndexBufferRHI](FRHICommandList& RHICmdList)
+				{
+					FTestVS::FParameters ParametersVS;
+					ParametersVS.View = View->ViewUniformBuffer;
+
+					FGraphicsPipelineStateInitializer GraphicsPSOInit;
+					RHICmdList.ApplyCachedRenderTargets(GraphicsPSOInit);
+					GraphicsPSOInit.BlendState = TStaticBlendState<CW_RGBA, BO_Add, BF_One, BF_Zero, BO_Add, BF_One, BF_Zero>::GetRHI();
+
+
+					GraphicsPSOInit.RasterizerState = GetStaticRasterizerState<true>(FM_Solid,  CM_CW );
+					GraphicsPSOInit.DepthStencilState = TStaticDepthStencilState<false, CF_Less>::GetRHI();
+					GraphicsPSOInit.BoundShaderState.VertexDeclarationRHI = GFilterVertexDeclaration.VertexDeclarationRHI;
+					GraphicsPSOInit.BoundShaderState.VertexShaderRHI = VertexShader.GetVertexShader();
+					GraphicsPSOInit.BoundShaderState.PixelShaderRHI = PixelShader.GetPixelShader();
+					GraphicsPSOInit.PrimitiveType = PT_TriangleList;
+					SetGraphicsPipelineState(RHICmdList, GraphicsPSOInit, 0);
+
+					SetShaderParameters(RHICmdList, VertexShader, VertexShader.GetVertexShader(), ParametersVS);
+					SetShaderParameters(RHICmdList, PixelShader, PixelShader.GetPixelShader(),*PSParameters);
+
+					RHICmdList.SetViewport(ViewportRect.Min.X, ViewportRect.Min.Y, 0.0f, ViewportRect.Max.X, ViewportRect.Max.Y, 1.0f);
+					RHICmdList.SetStreamSource(0, VertexBufferRHI, 0);
+					RHICmdList.DrawIndexedPrimitive(IndexBufferRHI, 0, 0, 8, 0, 12, 1);
+				});
+
+	/*GraphBuilder.AddPass(
 		RDG_EVENT_NAME("DrawPSCubeMesh"),
 		PSShaderPamaters,
 		ERDGPassFlags::Raster, [this,&InView = *View,&InSceneProxy = SceneProxy](FRHICommandListImmediate& RHICmdList)
 		{
+	RHICmdList.SetViewport(ViewportRect.Min.X, ViewportRect.Min.Y, 0.0f, ViewportRect.Max.X, ViewportRect.Max.Y, 1.0f);
+			RHICmdList.SetScissorRect(false, 0, 0, 0, 0);
 			DrawDynamicMeshPass(InView, RHICmdList,
 			                    [&](FDynamicPassMeshDrawListContext* DynamicMeshPassContext)
 			                    {
@@ -371,7 +510,7 @@ void FPhysicalLiquidSolver::Render_RenderThread(FPostOpaqueRenderParameters& Par
 			                    }
 			);
 		}
-	);
+	);*/
 }
 
 void FPhysicalLiquidSolver::PostSimulation()
