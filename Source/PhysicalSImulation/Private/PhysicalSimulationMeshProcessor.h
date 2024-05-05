@@ -4,12 +4,6 @@
 #include "Materials/MaterialRenderProxy.h"
 #include "Runtime/Renderer/Private/ScenePrivate.h"
 
-BEGIN_SHADER_PARAMETER_STRUCT(FPSShaderParametersPS,)
-	SHADER_PARAMETER_STRUCT_REF(FViewUniformShaderParameters, View)
-	SHADER_PARAMETER_RDG_TEXTURE_SRV(Texture2D, InTexture1)
-	SHADER_PARAMETER_RDG_UNIFORM_BUFFER(FInstanceCullingGlobalUniforms, InstanceCulling)
-	RENDER_TARGET_BINDING_SLOTS()
-END_SHADER_PARAMETER_STRUCT()
 
 struct FPSElementData : public FMeshMaterialShaderElementData
 {

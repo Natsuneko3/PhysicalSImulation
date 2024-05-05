@@ -14,65 +14,7 @@ float GravityScale;
 float LifeTime;
 Buffer<uint> ParticleIDBufferSRV;
 Buffer<float> ParticleAttributeBufferSRV;
-void FilterDeadParticle(uint DispatchThreadId , uint2 GroupThreadId , uint2 GroupID)
-{
-	int Array[64] = {0,1,2,-1,4,-1,-1,7,-1,9,10,-1,12,13,14,15,16,-1,18,-1,-1,21,22,23,24,25,26,27,-1,-1,30,-1,32,33,34,35,36,37,-1,39,40,41,42,43,44,45,-1,47,-1,49,-1,51,52,53,54,55,56,-1,58,59,-1,-1
-		,62,63};
 
-	ParticleIDBuffer[DispatchThreadId] = Array[DispatchThreadId];
-	GroupMemoryBarrierWithGroupSync();
-
-	uint InputStart = GroupID.x * THREADGROUP_SIZEX;
-	uint Thread = GroupThreadId.x;
-	uint ParticleID = InputStart + Thread;
-
-	int OutBuffer = 0, InBuffer = 1;
-
-	// Evaluate predicate for each input slot, then shift down by one position because we need an exclusive sum.
-	if(Thread > 0)
-	{
-		uint IsFree = (ParticleIDBuffer[DispatchThreadId] == -1) ? 1 : 0;
-		GroupWriteOffsets[Thread] = IsFree;
-	}
-
-	GroupMemoryBarrierWithGroupSync();
-
-	// Compute prefix sum.
-	[unroll]
-	for(uint Offset = 1; Offset < THREADGROUP_SIZEX; Offset = Offset << 1)
-	{
-		// Swap the input and output buffers.
-		OutBuffer = 1 - OutBuffer;
-		InBuffer = 1 - InBuffer;
-		if(Thread >= Offset)
-		{
-			GroupWriteOffsets[OutBuffer*THREADGROUP_SIZEX + Thread] = GroupWriteOffsets[InBuffer*THREADGROUP_SIZEX + Thread - Offset] + GroupWriteOffsets[InBuffer*THREADGROUP_SIZEX + Thread];
-		}
-		else
-		{
-			GroupWriteOffsets[OutBuffer*THREADGROUP_SIZEX + Thread] = GroupWriteOffsets[InBuffer*THREADGROUP_SIZEX + Thread];
-		}
-		GroupMemoryBarrierWithGroupSync();
-	}
-
-	if(Thread == 0)
-	{
-		// Add the value of the last predicate to get the total number of IDs that this group will write.
-		uint LastIsFree = (ParticleIDBuffer[InputStart + THREADGROUP_SIZEX - 1] == -1) ? 1 : 0;
-		uint NumGroupFreeIDs = GroupWriteOffsets[(OutBuffer + 1)*THREADGROUP_SIZEX - 1] + LastIsFree;
-		// Add to the global write offset. The previous offset is where we start writing in the output buffer.
-		InterlockedAdd(ParticleIDBuffer[0], NumGroupFreeIDs, GroupWriteStart);
-	}
-	GroupMemoryBarrierWithGroupSync();
-
-	if(ParticleIDBuffer[DispatchThreadId] == -1)
-	{
-		// This is a free ID, output it.
-		uint WriteOffset = GroupWriteStart + GroupWriteOffsets[OutBuffer*THREADGROUP_SIZEX + Thread];
-		// TODO: consider buffering the results before writing to the output UAV.
-		ParticleIDBuffer[WriteOffset] = ParticleID;
-	}
-}
 void ParticleToCell(uint DispatchThreadId )
 {
 	/*ParticleContext Particle = GetParticle(DispatchThreadId);
@@ -86,8 +28,8 @@ void ParticleToCell(uint DispatchThreadId )
 void CellToParticle(uint DispatchThreadId )
 {
 	int active = 1;
-	ParticleContext Particle = GetParticle(DispatchThreadId);
-	GroupMemoryBarrierWithGroupSync();
+	ParticleContext Particle = GetParticle(ParticleAttributeBufferSRV,DispatchThreadId);
+	//GroupMemoryBarrierWithGroupSync();
 	Particle.Velocity += float3(0,0,-9.8);
 	Particle.Position += Particle.Velocity * dt;
 	Particle.Age += dt;
@@ -98,17 +40,19 @@ void CellToParticle(uint DispatchThreadId )
 		InterlockedAdd(ParticleIDBuffer[0],1,DeadNum);
 	}
 	ParticleIDBuffer[DispatchThreadId + 1] = active;
-	OutPutParticle(DispatchThreadId,Particle);
+	//OutPutParticle(DispatchThreadId,Particle);
 }
 void Rasterize(uint DispatchThreadId)
 {
 	ParticleContext Particle = GetParticle(DispatchThreadId);
+
+	Particle.Velocity += float3(0,0,-9.8);
+	Particle.Position += Particle.Velocity * dt;
+	Particle.Age += dt;
+	OutPutParticle(DispatchThreadId,Particle);
 	float3 GridPosition = Particle.Position / (GridSize * dx);
 	GridPosition = saturate(GridPosition) * GridSize;
-	int a = 1;
-	int original_value = 0;
-	//RasterizeTexture[int3(GridPosition)] = 1;
-	int Radius = 20;
+	int Radius = 10;
 	for(int x = -Radius; x < Radius;x++)
 	{
 		for(int y = -Radius; y < Radius;y++)
@@ -121,6 +65,7 @@ void Rasterize(uint DispatchThreadId)
 			}
 		}
 	}
+
 	//RasterizeTexture[uint3(0,0,0)] = 1;
 	//InterlockedMax(RasterizeTexture[int3(GridPosition)],asfloat(a));
 

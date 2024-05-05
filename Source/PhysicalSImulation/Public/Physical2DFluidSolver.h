@@ -1,6 +1,5 @@
 #pragma once
 #include "PhysicalSolver.h"
-#include "RenderGraphResources.h"
 #include "Physical2DFluidSolver.generated.h"
 
 USTRUCT(BlueprintType)
@@ -31,6 +30,7 @@ class FPhysical2DFluidSolver : public FPhysicalSolverBase
 {
 public:
 	FPhysical2DFluidSolver(FPhysicalSimulationSceneProxy* InSceneProxy);
+	~FPhysical2DFluidSolver();
 
 
 	virtual void PreRenderView_RenderThread(FRDGBuilder& GraphBuilder, FSceneView& InView) override;
@@ -46,6 +46,8 @@ public:
 
 private:
 	void SetSolverParameter(FFluidParameter& SolverParameter, FSceneView& InView);
-	FRDGTextureRef SimulationTexture;
-	FRDGTextureRef PressureTexture;
+	TRefCountPtr<IPooledRenderTarget> SimulationTexturePool;
+	TRefCountPtr<IPooledRenderTarget> PressureTexturePool;
+	/*FRDGTextureRef SimulationTexture;
+	FRDGTextureRef PressureTexture;*/
 };

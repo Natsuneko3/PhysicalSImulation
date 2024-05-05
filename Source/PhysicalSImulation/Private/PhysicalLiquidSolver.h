@@ -1,41 +1,40 @@
 #pragma once
-#include "PhysicalSimulationVertexFactor.h"
 #include "PhysicalSolver.h"
 #include "RHIGPUReadback.h"
-#include "Engine/InstancedStaticMesh.h"
 #include "PhysicalLiquidSolver.generated.h"
 
 BEGIN_SHADER_PARAMETER_STRUCT(FLiuquidParameter, PHYSICALSIMULATION_API)
 	SHADER_PARAMETER_STRUCT_INCLUDE(FSolverBaseParameter, SolverBaseParameter)
-	SHADER_PARAMETER(float,GravityScale)
-	SHADER_PARAMETER(float,LifeTime)
+	SHADER_PARAMETER(float, GravityScale)
+	SHADER_PARAMETER(float, LifeTime)
 END_SHADER_PARAMETER_STRUCT()
 
-DEFINE_LOG_CATEGORY_STATIC(LogSimulation, Log, All);
+
 USTRUCT(BlueprintType)
 struct FLiquidSolverParameter
 {
 	GENERATED_BODY()
 
-	UPROPERTY(EditAnywhere,Category = "LiquidSolverParameter")
+	UPROPERTY(EditAnywhere, Category = "LiquidSolverParameter")
 	float SpawnRate = 60;
 
-	UPROPERTY(EditAnywhere,Category = "LiquidSolverParameter")
+	UPROPERTY(EditAnywhere, Category = "LiquidSolverParameter")
 	float LifeTime = 2;
 
-	UPROPERTY(EditAnywhere,Category = "LiquidSolverParameter")
+	UPROPERTY(EditAnywhere, Category = "LiquidSolverParameter")
 	float GravityScale = 20;
 };
+
 //class FPhysicalSimulationSceneProxy;
-class FPhysicalLiquidSolver:public FPhysicalSolverBase
+class FPhysicalLiquidSolver : public FPhysicalSolverBase
 {
-	public:
+public:
 	FPhysicalLiquidSolver(FPhysicalSimulationSceneProxy* InSceneProxy);
-~FPhysicalLiquidSolver();
+	~FPhysicalLiquidSolver();
 
-	void SetLiuquidParameter(FLiuquidParameter& Parameter,FSceneView& InView);
+	void SetLiuquidParameter(FLiuquidParameter& Parameter, FSceneView& InView);
 
-	virtual void PreRenderView_RenderThread(FRDGBuilder& GraphBuilder,FSceneView& InView) override;
+	virtual void PreRenderView_RenderThread(FRDGBuilder& GraphBuilder, FSceneView& InView) override;
 
 	virtual void Initial(FRHICommandListImmediate& RHICmdList) override;
 	virtual void Release() override;
@@ -44,17 +43,15 @@ class FPhysicalLiquidSolver:public FPhysicalSolverBase
 
 	bool bIsInitial = false;
 
-
 	FIntVector GridSize;
-	int32 Frame;
 	float LastNumParticle;
 	uint32 DeadParticle;
+
 private:
-	void DrawCube();
 	int32 AllocatedInstanceCounts = 0;
-	FRDGBufferRef ParticleIDBuffer;
-	FRDGBufferRef ParticleAttributeBuffer;
-	FRDGTextureRef RasterizeTexture;
+	TRefCountPtr<FRDGPooledBuffer> ParticleIDBufferPool;
+	TRefCountPtr<FRDGPooledBuffer> ParticleAttributeBufferPool;
+	TRefCountPtr<IPooledRenderTarget> RasterizeTexturePool;
 	FRHIGPUBufferReadback* ParticleReadback = nullptr;
 	FRHIGPUBufferReadback* ParticleIDReadback = nullptr;
 	void EnqueueGPUReadback(FRDGBuilder& GraphBuilder);

@@ -1,0 +1,28 @@
+#include "/Engine/Private/Common.ush"
+
+Texture2D SimulationTexture;
+float4x4 LocalToWorld;
+SamplerState SimulationTextureSampler;
+void MainVS(in float4 InPosition : ATTRIBUTE0,
+	in float4 InUV : ATTRIBUTE1,
+	out float4 OutPosition : SV_Position,
+	out float2 UV : TEXCOORD0)
+{
+	float4 LocalPosition = InPosition * float4(100.0,100.0,100.0,1);
+	float4x4 T = {0,0,-1,1,
+	0,1,0,1,
+	1,0,0,1,
+	0,0,0,1};
+	float4 CameraP = mul(LocalPosition,T);//,LWCHackToFloat(PrimaryView.ClipToWorld));
+	float4 World = mul(LocalPosition,LocalToWorld) ;
+	float4 WorldPos = mul(World , LWCHackToFloat(PrimaryView.WorldToClip));
+
+	OutPosition = WorldPos;//mul(WorldPos,View.ClipToView);//mul(WorldPos, LWCHackToFloat(PrimaryView.WorldToClip));
+	UV = InUV.xy;
+}
+void MainPS(in float4 SvPosition : SV_POSITION,
+	in float2 UV : TEXCOORD0,
+	out float4 OutColor : SV_Target0)
+{
+	OutColor = SimulationTexture.SampleLevel(SimulationTextureSampler,UV,0);
+}

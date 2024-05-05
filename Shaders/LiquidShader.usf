@@ -1,33 +1,42 @@
 #include  "/Engine/Private/Common.ush"
-RWTexture2D<int> OutTestShader;
-int Time;
-//[numthreads(THREADGROUP_SIZEX, THREADGROUP_SIZEY, 8)]
-/*void MainCS(uint3 DispatchThreadID : SV_DispatchThreadID)
-{
-	float Cell = 0.0;
-	float2 CenterPoint = float2(sin(Time*0.01),cos(Time*0.01))*10 + float2(250,150);
-	float Point = distance(float3(DispatchThreadID.x,DispatchThreadID.y,DispatchThreadID.z),float3(255,255,255));//length(float3(DispatchThreadID) - float3(CenterPoint.x,CenterPoint.y,255));
-Point = length(float3(DispatchThreadID.x,DispatchThreadID.y,DispatchThreadID.z) - float3(255.0,255.0,255.0)) - 200;
-	OutTestShader[DispatchThreadID] =  saturate(Point);
-}*/
+#include "ParticleCommon.ush"
+Texture3D<float> Rasterize;
+Texture2D Depth;
+Buffer<float> ParticleBuffer;
+SamplerState DepthSampler;
+float4x4 LocalToWorld;
 
-void MainVS(in float4 InPosition : ATTRIBUTE0, out float4 OutPosition : SV_Position)
+
+
+//PrimaryView
+void MainVS(in float4 InPosition : ATTRIBUTE0,
+	in float4 InUV : ATTRIBUTE1,
+	uint InstanceId : SV_InstanceID,
+	out float4 OutPosition : SV_Position,
+	out float2 UV : TEXCOORD0)
 {
-	float4 WorldPos = mul(InPosition, View.TranslatedWorldToClip);
-	OutPosition = SvPositionToScreenPosition(InPosition);//mul(WorldPos,View.ClipToView);//mul(WorldPos, LWCHackToFloat(PrimaryView.WorldToClip));
+	float4 LocalPosition = InPosition * float4(100.0,100.0,100.0,1);
+
+	//ParticleContext Context = GetParticle(ParticleBuffer,InstanceId);
+	//float4 ParticlePosition = Context.Position
+	float4 World = mul(LocalPosition,LocalToWorld) ;//+ float4(Context.Position,0.0);
+
+	float4 ClipPos = mul(World , LWCHackToFloat(PrimaryView.WorldToClip));
+
+	OutPosition = ClipPos;//mul(WorldPos,View.ClipToView);//mul(WorldPos, LWCHackToFloat(PrimaryView.WorldToClip));
+	UV = InUV.xy;
 }
 
-void MainPS(out float4 OutWorldNormal : SV_Target0)
-{
-	OutWorldNormal = float4(1,0,0,0);
-}
 
-float trace()
+float4 trace(float3 WorldPosition,float2 UV)
 {
 	float4 ret = {0, 0, 0, 0};
-
+	float3 CameraDirectionVector = mul(float4(0,0,1,0),LWCHackToFloat(PrimaryView.ClipToWorld));
+	float3 RayStart = LWCHackToFloat(PrimaryView.WorldCameraOrigin);
+	float3 RayDir = normalize( WorldPosition - RayStart);
+	float SceneDepth = ConvertFromDeviceZ( Depth.SampleLevel(DepthSampler,UV,0).x);
 	float WorldDepth = SceneDepth / dot(RayDir, CameraDirectionVector);
-
+	float3 WorldGridExtents = 100.0;
 	float3 OriginalRayDir = RayDir;
 
 	//
@@ -72,18 +81,20 @@ float trace()
 	float SignedDistance = -10000;
 	float3 FinalPos = float3(0, 0, 0);
 	float4 RetVal = float4(0, 0, 0, 0);
-	Whitewater = 0;
+	float Whitewater = 0;
+	float NumSteps = 32;
 	for (int i = 0; i < NumSteps; ++i)
 	{
 		float3 Position = CurrLocalPos / WorldGridExtents + .5;
-		float4 VolumeSample = VolumeTexture.SampleLevel(VolumeTextureSampler, Position, 0);
+		float4 VolumeSample = Rasterize.SampleLevel(DepthSampler, Position, 0);
+		//float4 VolumeSample = distance(Position,float3(0,0,0)).xxxx;
 		SignedDistance = VolumeSample.r;
-		if (abs(SignedDistance) > Tolerance && Position.x >= 0 && Position.x <= 1 && Position.y >= 0 && Position.y <= 1 && Position.z >= 0 && Position.z <= 1)
+		if (abs(SignedDistance) >0.00001 && Position.x >= 0 && Position.x <= 1 && Position.y >= 0 && Position.y <= 1 && Position.z >= 0 && Position.z <= 1)
 		{
 			FinalPos = Position;
-			RetVal = 1; //float4(normalize(VolumeSample.gba), 1);
+			RetVal = 1;//float4(normalize(VolumeSample.gba), 1);
 			Whitewater = VolumeSample.g;
-			Depth = t * dot(OriginalRayDir, CameraDirectionVector);
+			//Depth = t * dot(OriginalRayDir, CameraDirectionVector);
 			break;
 		}
 
@@ -118,3 +129,16 @@ float trace()
 
 	return RetVal;
 }
+
+void MainPS(in float4 SvPosition : SV_POSITION,
+	in float2 UV : TEXCOORD0,
+	out float4 OutWorldNormal : SV_Target0)
+{
+	float2 SceneUV = SvPositionToBufferUV(SvPosition);//saturate(UV);
+	float SceneDepth = ConvertFromDeviceZ(Depth.SampleBias(DepthSampler,SceneUV,0).x);//float4(UV,0,0);
+	float VolumeSample = Rasterize.SampleLevel(DepthSampler, LWCHackToFloat(SvPositionToWorld(SvPosition)).xyz, 0).x;
+
+	float4 Volume = trace(LWCHackToFloat(SvPositionToWorld(SvPosition)) ,SceneUV);
+	OutWorldNormal = Volume;//SceneDepth > 10000? 0 : SceneDepth;
+}
+

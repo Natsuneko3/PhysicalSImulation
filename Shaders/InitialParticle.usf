@@ -2,6 +2,7 @@
 #include "ParticleCommon.ush"
 Buffer<int>		InIDBuffer;
 Buffer<float>		InAttributeBuffer;
+
 //RWBuffer<uint> ParticleIDBuffer;
 
 
@@ -10,7 +11,7 @@ uint LastNumParticle;
 void SpawnParticleCS(uint DispatchThreadId : SV_DispatchThreadID, uint2 GroupThreadId : SV_GroupThreadID, uint2 GroupID:SV_GroupID)
 {
 	ParticleContext Context = GetParticle(InAttributeBuffer,DispatchThreadId);
-	int Active = InIDBuffer[DispatchThreadId + 1];
+	int Active = InIDBuffer[DispatchThreadId ];
 	if(Active == 0)
 	{
 		Context = SpawnParticle(DispatchThreadId);
@@ -22,6 +23,4 @@ void SpawnParticleCS(uint DispatchThreadId : SV_DispatchThreadID, uint2 GroupThr
 		OutPutParticle(DispatchThreadId,Context);
 		ParticleIDBuffer[DispatchThreadId + 1] = Active;
 	}
-
-
 }

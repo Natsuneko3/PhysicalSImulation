@@ -153,7 +153,7 @@ void Advection(uint2 DispatchThreadId : SV_DispatchThreadID, uint2 GroupThreadId
 		SimValue.y = clamp(Advection.y / (dt * VelocityDissipate + 1) - dt * 0.1 * VelocityDissipate, -1000, 1000);
 
 
-		if (Usim.a == 1)
+		/*if (Usim.a == 1)
 		{
 			SimValue.xy = Usim.xy; // lerp(SimValue.xy,Usim.xy,0.5);
 		}
@@ -168,8 +168,9 @@ void Advection(uint2 DispatchThreadId : SV_DispatchThreadID, uint2 GroupThreadId
 		if (Rsim.a == 1)
 		{
 			SimValue.xy = Rsim.xy; //lerp(SimValue.xy,Rsim.xy,0.5);
-		}
+		}*/
 		SimGridUAV[DispatchThreadId] = SimValue;
+
 		PressureGridUAV[DispatchThreadId] = 0;
 	}
 }
@@ -209,8 +210,6 @@ void PreVelocity(uint2 DispatchThreadId : SV_DispatchThreadID, uint2 GroupThread
 
 
 	Force += float2(0,G) * Density * GravityScale * 0.05; //normalize(float2(DispatchThreadId) -  float2(250.0,250.0)) * Density*10;//float2(G,0)*Density;
-
-
 	float2 TurbulenceForce = float2(noiseX, noiseY);
 	Force += TurbulenceForce * noiseIntensity;
 	Force -= WorldVelocity.xz * float2(-1, 1) * Density * 0.5;

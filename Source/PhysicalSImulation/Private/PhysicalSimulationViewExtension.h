@@ -44,10 +44,10 @@ public:
 
 
 private:
-	//FPhysicalSolverContext* SolverContext;
+
 	FPostOpaqueRenderDelegate RenderDelegate;
-	//UPhysicalSimulationComponent* Component;
 	TArray<FPhysicalSimulationSceneProxy*> SceneProxies;
+	//TArray<TSharedPtr<FPhysicalSimulationSceneProxy>> SceneProxies;
 	FDelegateHandle RenderDelegateHandle;
 	TUniquePtr<FInstancedStaticMeshVertexFactory> VertexFactory;
 };

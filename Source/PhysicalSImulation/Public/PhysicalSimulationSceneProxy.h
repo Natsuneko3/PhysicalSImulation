@@ -6,6 +6,7 @@
 #include "Physical2DFluidSolver.h"
 #include "PhysicalLiquidSolver.h"
 #include "PhysicalSolver.h"
+
 #include "UObject/Object.h"
 
 
@@ -25,13 +26,15 @@ public:
 	bool bSimulation = false;
 	TSharedPtr<FPhysicalSolverBase> PhysicalSolver;
 	FIntVector GridSize;
-	TArray<UTextureRenderTarget*> OutputTextures;
+
 	ERHIFeatureLevel::Type FeatureLevel;
 	const FPlandFluidParameters* PlandFluidParameters;
 	const FLiquidSolverParameter* LiquidSolverParameter;
 	UWorld* World;
-	float Dx;
-
+	const float* Dx;
+	const FTransform* ActorTransform;
+	const bool* bFacingCamera;
+	bool IsInitialized =false;
 protected:
 
 	virtual SIZE_T GetTypeHash() const override;
@@ -44,8 +47,6 @@ protected:
 	//End FPrimitiveSceneProxy Interface
 
 private:
-	void Create3DRenderTarget();
-	void Create2DRenderTarget();
 	TSharedPtr<class FPhysicalSimulationViewExtension>  ViewExtension;
 	const UPhysicalSimulationComponent* Component = nullptr;
 	UStaticMesh* StaticMesh;

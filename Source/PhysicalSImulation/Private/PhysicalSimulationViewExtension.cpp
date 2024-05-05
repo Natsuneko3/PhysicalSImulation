@@ -1,28 +1,16 @@
 ﻿#include "PhysicalSimulationViewExtension.h"
-
-#include "PhysicalSimulationComponent.h"
 #include "PhysicalSimulationSceneProxy.h"
-#include "ShaderPrintParameters.h"
+
 
 FPhysicalSimulationViewExtension::FPhysicalSimulationViewExtension(const FAutoRegister& AutoRegister):
 	FSceneViewExtensionBase(AutoRegister)
 {
-
-	if (!RenderDelegateHandle.IsValid())
-	{
-		const FName RendererModuleName("Renderer");
-		IRendererModule* RendererModule = FModuleManager::GetModulePtr<IRendererModule>(RendererModuleName);
-		if (RendererModule)
-		{
-			RenderDelegate.BindRaw(this, &FPhysicalSimulationViewExtension::Render_RenderThread);
-			RenderDelegateHandle = RendererModule->RegisterPostOpaqueRenderDelegate(RenderDelegate);
-		}
-	}
 }
 
 FPhysicalSimulationViewExtension::~FPhysicalSimulationViewExtension()
 {
 	RenderDelegateHandle.Reset();
+	SceneProxies.Empty();
 }
 
 void FPhysicalSimulationViewExtension::BeginRenderViewFamily(FSceneViewFamily& InViewFamily)
@@ -61,36 +49,49 @@ void FPhysicalSimulationViewExtension::GetDynamicMeshElements(const TArray<const
 
 void FPhysicalSimulationViewExtension::AddProxy(FPhysicalSimulationSceneProxy* Proxy, FRHICommandListBase& RHICmdList)
 {
-	if(SceneProxies.Find(Proxy) == INDEX_NONE)
+
+	if (SceneProxies.Find(Proxy) == INDEX_NONE)
 	{
 		SceneProxies.Add(Proxy);
+	}
+	if (!RenderDelegateHandle.IsValid())
+	{
+		const FName RendererModuleName("Renderer");
+		IRendererModule* RendererModule = FModuleManager::GetModulePtr<IRendererModule>(RendererModuleName);
+		if (RendererModule)
+		{
+			RenderDelegate.BindRaw(this, &FPhysicalSimulationViewExtension::Render_RenderThread);
+			RenderDelegateHandle = RendererModule->RegisterPostOpaqueRenderDelegate(RenderDelegate);
+		}
 	}
 }
 
 void FPhysicalSimulationViewExtension::RemoveProxy(FPhysicalSimulationSceneProxy* Proxy)
 {
 	auto Idx = SceneProxies.Find(Proxy);
-	if(Idx != INDEX_NONE)
+	if (Idx != INDEX_NONE)
+	{
 		SceneProxies.Remove(Proxy);
+		if(SceneProxies.IsEmpty())
+		{
+			RenderDelegate.Unbind();
+			RenderDelegateHandle.Reset();
+		}
+
+	}
 }
 
 void FPhysicalSimulationViewExtension::Render_RenderThread(FPostOpaqueRenderParameters& Parameters)
 {
-
-	if (!SceneProxies.IsEmpty() && SceneProxies.Num() < 128)
+	if (!SceneProxies.IsEmpty())
 	{
-		for(int i = 0;i<SceneProxies.Num();i++)
+		for (FPhysicalSimulationSceneProxy* SceneProxy : SceneProxies)
 		{
-			if(SceneProxies.IsValidIndex(i))
+			if (SceneProxy != NULL && SceneProxy->bSimulation)
 			{
-				FPhysicalSimulationSceneProxy* SceneProxy = SceneProxies[i];
-				if(SceneProxy && SceneProxy->bSimulation)
-				{
-					SceneProxy->PhysicalSolver->Render_RenderThread(Parameters);
-				}
+				SceneProxy->PhysicalSolver->Render_RenderThread(Parameters);
 			}
 		}
-
 	}
 }
 

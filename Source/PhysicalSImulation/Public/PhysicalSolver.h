@@ -2,39 +2,39 @@
 
 #pragma once
 
-#include "CoreMinimal.h"
+#include "CommonRenderResources.h"
 #include "DynamicMeshBuilder.h"
-#include "Engine/TextureRenderTarget.h"
-#include "UObject/Object.h"
-#include "HAL/IConsoleManager.h"
+#include "RenderGraphBuilder.h"
+#include "RenderGraphEvent.h"
+#include "ShaderParameterStruct.h"
 //#include "PhysicalSolver.generated.h"
 
 /**
  * 
  */
-
-
 class FPhysicalSimulationSceneProxy;
+DEFINE_LOG_CATEGORY_STATIC(LogSimulation, Log, All);
+
 DECLARE_STATS_GROUP(TEXT("Physical Simulation"), STATGROUP_PS, STATCAT_Advanced)
 
 BEGIN_SHADER_PARAMETER_STRUCT(FSolverBaseParameter, PHYSICALSIMULATION_API)
-SHADER_PARAMETER(FVector3f,GridSize)
-SHADER_PARAMETER(int32,Time)
-SHADER_PARAMETER(float,dt)
-SHADER_PARAMETER(float,dx)
-SHADER_PARAMETER_SAMPLER(SamplerState, WarpSampler)
-SHADER_PARAMETER_STRUCT_REF(FViewUniformShaderParameters, View)
+	SHADER_PARAMETER(FVector3f, GridSize)
+	SHADER_PARAMETER(int, Time)
+	SHADER_PARAMETER(float, dt)
+	SHADER_PARAMETER(float, dx)
+	SHADER_PARAMETER_SAMPLER(SamplerState, WarpSampler)
+	SHADER_PARAMETER_STRUCT_REF(FViewUniformShaderParameters, View)
 END_SHADER_PARAMETER_STRUCT()
 
 BEGIN_SHADER_PARAMETER_STRUCT(FFluidParameter, PHYSICALSIMULATION_API)
 	SHADER_PARAMETER_STRUCT_INCLUDE(FSolverBaseParameter, SolverBaseParameter)
-	SHADER_PARAMETER(float,VorticityMult)
-	SHADER_PARAMETER(float,NoiseFrequency)
-	SHADER_PARAMETER(float,NoiseIntensity)
-	SHADER_PARAMETER(float,VelocityDissipate)
-	SHADER_PARAMETER(float,DensityDissipate)
-	SHADER_PARAMETER(float,GravityScale)
-SHADER_PARAMETER(int,UseFFT)
+	SHADER_PARAMETER(float, VorticityMult)
+	SHADER_PARAMETER(float, NoiseFrequency)
+	SHADER_PARAMETER(float, NoiseIntensity)
+	SHADER_PARAMETER(float, VelocityDissipate)
+	SHADER_PARAMETER(float, DensityDissipate)
+	SHADER_PARAMETER(float, GravityScale)
+	SHADER_PARAMETER(int, UseFFT)
 END_SHADER_PARAMETER_STRUCT()
 
 
@@ -46,10 +46,11 @@ enum class ESimulatorType : uint8
 	CubeSmokeFluid = 1,
 	Liquid = 2
 };
+
 using FPSSpriteVertex = FDynamicMeshVertex;
+
 class FPSVertexBuffer : public FVertexBuffer
 {
-
 public:
 	//Buffers
 	FVertexBuffer PositionBuffer;
@@ -70,8 +71,9 @@ public:
 	//Ctor
 	FPSVertexBuffer()
 		: bDynamicUsage(true)
-		, NumAllocatedVertices(0)
-	{}
+		  , NumAllocatedVertices(0)
+	{
+	}
 
 	/* Marks this buffer as dynamic, so it gets initialized as so. */
 	void SetDynamicUsage(bool bInDynamicUsage);
@@ -129,13 +131,12 @@ public:
 
 	FPSCubeVertexBuffer()
 	{
-
 		TArray<FDynamicMeshVertex> Vertices;
 
 		// Vertex position constructed in the shader
-		Vertices.Add(FDynamicMeshVertex(FVector3f(-3.0f,  1.0f, 0.5f)));
-		Vertices.Add(FDynamicMeshVertex(FVector3f( 1.0f, -3.0f, 0.5f)));
-		Vertices.Add(FDynamicMeshVertex(FVector3f( 1.0f,  1.0f, 0.5f)));
+		Vertices.Add(FDynamicMeshVertex(FVector3f(-3.0f, 1.0f, 0.5f)));
+		Vertices.Add(FDynamicMeshVertex(FVector3f(1.0f, -3.0f, 0.5f)));
+		Vertices.Add(FDynamicMeshVertex(FVector3f(1.0f, 1.0f, 0.5f)));
 
 		Buffers.PositionVertexBuffer.Init(Vertices.Num());
 		Buffers.StaticMeshVertexBuffer.Init(Vertices.Num(), 1);
@@ -180,25 +181,88 @@ private:
 
 class FPhysicalSolverBase
 {
-
 public:
-	FPhysicalSolverBase(FPhysicalSimulationSceneProxy* InSceneProxy):SceneProxy(InSceneProxy){}
+	FPhysicalSolverBase(FPhysicalSimulationSceneProxy* InSceneProxy)
+	{
+	}
 
 	int Frame = 0;
-	//virtual void SetParameter(FPhysicalSimulationSceneProxy* InSceneProxy){}
-	virtual void Initial(FRHICommandListImmediate& RHICmdList){}
+	virtual void Initial(FRHICommandListImmediate& RHICmdList)
+	{
+	}
 
-	virtual void Release(){}
-	virtual void PreRenderView_RenderThread(FRDGBuilder& GraphBuilder,FSceneView& InView){}
-	virtual void PreRenderViewFamily_RenderThread(FRDGBuilder& GraphBuilder, FSceneViewFamily& InViewFamily) {}
-	virtual void GetDynamicMeshElements(const TArray<const FSceneView*>& Views, const FSceneViewFamily& ViewFamily, uint32 VisibilityMap, FMeshElementCollector& Collector,const FPhysicalSimulationSceneProxy* InSceneProxy){}
-	virtual void Render_RenderThread(FPostOpaqueRenderParameters& Parameters){}
+	virtual void PreRenderView_RenderThread(FRDGBuilder& GraphBuilder, FSceneView& InView)
+	{
+	}
+
+	virtual void PreRenderViewFamily_RenderThread(FRDGBuilder& GraphBuilder, FSceneViewFamily& InViewFamily)
+	{
+	}
+
+	virtual void Render_RenderThread(FPostOpaqueRenderParameters& Parameters)
+	{
+	}
+
 	FPhysicalSolverInitialed InitialedDelegate;
+
 protected:
 	FPhysicalSimulationSceneProxy* SceneProxy;
-	void SetupSolverBaseParameters(FSolverBaseParameter& Parameter,FSceneView& InView);
-	TUniquePtr<FPSVertexBuffer> PSVertexBuffer;
-	TUniquePtr<FPSVertexFactory> PSVertexFactory;
-	void InitialPlaneMesh(FRHICommandListImmediate& RHICmdList);
+	void SetupSolverBaseParameters(FSolverBaseParameter& Parameter, FSceneView& InView);
+	void InitialPlaneMesh();
+	void InitialCubeMesh();
 
+	virtual void Release()
+	{
+	}
+
+	FBufferRHIRef VertexBufferRHI;
+	FBufferRHIRef IndexBufferRHI;
+
+	template <typename TShaderClassVS, typename TShaderClassPS>
+	void DrawMesh(const TShaderRef<TShaderClassVS>& VertexShader, const TShaderRef<TShaderClassPS>& PixelShader,
+	              typename TShaderClassVS::FParameters* InVSParameters,
+	              typename TShaderClassPS::FParameters* InPSParameters,
+	              FPostOpaqueRenderParameters& Parameters,uint32 NumInstance)
+	{
+		if (NumPrimitives == 0)
+		{
+			UE_LOG(LogSimulation,Log,TEXT("The Mesh has not initial yet"));
+			return;
+		}
+
+		FRDGBuilder& GraphBuilder = *Parameters.GraphBuilder;
+		// Setup vertex buffer
+
+		const FIntRect& ViewportRect = Parameters.ViewportRect;
+
+		GraphBuilder.AddPass(
+			RDG_EVENT_NAME("DrawPSCubeMesh"),
+			InPSParameters,
+			ERDGPassFlags::Raster,
+			[VertexShader,PixelShader,InVSParameters,InPSParameters,ViewportRect,this,NumInstance](FRHICommandList& RHICmdList)
+			{
+				FGraphicsPipelineStateInitializer GraphicsPSOInit;
+				RHICmdList.ApplyCachedRenderTargets(GraphicsPSOInit);
+				GraphicsPSOInit.BlendState = TStaticBlendState<CW_RGBA, BO_Add, BF_One, BF_Zero, BO_Add, BF_One, BF_Zero>::GetRHI();
+
+
+				GraphicsPSOInit.RasterizerState = GetStaticRasterizerState<true>(FM_Solid, CM_CW);
+				GraphicsPSOInit.DepthStencilState = TStaticDepthStencilState<false, CF_Less>::GetRHI();
+				GraphicsPSOInit.BoundShaderState.VertexDeclarationRHI = GFilterVertexDeclaration.VertexDeclarationRHI;
+				GraphicsPSOInit.BoundShaderState.VertexShaderRHI = VertexShader.GetVertexShader();
+				GraphicsPSOInit.BoundShaderState.PixelShaderRHI = PixelShader.GetPixelShader();
+				GraphicsPSOInit.PrimitiveType = PT_TriangleList;
+				SetGraphicsPipelineState(RHICmdList, GraphicsPSOInit, 0);
+
+				SetShaderParameters(RHICmdList, VertexShader, VertexShader.GetVertexShader(), *InVSParameters);
+				SetShaderParameters(RHICmdList, PixelShader, PixelShader.GetPixelShader(), *InPSParameters);
+
+				RHICmdList.SetViewport(ViewportRect.Min.X, ViewportRect.Min.Y, 0.0f, ViewportRect.Max.X, ViewportRect.Max.Y, 1.0f);
+				RHICmdList.SetStreamSource(0, VertexBufferRHI, 0);
+				RHICmdList.DrawIndexedPrimitive(IndexBufferRHI, 0, 0, 8, 0, NumPrimitives, NumInstance);
+			});
+	}
+
+private:
+	uint32 NumPrimitives;
 };
