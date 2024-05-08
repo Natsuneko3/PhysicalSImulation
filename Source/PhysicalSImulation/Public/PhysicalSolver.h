@@ -7,11 +7,9 @@
 #include "RenderGraphBuilder.h"
 #include "RenderGraphEvent.h"
 #include "ShaderParameterStruct.h"
+
 //#include "PhysicalSolver.generated.h"
 
-/**
- * 
- */
 class FPhysicalSimulationSceneProxy;
 DEFINE_LOG_CATEGORY_STATIC(LogSimulation, Log, All);
 
@@ -206,6 +204,7 @@ public:
 	virtual void Render_RenderThread(FPostOpaqueRenderParameters& Parameters)
 	{
 	}
+	//virtual void PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& View, const FPostProcessingInputs& Inputs) {};
 
 	FPhysicalSolverInitialed InitialedDelegate;
 
@@ -226,18 +225,13 @@ protected:
 	void DrawMesh(const TShaderRef<TShaderClassVS>& VertexShader, const TShaderRef<TShaderClassPS>& PixelShader,
 	              typename TShaderClassVS::FParameters* InVSParameters,
 	              typename TShaderClassPS::FParameters* InPSParameters,
-	              FPostOpaqueRenderParameters& Parameters,uint32 NumInstance)
+	              FRDGBuilder& GraphBuilder,const FIntRect& ViewportRect,uint32 NumInstance)
 	{
 		if (NumPrimitives == 0)
 		{
 			UE_LOG(LogSimulation,Log,TEXT("The Mesh has not initial yet"));
 			return;
 		}
-
-		FRDGBuilder& GraphBuilder = *Parameters.GraphBuilder;
-		// Setup vertex buffer
-
-		const FIntRect& ViewportRect = Parameters.ViewportRect;
 
 		GraphBuilder.AddPass(
 			RDG_EVENT_NAME("DrawPSCubeMesh"),
@@ -248,8 +242,6 @@ protected:
 				FGraphicsPipelineStateInitializer GraphicsPSOInit;
 				RHICmdList.ApplyCachedRenderTargets(GraphicsPSOInit);
 				GraphicsPSOInit.BlendState = TStaticBlendState<CW_RGBA, BO_Add, BF_One, BF_Zero, BO_Add, BF_One, BF_Zero>::GetRHI();
-
-
 				GraphicsPSOInit.RasterizerState = GetStaticRasterizerState<true>(FM_Solid, CM_CW);
 				GraphicsPSOInit.DepthStencilState = TStaticDepthStencilState<false, CF_Less>::GetRHI();
 				GraphicsPSOInit.BoundShaderState.VertexDeclarationRHI = GFilterVertexDeclaration.VertexDeclarationRHI;
