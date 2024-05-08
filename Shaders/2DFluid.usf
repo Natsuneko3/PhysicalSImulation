@@ -14,8 +14,18 @@ SamplerState SimSampler;
 
 void ComputeDivergence(uint2 DispatchThreadId : SV_DispatchThreadID)
 {
-	float4 SimValue = SimGridUAV.Load(int3(DispatchThreadId, 0));
-	float Divergence = GetDivergence(SimGridUAV, int2(DispatchThreadId), dx);
+	float4 SimValue = SimGridSRV.Load(int3(DispatchThreadId, 0));
+	int2 UVs[4] = {DispatchThreadId +int2(0,1),
+		DispatchThreadId+0.5 + int2(0,-1),
+		DispatchThreadId+0.5 + int2(-1,0),
+		DispatchThreadId +0.5+ int2(1,0)};
+
+
+	float UpVelocity = SimGridSRV.Load(int3(UVs[0],0)).y;
+	float DownVelocity  = SimGridSRV.Load(int3(UVs[1],0)).y;
+	float LeftVelocity  = SimGridSRV.Load(int3(UVs[2],0)).x;
+	float RightUpVelocity = SimGridSRV.Load(int3(UVs[3],0)).x;
+	float Divergence =  (RightUpVelocity - LeftVelocity + UpVelocity - DownVelocity) /(2.0 *dx);//GetDivergence(SimGridSRV, int2(DispatchThreadId), dx);
 	PressureGridUAV[DispatchThreadId] = Divergence / dt;
 	/*SimValue.a = Divergence;
 	SimGridUAV[DispatchThreadId] = SimValue;*/
@@ -85,25 +95,25 @@ void IteratePressure(uint2 DispatchThreadId : SV_DispatchThreadID)
 
 void Advection(uint2 DispatchThreadId : SV_DispatchThreadID, uint2 GroupThreadId)
 {
-	float4 SimValue = SimGridUAV.Load(int3(DispatchThreadId, 0));
+	float4 SimValue = SimGridSRV.Load(int3(DispatchThreadId, 0));
 	if (AdvectionDensity)
 	{
 		float2 GradPressure = GetGradient(PressureGridUAV, int2(DispatchThreadId), dx);
 
 		int2 UVs[4] = {
-			DispatchThreadId + 0.5 + int2(0, 1) * 2,
-			DispatchThreadId + 0.5 + int2(0, -1) * 2,
-			DispatchThreadId + 0.5 + int2(-1, 0) * 2,
-			DispatchThreadId + 0.5 + int2(1, 0) * 2
+			DispatchThreadId + 0.5 + int2(0, 1),
+			DispatchThreadId + 0.5 + int2(0, -1),
+			DispatchThreadId + 0.5 + int2(-1, 0),
+			DispatchThreadId + 0.5 + int2(1, 0)
 		};
-		float4 Usim = SimGridUAV.Load(UVs[0]);
-		float4 Dsim = SimGridUAV.Load(UVs[1]);
-		float4 Rsim = SimGridUAV.Load(UVs[2]);
-		float4 Lsim = SimGridUAV.Load(UVs[3]);
+		float4 Usim = SimGridSRV.SampleLevel(SimSampler, float3(UVs[0] / GridSize.xy, 0), 0); ////SimGridUAV.Load(UVs[0]);
+		float4 Dsim = SimGridSRV.SampleLevel(SimSampler, float3(UVs[1] / GridSize.xy, 0), 0); //SimGridUAV.Load(UVs[1]);
+		float4 Rsim = SimGridSRV.SampleLevel(SimSampler, float3(UVs[2] / GridSize.xy, 0), 0); //SimGridUAV.Load(UVs[2]);
+		float4 Lsim = SimGridSRV.SampleLevel(SimSampler, float3(UVs[3] / GridSize.xy, 0), 0); //SimGridUAV.Load(UVs[3]);
 
 		float2 Velocity = SimValue.xy - GradPressure * dt;
 
-		if (Usim.a == 1)
+		/*if (Usim.a == 1)
 		{
 			Velocity.xy = Usim.xy;
 			SimValue.xy = Usim.xy;
@@ -122,8 +132,8 @@ void Advection(uint2 DispatchThreadId : SV_DispatchThreadID, uint2 GroupThreadId
 		{
 			Velocity.xy = Rsim.xy;
 			SimValue.xy = Rsim.xy;
-		}
-		float2 ReadIndex = float2(DispatchThreadId + 0.5) - Velocity*float2(1.5,1) * (dt / dx);
+		}*/
+		float2 ReadIndex = float2(DispatchThreadId + 0.5) - Velocity * (dt / dx);
 
 		float Density = SimGridSRV.SampleLevel(SimSampler, float3(ReadIndex / GridSize.xy, 0), 0).z; //
 		//GroupMemoryBarrierWithGroupSync();

@@ -3,6 +3,7 @@
 int bIsInverse;
 int bTransformX;
 RWTexture2D<float> FFTSolvePoissonSRV;
+Texture2D InPressureSRV;
 groupshared float2 FFTGroupShared[2*THREADGROUP_SIZEX];
 [numthreads(THREADGROUP_SIZEX, 1, 1)]
 void MainCS(uint3 DispatchThreadId : SV_DispatchThreadID,uint3 GroupThreadId : SV_GroupThreadID,uint GroupID:SV_GroupID)
@@ -134,14 +135,14 @@ void MainCS(uint3 DispatchThreadId : SV_DispatchThreadID,uint3 GroupThreadId : S
 				else
 				{
 					// g_{2j} ( = f_2j )
-					V[0].x = PressureGridUAV.Load(pxl);
+					V[0].x = InPressureSRV.Load(int3(pxl,0));
 					// g_{M-2j}
-					V[1].x = PressureGridUAV.Load(pxl2);
+					V[1].x = InPressureSRV.Load(int3(pxl2,0));
 				}
 				// g_{2j + 1}
-				V[0].y = PressureGridUAV.Load(pxl + off);
+				V[0].y = InPressureSRV.Load(int3(pxl + off,0));
 				// g_{M - 2j - 1}
-				V[1].y = PressureGridUAV.Load(pxl2- off);
+				V[1].y = InPressureSRV.Load(int3(pxl2- off,0));
 
 				// make values odd
 				// g_{M + 2j} = -g_{M-2j}
