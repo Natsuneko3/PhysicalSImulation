@@ -57,7 +57,7 @@ void MainCS(uint3 DispatchThreadId : SV_DispatchThreadID,uint3 GroupThreadId : S
 	//   { F^sin_1, F^sin_2 ... F^sin_{M-1} }
 
 
-	int2 NumCells = GridSize.xy ;
+	int2 NumCells = GridSize.xy;
 	int ScanlineIdx = GroupID.x;
 	int ThreadIdx = GroupThreadId.x ;
 	bool bPoissonSolver = true;
@@ -71,20 +71,14 @@ void MainCS(uint3 DispatchThreadId : SV_DispatchThreadID,uint3 GroupThreadId : S
 	// constants.
 	float TwoPi = 2.0 * Pi;
 
-
-
-
-
-
 	// This assumes we have already done the sin-transform in Y
 	// and now we are doing it in X - to be followed by inv in Y inv in X
 	bool bApplyPoissonConvolution = (bPoissonSolver) && (bTransformX) && (bIsInverse == false);
 
-
 	bool bCorrectDim = (Mx / 2 == THREADGROUP_SIZEX);
 	bool bValidSetUp = bCorrectDim;
 
-	float GridSpaceDX = dx*-0.9;
+	float GridSpaceDX = dx;
 	float RScale = 1. / GridSpaceDX;
 	float WScale = (GridSpaceDX * GridSpaceDX) * 1. / RScale;
 

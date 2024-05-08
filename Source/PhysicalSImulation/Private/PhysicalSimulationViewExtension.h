@@ -32,6 +32,7 @@ public:
 	virtual int32 GetPriority() const override { return -1; }
 	virtual void PreRenderView_RenderThread(FRDGBuilder& GraphBuilder, FSceneView& InView) override;
 	virtual bool IsActiveThisFrame_Internal(const FSceneViewExtensionContext& Context) const;
+	virtual void PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& View, const FPostProcessingInputs& Inputs) override;
 	//~ End ISceneViewExtension Interface
 
 

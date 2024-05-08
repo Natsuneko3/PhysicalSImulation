@@ -42,6 +42,18 @@ bool FPhysicalSimulationViewExtension::IsActiveThisFrame_Internal(const FSceneVi
 	return false;
 }
 
+void FPhysicalSimulationViewExtension::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& View, const FPostProcessingInputs& Inputs)
+{
+	for (FPhysicalSimulationSceneProxy* SceneProxy : SceneProxies)
+	{
+		//SceneProxy->PhysicalSolver->SetParameter(SceneProxy);
+		if (SceneProxy)
+		{
+			//SceneProxy->PhysicalSolver->PrePostProcessPass_RenderThread(GraphBuilder, View,Inputs);
+		}
+	}
+}
+
 void FPhysicalSimulationViewExtension::GetDynamicMeshElements(const TArray<const FSceneView*>& Views, const FSceneViewFamily& ViewFamily, uint32 VisibilityMap, FMeshElementCollector& Collector, const FPhysicalSimulationSceneProxy* SceneProxy) const
 {
 	//PhysicalSolver->GetDynamicMeshElements(Views,ViewFamily,VisibilityMap,Collector,SceneProxy);

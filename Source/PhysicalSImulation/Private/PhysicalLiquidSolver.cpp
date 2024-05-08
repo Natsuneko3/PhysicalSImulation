@@ -356,7 +356,7 @@ void FPhysicalLiquidSolver::Render_RenderThread(FPostOpaqueRenderParameters& Par
 	TShaderMapRef<LiquidShaderVS> VertexShader(GlobalShaderMap);
 	TShaderMapRef<LiquidShaderPS> PixelShader(GlobalShaderMap);
 
-	DrawMesh(VertexShader, PixelShader, InVSParameters, InPSParameters, Parameters,1);
+	DrawMesh(VertexShader, PixelShader, InVSParameters, InPSParameters, *Parameters.GraphBuilder,Parameters.ViewportRect,1);
 }
 
 void FPhysicalLiquidSolver::PostSimulation()

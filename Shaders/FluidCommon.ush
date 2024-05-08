@@ -19,7 +19,7 @@ float dx;
 float VelocityDissipate;
 float DensityDissipate;
 float GravityScale;
-// Shared memory for FFT
+SamplerState SimSampler;
 
 #define Pi 3.1415926
 // common FFT functions
@@ -50,58 +50,62 @@ float EigenValue(int kx_, int ky_, int Mx, int My, float dx)
 	return ( -4 * (pow( sin( Pi * float(kx_) / float(2 * Mx) )/dx, 2) +  pow( sin( Pi * float(ky_) / float(2 * My) )/dx, 2)));
 }
 
-float GetDivergence(RWTexture2D<float4> InTexture,int2 DispatchThreadId,float dx)
+float GetDivergence(Texture2D<float4> InTexture,int2 DispatchThreadId,float dx)
 {
-	int2 UVs[4] = {DispatchThreadId +int2(0,1),
+	float2 UVs[4] = {DispatchThreadId +int2(0,1),
 		DispatchThreadId+0.5 + int2(0,-1),
 		DispatchThreadId+0.5 + int2(-1,0),
 		DispatchThreadId +0.5+ int2(1,0)};
 
+	float4 Usim = SimGridSRV.SampleLevel(SimSampler, float3(UVs[0] / GridSize.xy, 0), 0); ////SimGridUAV.Load(UVs[0]);
+	float4 Dsim = SimGridSRV.SampleLevel(SimSampler, float3(UVs[1] / GridSize.xy, 0), 0); //SimGridUAV.Load(UVs[1]);
+	float4 Rsim = SimGridSRV.SampleLevel(SimSampler, float3(UVs[2] / GridSize.xy, 0), 0); //SimGridUAV.Load(UVs[2]);
+	float4 Lsim = SimGridSRV.SampleLevel(SimSampler, float3(UVs[3] / GridSize.xy, 0), 0); //SimGridUAV.Load(UVs[3]);
 
-	float UpVelocity = InTexture.Load(UVs[0]).y;
-	float DownVelocity  = InTexture.Load(UVs[1]).y;
-	float LeftVelocity  = InTexture.Load(UVs[2]).x;
-	float RightUpVelocity = InTexture.Load(UVs[3]).x;
+	float UpVelocity = InTexture.Load(int3(UVs[0],0)).y;
+	float DownVelocity  = InTexture.Load(int3(UVs[1],0)).y;
+	float LeftVelocity  = InTexture.Load(int3(UVs[2],0)).x;
+	float RightUpVelocity = InTexture.Load(int3(UVs[3],0)).x;
 
 	return  (RightUpVelocity - LeftVelocity + UpVelocity - DownVelocity) /(2.0 *dx);
 }
 
 
-float GetDivergence(RWTexture2D<float> InTexture,int2 DispatchThreadId,float dx)
+float GetDivergence(Texture2D<float> InTexture,int2 DispatchThreadId,float dx)
 {
-	int2 UVs[4] = {DispatchThreadId +int2(0,1),
+	float2 UVs[4] = {DispatchThreadId +int2(0,1),
 		DispatchThreadId+0.5 + int2(0,-1),
 		DispatchThreadId+0.5 + int2(-1,0),
 		DispatchThreadId +0.5+ int2(1,0)};
 
 
-	 const float UpVelocity = InTexture.Load(UVs[0]);
-	const float DownVelocity  = InTexture.Load(UVs[1]);
-	const float LeftVelocity  = InTexture.Load(UVs[2]);
-	const float RightUpVelocity = InTexture.Load(UVs[3]);
+	float UpVelocity = InTexture.Load(int3(UVs[0],0));
+	float DownVelocity  = InTexture.Load(int3(UVs[1],0));
+	float LeftVelocity  = InTexture.Load(int3(UVs[2],0));
+	float RightUpVelocity = InTexture.Load(int3(UVs[3],0));
 
 	return  (RightUpVelocity - LeftVelocity + (UpVelocity - DownVelocity)  ) /(2 * dx);
 }
 
-float2 GetGradient(RWTexture2D<float4> InTexture,int2 DispatchThreadId,float dx)
+float2 GetGradient(Texture2D<float4> InTexture,int2 DispatchThreadId,float dx)
 {
-	int2 UVs[4] = {DispatchThreadId+0.5 +int2(0,1),
+	float2 UVs[4] = {DispatchThreadId+0.5 +int2(0,1),
 		DispatchThreadId +0.5+ int2(0,-1),
 		DispatchThreadId+0.5 + int2(-1,0),
 		DispatchThreadId +0.5+ int2(1,0)};
 
 
-	float2 UpVelocity = InTexture.Load(UVs[0]).xy;
-	float2 DownVelocity  = InTexture.Load(UVs[1]).xy;
-	float2 LeftVelocity  = InTexture.Load(UVs[2]).xy;
-	float2 RightUpVelocity = InTexture.Load(UVs[3]).xy;
+	float2 UpVelocity = InTexture.Load(int3(UVs[0],0)).xy;
+	float2 DownVelocity  = InTexture.Load(int3(UVs[1],0)).xy;
+	float2 LeftVelocity  = InTexture.Load(int3(UVs[2],0)).xy;
+	float2 RightUpVelocity = InTexture.Load(int3(UVs[3],0)).xy;
 
 	return  float2(RightUpVelocity.x - LeftVelocity.x , UpVelocity.y - DownVelocity.y  ) /(2 * dx);
 }
 
 float2 GetGradient(RWTexture2D<float> InTexture,int2 DispatchThreadId,float dx)
 {
-	int2 UVs[4] = {DispatchThreadId+0.5 +int2(0,1),
+	float2 UVs[4] = {DispatchThreadId+0.5 +int2(0,1),
 		DispatchThreadId +0.5+ int2(0,-1),
 		DispatchThreadId +0.5+ int2(-1,0),
 		DispatchThreadId +0.5+ int2(1,0)};
@@ -117,7 +121,7 @@ float2 GetGradient(RWTexture2D<float> InTexture,int2 DispatchThreadId,float dx)
 
 float2 GetCurl(RWTexture2D<float4> InTexture,int2 DispatchThreadId,float dx)
 {
-	int2 UVs[4] = {DispatchThreadId+0.5 +int2(0,1),
+	float2 UVs[4] = {DispatchThreadId+0.5 +int2(0,1),
 		DispatchThreadId +0.5+ int2(0,-1),
 		DispatchThreadId+0.5 + int2(-1,0),
 		DispatchThreadId +0.5+ int2(1,0)};
