@@ -1,8 +1,9 @@
 #include "PhysicalSolver.h"
 #include "PhysicalSimulationSceneProxy.h"
-#include "DataDrivenShaderPlatformInfo.h"
 
 
+
+/*
 void FPSVertexBuffer::SetDynamicUsage(bool bInDynamicUsage)
 {
 	bDynamicUsage = bInDynamicUsage;
@@ -241,7 +242,7 @@ void FPSVertexFactory::Init(const FPSVertexBuffer* InVertexBuffer)
 				ThisFactory->Init(InVertexBuffer);
 			});
 	}
-}
+}*/
 
 ///////////////////FPhysicalSolverBase/////////////////////
 void FPhysicalSolverBase::SetupSolverBaseParameters(FSolverBaseParameter& Parameter, FSceneView& InView)

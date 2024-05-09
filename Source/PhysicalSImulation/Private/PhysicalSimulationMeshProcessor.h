@@ -1,7 +1,7 @@
 ﻿#pragma once
-#include "DataDrivenShaderPlatformInfo.h"
+
 #include "MeshPassProcessor.h"
-#include "Materials/MaterialRenderProxy.h"
+
 #include "Runtime/Renderer/Private/ScenePrivate.h"
 
 

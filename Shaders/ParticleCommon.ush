@@ -1,5 +1,5 @@
 ﻿#include  "/Engine/Public/Platform.ush"
-#include "/Engine/Private/Random.ush"
+
 RWBuffer<float> ParticleAttributeBuffer;
 RWBuffer<uint> ParticleIDBuffer;
 
@@ -24,7 +24,7 @@ ParticleContext SpawnParticle(uint DispatchThreadId)
 {
 	ParticleContext Particle;
 	Particle.Age = 0.0;
-	Particle.Position = float3(RandBBSfloat(float(DispatchThreadId)), RandBBSfloat(float(DispatchThreadId + 2)), RandBBSfloat(float(DispatchThreadId + 3)));
+	//Particle.Position = float3(RandBBSfloat(float(DispatchThreadId)), RandBBSfloat(float(DispatchThreadId + 2)), RandBBSfloat(float(DispatchThreadId + 3)));
 	Particle.Position = 0;//Particle.Position * 100 ;
 	//Particle.Position += 100;
 	Particle.Velocity = float3(0, 0, -9.8);

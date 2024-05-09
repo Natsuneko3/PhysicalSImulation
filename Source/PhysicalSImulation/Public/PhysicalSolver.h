@@ -53,6 +53,7 @@ enum class ESimulatorType : uint8
 
 using FPSSpriteVertex = FDynamicMeshVertex;
 
+/*
 class FPSVertexBuffer : public FVertexBuffer
 {
 public:
@@ -79,16 +80,16 @@ public:
 	{
 	}
 
-	/* Marks this buffer as dynamic, so it gets initialized as so. */
+	/* Marks this buffer as dynamic, so it gets initialized as so. #1#
 	void SetDynamicUsage(bool bInDynamicUsage);
 
-	/* Initializes the buffers with the given number of vertices to accommodate. */
+	/* Initializes the buffers with the given number of vertices to accommodate. #1#
 	void CreateBuffers(FRHICommandListBase& RHICmdList, int32 NumVertices);
 
-	/* Clear all the buffers currently being used. */
+	/* Clear all the buffers currently being used. #1#
 	void ReleaseBuffers();
 
-	/* Moves all the PaperVertex data onto the RHI buffers. */
+	/* Moves all the PaperVertex data onto the RHI buffers. #1#
 	void CommitVertexData(FRHICommandListBase& RHICmdList);
 
 	// FRenderResource interface
@@ -98,20 +99,20 @@ public:
 	virtual void ReleaseResource() override;
 	// End of FRenderResource interface
 
-	/* True if generating a commit would require a reallocation of the buffers. */
+	/* True if generating a commit would require a reallocation of the buffers. #1#
 	FORCEINLINE bool CommitRequiresBufferRecreation() const { return NumAllocatedVertices != Vertices.Num(); }
 
-	/* Checks if the buffer has been initialized. */
+	/* Checks if the buffer has been initialized. #1#
 	FORCEINLINE bool IsInitialized() const { return NumAllocatedVertices > 0; }
 
-	/* Obtain the index buffer initialized for this buffer. */
+	/* Obtain the index buffer initialized for this buffer. #1#
 	FORCEINLINE const FIndexBuffer* GetIndexPtr() const { return &IndexBuffer; }
 
 private:
-	/* Indicates if this buffer will be configured for dynamic usage. */
+	/* Indicates if this buffer will be configured for dynamic usage. #1#
 	bool bDynamicUsage;
 
-	/* Amount of vertices allocated on the vertex buffer. */
+	/* Amount of vertices allocated on the vertex buffer. #1#
 	int32 NumAllocatedVertices;
 };
 
@@ -120,11 +121,11 @@ class FPSSpriteVertexFactory : public FLocalVertexFactory
 public:
 	FPSSpriteVertexFactory(ERHIFeatureLevel::Type FeatureLevel);
 
-	/* Initializes this factory with a given vertex buffer. */
+	/* Initializes this factory with a given vertex buffer. #1#
 	void Init(FRHICommandListBase& RHICmdList, const FPSVertexBuffer* InVertexBuffer);
 
 private:
-	/* Vertex buffer used to initialize this factory. */
+	/* Vertex buffer used to initialize this factory. #1#
 	const FPSVertexBuffer* VertexBuffer;
 };
 
@@ -175,13 +176,13 @@ class FPSVertexFactory final : public FLocalVertexFactory
 public:
 	FPSVertexFactory(ERHIFeatureLevel::Type FeatureLevel);
 
-	/* Initializes this factory with a given vertex buffer. */
+	/* Initializes this factory with a given vertex buffer. #1#
 	void Init(const FPSVertexBuffer* VertexBuffer);
 
 private:
-	/* Vertex buffer used to initialize this factory. */
+	/* Vertex buffer used to initialize this factory. #1#
 	const FPSVertexBuffer* VertexBuffer;
-};
+};*/
 
 class FPhysicalSolverBase
 {

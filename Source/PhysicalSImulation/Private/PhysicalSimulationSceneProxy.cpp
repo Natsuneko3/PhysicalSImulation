@@ -65,13 +65,17 @@ SIZE_T FPhysicalSimulationSceneProxy::GetTypeHash() const
 	return reinterpret_cast<size_t>(&UniquePointer);
 }
 
-void FPhysicalSimulationSceneProxy::CreateRenderThreadResources(FRHICommandListBase& RHICmdList)
+void FPhysicalSimulationSceneProxy::CreateRenderThreadResources()
 {
-	FPrimitiveSceneProxy::CreateRenderThreadResources(RHICmdList);
-	if (ViewExtension)
+	FPrimitiveSceneProxy::CreateRenderThreadResources();
+	ENQUEUE_RENDER_COMMAND(textrender)([this](FRHICommandListImmediate& RHICmdList)
+		{
+		if (ViewExtension)
 	{
 		ViewExtension->AddProxy(this, RHICmdList);
 	}
+	});
+
 }
 
 void FPhysicalSimulationSceneProxy::DestroyRenderThreadResources()
