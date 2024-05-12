@@ -1,5 +1,6 @@
 ﻿#include "PhysicalSimulationViewExtension.h"
 #include "PhysicalSimulationSceneProxy.h"
+#include "Runtime/Renderer/Private/PostProcess/PostProcessing.h"
 
 
 FPhysicalSimulationViewExtension::FPhysicalSimulationViewExtension(const FAutoRegister& AutoRegister):
@@ -46,10 +47,10 @@ void FPhysicalSimulationViewExtension::PrePostProcessPass_RenderThread(FRDGBuild
 {
 	for (FPhysicalSimulationSceneProxy* SceneProxy : SceneProxies)
 	{
-		//SceneProxy->PhysicalSolver->SetParameter(SceneProxy);
+
 		if (SceneProxy)
 		{
-			//SceneProxy->PhysicalSolver->PrePostProcessPass_RenderThread(GraphBuilder, View,Inputs);
+			SceneProxy->PhysicalSolver->PrePostProcessPass_RenderThread(GraphBuilder, View,Inputs);
 		}
 	}
 }

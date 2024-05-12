@@ -11,6 +11,7 @@ public class PhysicalSImulation : ModuleRules
 		PublicIncludePaths.AddRange(
 			new string[] {
 				// ... add public include paths required here ...
+				EngineDirectory + "/Source/Runtime/Renderer/Private"
 			}
 			);
 				

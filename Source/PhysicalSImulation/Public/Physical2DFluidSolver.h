@@ -2,6 +2,16 @@
 #include "PhysicalSolver.h"
 #include "Physical2DFluidSolver.generated.h"
 
+enum EShadertype
+{
+	PreVel,
+	Advection,
+	IteratePressure,
+	ComputeDivergence
+};
+
+
+
 USTRUCT(BlueprintType)
 struct FPlandFluidParameters
 {
@@ -37,7 +47,7 @@ public:
 
 	virtual void Initial(FRHICommandListImmediate& RHICmdList) override;
 	virtual void Render_RenderThread(FPostOpaqueRenderParameters& Parameters) override;
-	//virtual void PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& View, const FPostProcessingInputs& Inputs) override;
+	virtual void PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& View, const FPostProcessingInputs& Inputs) override;
 	virtual void Release() override;
 	bool bIsInitial = false;
 
