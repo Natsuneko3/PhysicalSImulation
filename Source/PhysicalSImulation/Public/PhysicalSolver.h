@@ -7,10 +7,12 @@
 #include "RenderGraphBuilder.h"
 #include "RenderGraphEvent.h"
 #include "ShaderParameterStruct.h"
+#include "PostProcess/PostProcessing.h"
 
 //#include "PhysicalSolver.generated.h"
 
 class FPhysicalSimulationSceneProxy;
+
 DEFINE_LOG_CATEGORY_STATIC(LogSimulation, Log, All);
 
 DECLARE_STATS_GROUP(TEXT("Physical Simulation"), STATGROUP_PS, STATCAT_Advanced)
@@ -45,7 +47,7 @@ UENUM()
 enum class ESimulatorType : uint8
 {
 	PlaneSmokeFluid = 0,
-	CubeSmokeFluid = 1,
+	Psychedelic = 1,
 	Liquid = 2
 };
 
@@ -204,7 +206,7 @@ public:
 	virtual void Render_RenderThread(FPostOpaqueRenderParameters& Parameters)
 	{
 	}
-	//virtual void PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& View, const FPostProcessingInputs& Inputs) {};
+	virtual void PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& View, const FPostProcessingInputs& Inputs) {};
 
 	FPhysicalSolverInitialed InitialedDelegate;
 

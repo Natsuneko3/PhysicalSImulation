@@ -6,6 +6,7 @@
 #include "PhysicalSimulationComponent.h"
 #include "PhysicalSimulationSystem.h"
 #include "PhysicalSolver.h"
+#include "PsychedelicSolver.h"
 DECLARE_CYCLE_STAT(TEXT("GetDynamicMeshElements"), STAT_PS_GetDynamicMeshElements, STATGROUP_PS)
 
 
@@ -31,22 +32,22 @@ FPhysicalSimulationSceneProxy::FPhysicalSimulationSceneProxy(UPhysicalSimulation
 
 	if (SubSystem)
 	{
-		/*switch (Component->SimulatorType)
+		switch (Component->SimulatorType)
 		{
 		case ESimulatorType::PlaneSmokeFluid:
 			PhysicalSolver = MakeShareable(new FPhysical2DFluidSolver(this));
 
 			break;
-		case ESimulatorType::CubeSmokeFluid:
-			PhysicalSolver = MakeShareable(new FPhysical3DFluidSolver(this));
+		case ESimulatorType::Psychedelic:
+			PhysicalSolver = MakeShareable(new FPsychedelicSolver(this));
 
 			break;
 		case ESimulatorType::Liquid:
 			PhysicalSolver = MakeShareable(new FPhysicalLiquidSolver(this));
 
 			break;
-		}*/
-		PhysicalSolver = MakeShareable(new FPhysical2DFluidSolver(this));
+		}
+		//PhysicalSolver = MakeShareable(new FPhysical2DFluidSolver(this));
 		ViewExtension = SubSystem->PhysicalSolverViewExtension;
 	}
 	IsInitialized = true;
