@@ -244,13 +244,13 @@ void FPSVertexFactory::Init(const FPSVertexBuffer* InVertexBuffer)
 }
 
 ///////////////////FPhysicalSolverBase/////////////////////
-void FPhysicalSolverBase::SetupSolverBaseParameters(FSolverBaseParameter& Parameter, FSceneView& InView)
+void FPhysicalSolverBase::SetupSolverBaseParameters(FSolverBaseParameter& Parameter, FSceneView& InView,FPhysicalSimulationSceneProxy* InSceneProxy)
 {
-	Parameter.dt = SceneProxy->World->GetDeltaSeconds();
-	Parameter.dx = *SceneProxy->Dx;
+	Parameter.dt = InSceneProxy->World->GetDeltaSeconds();
+	Parameter.dx = *InSceneProxy->Dx;
 	Parameter.Time = Frame;
 	Parameter.View = InView.ViewUniformBuffer;
-	Parameter.GridSize = FVector3f(SceneProxy->GridSize.X, SceneProxy->GridSize.Y, SceneProxy->GridSize.Z);
+	Parameter.GridSize = FVector3f(InSceneProxy->GridSize.X, InSceneProxy->GridSize.Y, InSceneProxy->GridSize.Z);
 	Parameter.WarpSampler = TStaticSamplerState<SF_Bilinear, AM_Wrap, AM_Wrap, AM_Wrap>::GetRHI();
 }
 
@@ -259,18 +259,18 @@ void FPhysicalSolverBase::InitialPlaneMesh()
 	TResourceArray<FFilterVertex, VERTEXBUFFER_ALIGNMENT> Vertices;
 	Vertices.SetNumUninitialized(8);
 
-	FVector3f BboxMin(0, 0, 0);
-	FVector3f BboxMax(1, 1, 1);
-
 	// Front face
-	Vertices[0].Position = FVector4f(BboxMin.X, BboxMin.Y, BboxMin.Z, 1.f);
-	Vertices[0].UV = FVector2f(0.f, 0.f);
-	Vertices[1].Position = FVector4f(BboxMax.X, BboxMin.Y, BboxMin.Z, 1.f);
-	Vertices[1].UV = FVector2f(1.f, 0.f);
-	Vertices[2].Position = FVector4f(BboxMin.X, BboxMax.Y, BboxMin.Z, 1.f);
-	Vertices[2].UV = FVector2f(0.f, 1.f);
-	Vertices[3].Position = FVector4f(BboxMax.X, BboxMax.Y, BboxMin.Z, 1.f);
-	Vertices[3].UV = FVector2f(1.f, 1.f);
+	Vertices[0].Position = FVector4f(1, 1, 0, 1);
+	Vertices[0].UV = FVector2f(1, 1);
+
+	Vertices[1].Position = FVector4f(0, 1, 0, 1);
+	Vertices[1].UV = FVector2f(0, 1);
+
+	Vertices[2].Position = FVector4f(1, 0, 0, 1);
+	Vertices[2].UV = FVector2f(1, 0);
+
+	Vertices[3].Position = FVector4f(0, 0, 0, 1);
+	Vertices[3].UV = FVector2f(0, 0);
 
 	// Setup index buffer
 	const uint16 SpriteIndices[] = {

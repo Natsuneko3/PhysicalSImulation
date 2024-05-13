@@ -164,11 +164,7 @@ FPhysicalLiquidSolver::FPhysicalLiquidSolver(FPhysicalSimulationSceneProxy* InSc
 	AllocatedInstanceCounts = 0;
 	GridSize = SceneProxy->GridSize;
 	//FPSCubeVertexBuffer VertexBuffer;
-	ENQUEUE_RENDER_COMMAND(InitPSVertexFactory)(
-		[this](FRHICommandListImmediate& RHICmdList)
-		{
-			Initial(RHICmdList);
-		});
+
 }
 
 FPhysicalLiquidSolver::~FPhysicalLiquidSolver()
@@ -176,11 +172,11 @@ FPhysicalLiquidSolver::~FPhysicalLiquidSolver()
 	Release();
 }
 
-void FPhysicalLiquidSolver::SetLiuquidParameter(FLiuquidParameter& Parameter, FSceneView& InView)
+void FPhysicalLiquidSolver::SetLiuquidParameter(FLiuquidParameter& Parameter, FSceneView& InView,FPhysicalSimulationSceneProxy* InSceneProxy)
 {
-	Parameter.GravityScale = SceneProxy->LiquidSolverParameter->GravityScale;
-	Parameter.LifeTime = SceneProxy->LiquidSolverParameter->LifeTime;
-	SetupSolverBaseParameters(Parameter.SolverBaseParameter, InView);
+	Parameter.GravityScale = InSceneProxy->LiquidSolverParameter->GravityScale;
+	Parameter.LifeTime = InSceneProxy->LiquidSolverParameter->LifeTime;
+	SetupSolverBaseParameters(Parameter.SolverBaseParameter, InView,InSceneProxy);
 }
 
 void FPhysicalLiquidSolver::PreRenderView_RenderThread(FRDGBuilder& GraphBuilder, FSceneView& InView)
@@ -276,7 +272,7 @@ void FPhysicalLiquidSolver::PreRenderView_RenderThread(FRDGBuilder& GraphBuilder
 		AddCopyBufferPass(GraphBuilder, LastParticleBuffer, ParticleAttributeBuffer);
 		TShaderMapRef<FLiquidParticleCS> LiquidComputeShader(ShaderMap);
 		FLiquidParticleCS::FParameters* PassParameters = GraphBuilder.AllocParameters<FLiquidParticleCS::FParameters>();
-		SetLiuquidParameter(PassParameters->LiuquidParameter, InView);
+		SetLiuquidParameter(PassParameters->LiuquidParameter, InView,SceneProxy);
 		PassParameters->ParticleAttributeBufferSRV = GraphBuilder.CreateSRV(LastParticleBuffer, PF_R32_FLOAT); //ParticleAttributeBuffer.SRV;
 		PassParameters->ParticleIDBufferSRV = GraphBuilder.CreateSRV(ParticleIDBuffer, PF_R32_UINT);
 		PassParameters->ParticleIDBuffer = GraphBuilder.CreateUAV(ParticleIDBuffer, PF_R32_UINT);
@@ -312,7 +308,7 @@ void FPhysicalLiquidSolver::Release()
 	ParticleIDBufferPool.SafeRelease();
 }
 
-void FPhysicalLiquidSolver::Initial(FRHICommandListImmediate& RHICmdList)
+void FPhysicalLiquidSolver::Initial_RenderThread(FRHICommandListImmediate& RHICmdList)
 {
 	//InitialPlaneMesh(RHICmdList);
 	ParticleIDReadback = new FRHIGPUBufferReadback(TEXT("ParticleIDReadback"));

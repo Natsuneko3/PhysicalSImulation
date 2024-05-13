@@ -17,7 +17,7 @@ void MainVS(in float4 InPosition : ATTRIBUTE0,
 	float4 World = mul(LocalPosition,LocalToWorld) ;
 	float4 WorldPos = mul(World , LWCHackToFloat(PrimaryView.WorldToClip));
 
-	OutPosition = WorldPos;//mul(WorldPos,View.ClipToView);//mul(WorldPos, LWCHackToFloat(PrimaryView.WorldToClip));
+	OutPosition = float4(ViewportUVToScreenPos(InPosition.xy), 0, 1);//WorldPos
 	UV = InUV.xy;
 }
 void MainPS(in float4 SvPosition : SV_POSITION,

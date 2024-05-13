@@ -32,11 +32,11 @@ public:
 	FPhysicalLiquidSolver(FPhysicalSimulationSceneProxy* InSceneProxy);
 	~FPhysicalLiquidSolver();
 
-	void SetLiuquidParameter(FLiuquidParameter& Parameter, FSceneView& InView);
+	void SetLiuquidParameter(FLiuquidParameter& Parameter, FSceneView& InView,FPhysicalSimulationSceneProxy* InSceneProxy);
 
 	virtual void PreRenderView_RenderThread(FRDGBuilder& GraphBuilder, FSceneView& InView) override;
 
-	virtual void Initial(FRHICommandListImmediate& RHICmdList) override;
+	virtual void Initial_RenderThread(FRHICommandListImmediate& RHICmdList) override;
 	virtual void Release() override;
 	virtual void Render_RenderThread(FPostOpaqueRenderParameters& Parameters) override;
 	void PostSimulation();
