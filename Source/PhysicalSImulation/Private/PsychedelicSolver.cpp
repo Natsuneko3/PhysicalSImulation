@@ -1,8 +1,10 @@
 #include "PsychedelicSolver.h"
 
 
+#include "DataDrivenShaderPlatformInfo.h"
 #include "PhysicalSimulationSceneProxy.h"
 #include "PixelShaderUtils.h"
+#include "RenderTargetPool.h"
 
 
 const FIntVector ThreadNumber = FIntVector(8, 8, 1); //!bUseFFTSolverPressure? FIntVector(256,1,1):
@@ -30,7 +32,7 @@ public:
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters,)
 	SHADER_PARAMETER_STRUCT_REF(FViewUniformShaderParameters, View)
 	SHADER_PARAMETER_RDG_TEXTURE(Texture2D,SimulationTexture)
-	SHADER_PARAMETER_RDG_TEXTURE(Texture2D,SceneColor)
+	SHADER_PARAMETER_RDG_UNIFORM_BUFFER(FSceneTextureUniformParameters, SceneTexturesStruct)
 	SHADER_PARAMETER_SAMPLER(SamplerState,SimulationTextureSampler)
 		RENDER_TARGET_BINDING_SLOTS()
 	END_SHADER_PARAMETER_STRUCT()
@@ -51,6 +53,7 @@ public:
 		SHADER_PARAMETER(int, FluidShaderType)
 
 		SHADER_PARAMETER_STRUCT_INCLUDE(FFluidParameter, FluidParameter)
+	SHADER_PARAMETER_RDG_UNIFORM_BUFFER(FSceneTextureUniformParameters, SceneTexturesStruct)
 		SHADER_PARAMETER_RDG_TEXTURE(Texture2D, SimGridSRV)
 
 		SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D, SimGridUAV)
@@ -160,11 +163,7 @@ void FPsychedelicSolver::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuild
 	FRDGTextureUAVRef SimUAV = GraphBuilder.CreateUAV(SimulationTexture);
 	FRDGTextureUAVRef PressureUAV = GraphBuilder.CreateUAV(PressureTexture);
 
-
-	FRDGTextureSRVRef SimSRV = nullptr;
-
 	FFluidParameter FluidParameter;
-	SimSRV = GraphBuilder.CreateSRV(SimulationTexture);
 	ShaderPrint::FShaderPrintSetup ShaderPrintSetup(View);
 	FShaderPrintData ShaderPrintData = ShaderPrint::CreateShaderPrintData(GraphBuilder, ShaderPrintSetup);
 
@@ -175,6 +174,7 @@ void FPsychedelicSolver::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuild
 	FluidParameter.NoiseIntensity = SceneProxy->PlandFluidParameters->NoiseIntensity;
 	FluidParameter.VelocityDissipate = SceneProxy->PlandFluidParameters->VelocityDissipate;
 	FluidParameter.VorticityMult = SceneProxy->PlandFluidParameters->VorticityMult;
+
 	FluidParameter.UseFFT = true;
 
 	FluidParameter.SolverBaseParameter.dt = 0.06;//SceneProxy->World->GetDeltaSeconds() * 2;
@@ -199,7 +199,7 @@ void FPsychedelicSolver::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuild
 		PassParameters->SimGridSRV = SimulationTexture;
 		PassParameters->SimGridUAV = GraphBuilder.CreateUAV(PreVelocityTexture);//SimUAV;
 		PassParameters->PressureGridUAV = GraphBuilder.CreateUAV(PressureTexture);
-
+		PassParameters->SceneTexturesStruct = Inputs.SceneTextures;
 		PassParameters->bUseFFTPressure = bUseFFTSolverPressure;
 
 		PassParameters->AdvectionDensity = false;
@@ -212,7 +212,7 @@ void FPsychedelicSolver::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuild
 		                             ERDGPassFlags::Compute,
 		                             ComputeShader,
 		                             PassParameters,
-		                             FComputeShaderUtils::GetGroupCount(FIntVector(GridSize.X, GridSize.Y, 1), ThreadNumber));
+		                             FComputeShaderUtils::GetGroupCount(FIntVector(Inputs.ViewFamilyTexture->Desc.Extent.X, Inputs.ViewFamilyTexture->Desc.Extent.Y, 1), ThreadNumber));
 	}
 
 
@@ -223,7 +223,7 @@ void FPsychedelicSolver::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuild
 		if (RHIGetInterfaceType() < ERHIInterfaceType::D3D12)
 		{
 			AddCopyTexturePass(GraphBuilder, SimulationTexture, TempGrid);
-			SimSRV = GraphBuilder.CreateSRV(TempGrid);
+			//SimSRV = GraphBuilder.CreateSRV(TempGrid);
 		}
 
 		FPPFluidCS::FParameters* AdvectionPassParameters = GraphBuilder.AllocParameters<FPPFluidCS::FParameters>();
@@ -233,7 +233,7 @@ void FPsychedelicSolver::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuild
 		AdvectionPassParameters->FluidParameter = FluidParameter;
 		AdvectionPassParameters->PressureGridUAV = PressureUAV;
 		AdvectionPassParameters->bUseFFTPressure = bUseFFTSolverPressure;
-
+		AdvectionPassParameters->SceneTexturesStruct = Inputs.SceneTextures;
 		AdvectionPassParameters->SimGridSRV = PreVelocityTexture;
 		AdvectionPassParameters->SimGridUAV = GraphBuilder.CreateUAV(AdvectionVelocityTexture);
 		AdvectionPassParameters->FluidShaderType = Advection;
@@ -245,7 +245,7 @@ void FPsychedelicSolver::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuild
 		                             ERDGPassFlags::Compute,
 		                             ComputeShader,
 		                             AdvectionPassParameters,
-		                             FComputeShaderUtils::GetGroupCount(FIntVector(GridSize.X, GridSize.Y, 1), ThreadNumber));
+		                             FComputeShaderUtils::GetGroupCount(FIntVector(Inputs.ViewFamilyTexture->Desc.Extent.X, Inputs.ViewFamilyTexture->Desc.Extent.Y, 1), ThreadNumber));
 	}
 	//Solver Pressure Fleid
 	if (CVarUseFFT.GetValueOnAnyThread())
@@ -263,7 +263,7 @@ void FPsychedelicSolver::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuild
 			ComputeDivergenceParameters->FluidParameter = FluidParameter;
 			ComputeDivergenceParameters->PressureGridUAV = PressureUAV;
 			ComputeDivergenceParameters->bUseFFTPressure = bUseFFTSolverPressure;
-
+			ComputeDivergenceParameters->SceneTexturesStruct = Inputs.SceneTextures;
 			ComputeDivergenceParameters->SimGridSRV = AdvectionVelocityTexture;
 			ComputeDivergenceParameters->SimGridUAV = SimUAV;
 			ComputeDivergenceParameters->FluidShaderType = ComputeDivergence;
@@ -272,8 +272,9 @@ void FPsychedelicSolver::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuild
 			                             ERDGPassFlags::Compute,
 			                             ComputeShader,
 			                             ComputeDivergenceParameters,
-			                             FComputeShaderUtils::GetGroupCount(FIntVector(GridSize.X, GridSize.Y, 1), ThreadNumber));
+		                             FComputeShaderUtils::GetGroupCount(FIntVector(Inputs.ViewFamilyTexture->Desc.Extent.X, Inputs.ViewFamilyTexture->Desc.Extent.Y, 1), ThreadNumber));
 		}
+
 		FRDGTextureDesc TempPressureDesc = FRDGTextureDesc::Create2D(GridSize, PF_R32_FLOAT, FClearValueBinding::Black, TexCreate_ShaderResource | TexCreate_UAV | TexCreate_RenderTargetable);
 		FRDGTextureRef TempPressureGrid1 = GraphBuilder.CreateTexture(TempPressureDesc,TEXT("TempPressure1"));
 		FRDGTextureRef TempPressureGrid2 = GraphBuilder.CreateTexture(TempPressureDesc,TEXT("TempPressure2"));
@@ -370,6 +371,7 @@ void FPsychedelicSolver::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuild
 			PressurePassParameters->FluidParameter = FluidParameter;
 			PressurePassParameters->PressureGridUAV = PressureUAV;
 			PressurePassParameters->bUseFFTPressure = bUseFFTSolverPressure;
+			PressurePassParameters->SceneTexturesStruct = Inputs.SceneTextures;
 
 			PressurePassParameters->SimGridSRV = PreVelocityTexture;
 			PressurePassParameters->SimGridUAV = GraphBuilder.CreateUAV(AdvectionVelocityTexture);
@@ -395,7 +397,7 @@ void FPsychedelicSolver::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuild
 		if (RHIGetInterfaceType() < ERHIInterfaceType::D3D12)
 		{
 			AddCopyTexturePass(GraphBuilder, SimulationTexture, TempGrid);
-			SimSRV = GraphBuilder.CreateSRV(TempGrid);
+			//SimSRV = GraphBuilder.CreateSRV(TempGrid);
 		}
 		FPPFluidCS::FParameters* AdvectionDensityPassParameters = GraphBuilder.AllocParameters<FPPFluidCS::FParameters>();
 
@@ -405,6 +407,7 @@ void FPsychedelicSolver::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuild
 		AdvectionDensityPassParameters->FluidParameter = FluidParameter;
 		AdvectionDensityPassParameters->PressureGridUAV = PressureUAV;
 		AdvectionDensityPassParameters->bUseFFTPressure = bUseFFTSolverPressure;
+		AdvectionDensityPassParameters->SceneTexturesStruct = Inputs.SceneTextures;
 
 		AdvectionDensityPassParameters->SimGridSRV = AdvectionVelocityTexture;
 		AdvectionDensityPassParameters->SimGridUAV = GraphBuilder.CreateUAV(AdvectionDensityTexture);
@@ -418,7 +421,7 @@ void FPsychedelicSolver::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuild
 		                             ERDGPassFlags::Compute,
 		                             ComputeShader,
 		                             AdvectionDensityPassParameters,
-		                             FComputeShaderUtils::GetGroupCount(FIntVector(GridSize.X, GridSize.Y, 1), ThreadNumber));
+		                             FComputeShaderUtils::GetGroupCount(FIntVector(Inputs.ViewFamilyTexture->Desc.Extent.X, Inputs.ViewFamilyTexture->Desc.Extent.Y, 1), ThreadNumber));
 		SimulationTexturePool =  GraphBuilder.ConvertToExternalTexture(AdvectionDensityTexture);
 	}
 
@@ -428,7 +431,7 @@ void FPsychedelicSolver::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuild
 	AddCopyTexturePass(GraphBuilder,(*Inputs.SceneTextures)->SceneColorTexture,SceneColor);
 	PixelShaderParameters->View = View.ViewUniformBuffer;
 	PixelShaderParameters->RenderTargets[0] = FRenderTargetBinding((*Inputs.SceneTextures)->SceneColorTexture, ERenderTargetLoadAction::ENoAction);
-	PixelShaderParameters->SceneColor = SceneColor;
+	PixelShaderParameters->SceneTexturesStruct = Inputs.SceneTextures;
 	PixelShaderParameters->SimulationTexture = SimulationTexture;
 	PixelShaderParameters->SimulationTextureSampler = TStaticSamplerState<SF_Bilinear>::GetRHI();
 	FPixelShaderUtils::AddFullscreenPass(

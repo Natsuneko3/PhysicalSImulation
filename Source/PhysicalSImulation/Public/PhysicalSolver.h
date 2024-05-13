@@ -34,6 +34,7 @@ BEGIN_SHADER_PARAMETER_STRUCT(FFluidParameter, PHYSICALSIMULATION_API)
 	SHADER_PARAMETER(float, VelocityDissipate)
 	SHADER_PARAMETER(float, DensityDissipate)
 	SHADER_PARAMETER(float, GravityScale)
+
 SHADER_PARAMETER(FVector3f, WorldVelocity)
 SHADER_PARAMETER_SAMPLER(SamplerState, SimSampler)
 		SHADER_PARAMETER(FVector3f, WorldPosition)
