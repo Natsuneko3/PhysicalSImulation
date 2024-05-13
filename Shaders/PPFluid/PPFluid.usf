@@ -1,5 +1,6 @@
 #include "/Engine/Private/Common.ush"
 #include "/Engine/Private/ShaderPrint.ush"
+#include "/Engine/Private/SceneTexturesCommon.ush"
 #include "../FluidCommon.ush"
 
 #define G 98
@@ -66,8 +67,9 @@ void Advection(uint2 DispatchThreadId : SV_DispatchThreadID, uint2 GroupThreadId
 
 		float Density = SimGridSRV.SampleLevel(SimSampler, float3(ReadIndex/ GridSize.xy, 0), 0).z; //
 		SimValue.z = clamp(Density / (dt * DensityDissipate + 1) - dt * 0.1 * DensityDissipate, 0, 100);
-
-		SimGridUAV[DispatchThreadId] = SimValue;
+		uint Stenlic = CalcSceneCustomStencil(DispatchThreadId );
+		float SceneColor = CalcSceneCustomDepth(DispatchThreadId /GridSize.xy);
+		SimGridUAV[DispatchThreadId] = ConvertToDeviceZ(SceneColor)*100;//float4(SceneColor,1);
 	}
 	else
 	{
@@ -100,7 +102,8 @@ void PreVelocity(uint2 DispatchThreadId : SV_DispatchThreadID, uint2 GroupThread
 
 	float2 CenterPoint = float2(sin(Time*0.01),cos(Time*0.01))*100 + float2(250,150);//
 	float2 Dis = float2(DispatchThreadId) - CenterPoint;
-	if (length(Dis) < 30)
+	uint Stenlic = CalcSceneCustomStencil(DispatchThreadId);//SceneTexturesStruct.CustomStencilTexture.Load(uint3(DispatchThreadId, 0)) STENCIL_COMPONENT_SWIZZLE;
+	if (Stenlic == 1)//(length(Dis) < 30)
 	{
 		Density += saturate(noiseX)*0.1; //RandFast(DispatchThreadId*0.2,Time);
 		Velocity = float2(noiseX * 10, -noiseY * 30);

@@ -1,6 +1,6 @@
 ﻿#include "/Engine/Private/Common.ush"
+#include "/Engine/Private/SceneTexturesCommon.ush"
 Texture2D SimulationTexture;
-Texture2D SceneColor;
 SamplerState SimulationTextureSampler;
 void MainPS(in float4 SvPosition:SV_position,out float4 OutColor0 : SV_Target0)
 {

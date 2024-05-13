@@ -260,7 +260,7 @@ void FPhysicalSolverBase::InitialPlaneMesh()
 	Vertices.SetNumUninitialized(8);
 
 	// Front face
-	Vertices[0].Position = FVector4f(1, 1, 0, 1);
+	/*Vertices[0].Position = FVector4f(1, 1, 0, 1);
 	Vertices[0].UV = FVector2f(1, 1);
 
 	Vertices[1].Position = FVector4f(0, 1, 0, 1);
@@ -270,8 +270,16 @@ void FPhysicalSolverBase::InitialPlaneMesh()
 	Vertices[2].UV = FVector2f(1, 0);
 
 	Vertices[3].Position = FVector4f(0, 0, 0, 1);
-	Vertices[3].UV = FVector2f(0, 0);
+	Vertices[3].UV = FVector2f(0, 0);*/
 
+	Vertices[0].Position = FVector4f(0, 0, 0, 1.f);
+	Vertices[0].UV = FVector2f(0.f, 0.f);
+	Vertices[1].Position = FVector4f(1, 0, 0, 1.f);
+	Vertices[1].UV = FVector2f(1.f, 0.f);
+	Vertices[2].Position = FVector4f(0, 1, 0, 1.f);
+	Vertices[2].UV = FVector2f(0.f, 1.f);
+	Vertices[3].Position = FVector4f(1, 1,0, 1.f);
+	Vertices[3].UV = FVector2f(1.f, 1.f);
 	// Setup index buffer
 	const uint16 SpriteIndices[] = {
 		// bottom face
