@@ -45,7 +45,7 @@ public:
 
 	virtual void PreRenderView_RenderThread(FRDGBuilder& GraphBuilder, FSceneView& InView) override;
 
-	virtual void Initial(FRHICommandListImmediate& RHICmdList) override;
+	virtual void Initial_RenderThread(FRHICommandListImmediate& RHICmdList) override;
 	virtual void Render_RenderThread(FPostOpaqueRenderParameters& Parameters) override;
 	virtual void PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& View, const FPostProcessingInputs& Inputs) override;
 	virtual void Release() override;
@@ -56,7 +56,7 @@ public:
 	FPhysicalSimulationSceneProxy* SceneProxy;
 
 private:
-	void SetSolverParameter(FFluidParameter& SolverParameter, FSceneView& InView);
+	void SetSolverParameter(FFluidParameter& SolverParameter, FSceneView& InView,FPhysicalSimulationSceneProxy* InSceneProxy);
 	TRefCountPtr<IPooledRenderTarget> SimulationTexturePool;
 	TRefCountPtr<IPooledRenderTarget> PressureTexturePool;
 	/*FRDGTextureRef SimulationTexture;

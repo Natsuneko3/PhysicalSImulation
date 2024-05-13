@@ -10,7 +10,7 @@ void FPhysical3DFluidSolver::PreRenderView_RenderThread(FRDGBuilder& GraphBuilde
 
 }
 
-void FPhysical3DFluidSolver::Initial(FRHICommandListImmediate& RHICmdList)
+void FPhysical3DFluidSolver::Initial_RenderThread(FRHICommandListImmediate& RHICmdList)
 {
 
 }

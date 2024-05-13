@@ -47,6 +47,11 @@ FPhysicalSimulationSceneProxy::FPhysicalSimulationSceneProxy(UPhysicalSimulation
 
 			break;
 		}
+		ENQUEUE_RENDER_COMMAND(InitPhysicalSolver)(
+		[this](FRHICommandListImmediate& RHICmdList)
+		{
+			PhysicalSolver->Initial_RenderThread(RHICmdList);
+		});
 		//PhysicalSolver = MakeShareable(new FPhysical2DFluidSolver(this));
 		ViewExtension = SubSystem->PhysicalSolverViewExtension;
 	}

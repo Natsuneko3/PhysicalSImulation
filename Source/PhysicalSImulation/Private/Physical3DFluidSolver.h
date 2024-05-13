@@ -8,7 +8,7 @@ public:
 
 	virtual void PreRenderView_RenderThread(FRDGBuilder& GraphBuilder,FSceneView& InView) override;
 
-	virtual void Initial(FRHICommandListImmediate& RHICmdList) override;
+	virtual void Initial_RenderThread(FRHICommandListImmediate& RHICmdList) override;
 
 
 	bool bIsInitial = false;

@@ -1,6 +1,6 @@
 #include "/Engine/Private/Common.ush"
 #include "/Engine/Private/ShaderPrint.ush"
-#include "FluidCommon.ush"
+#include "../FluidCommon.ush"
 
 #define G 98
 int FluidShaderType;
@@ -157,11 +157,4 @@ void MainCS(uint2 DispatchThreadId : SV_DispatchThreadID, uint2 GroupThreadId : 
 		Print(Ctx, int(1111));
 		Newline(Ctx);
 	}*/
-}
-Texture2D SimulationTexture;
-Texture2D SceneColor;
-SamplerState SimulationTextureSampler;
-void MainPS(in float4 SVPosition:SV_position,out float4 OutColor0 : SV_Target0)
-{
-	OutColor0 = 0;
 }

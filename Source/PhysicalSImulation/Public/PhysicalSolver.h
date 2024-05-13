@@ -189,10 +189,12 @@ class FPhysicalSolverBase
 public:
 	FPhysicalSolverBase(FPhysicalSimulationSceneProxy* InSceneProxy)
 	{
+
 	}
+	virtual ~FPhysicalSolverBase(){}
 
 	int Frame = 0;
-	virtual void Initial(FRHICommandListImmediate& RHICmdList)
+	virtual void Initial_RenderThread(FRHICommandListImmediate& RHICmdList)
 	{
 	}
 
@@ -213,7 +215,7 @@ public:
 
 protected:
 	FPhysicalSimulationSceneProxy* SceneProxy;
-	void SetupSolverBaseParameters(FSolverBaseParameter& Parameter, FSceneView& InView);
+	void SetupSolverBaseParameters(FSolverBaseParameter& Parameter, FSceneView& InView,FPhysicalSimulationSceneProxy* InSceneProxy);
 	void InitialPlaneMesh();
 	void InitialCubeMesh();
 
