@@ -49,11 +49,6 @@ float GetDivergence(Texture2D<float4> InTexture,int2 DispatchThreadId,float dx)
 		DispatchThreadId+0.5 + int2(-1,0),
 		DispatchThreadId +0.5+ int2(1,0)};
 
-	float4 Usim = SimGridSRV.SampleLevel(SimSampler, float3(UVs[0] / GridSize.xy, 0), 0); ////SimGridUAV.Load(UVs[0]);
-	float4 Dsim = SimGridSRV.SampleLevel(SimSampler, float3(UVs[1] / GridSize.xy, 0), 0); //SimGridUAV.Load(UVs[1]);
-	float4 Rsim = SimGridSRV.SampleLevel(SimSampler, float3(UVs[2] / GridSize.xy, 0), 0); //SimGridUAV.Load(UVs[2]);
-	float4 Lsim = SimGridSRV.SampleLevel(SimSampler, float3(UVs[3] / GridSize.xy, 0), 0); //SimGridUAV.Load(UVs[3]);
-
 	float UpVelocity = InTexture.Load(int3(UVs[0],0)).y;
 	float DownVelocity  = InTexture.Load(int3(UVs[1],0)).y;
 	float LeftVelocity  = InTexture.Load(int3(UVs[2],0)).x;
