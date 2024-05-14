@@ -5,7 +5,11 @@ SamplerState SimulationTextureSampler;
 void MainPS(in float4 SvPosition:SV_position,out float4 OutColor0 : SV_Target0)
 {
 	float2 UV = SvPositionToBufferUV(SvPosition);
-	uint SceneColor = SceneTexturesStruct.CustomStencilTexture.Load(uint3(UV * View.BufferSizeAndInvSize.xy, 0)) STENCIL_COMPONENT_SWIZZLE;
-
-	OutColor0 = SimulationTexture.SampleLevel(SimulationTextureSampler,UV,0).b;
+	//uint SceneColor = SceneTexturesStruct.CustomStencilTexture.Load(uint3(UV * View.BufferSizeAndInvSize.xy, 0)) STENCIL_COMPONENT_SWIZZLE;
+	float Density = SimulationTexture.SampleLevel(SimulationTextureSampler,UV,0).b;
+	float3 SceneColor = CalcSceneColor(UV);
+	float3 SceneColor1 = CalcSceneColor(UV + float2(0.005,0.005));
+	float3 SceneColor2 = CalcSceneColor(UV - float2(0.005,0.005));
+	float3 FinalColor = lerp(SceneColor,SceneColor * 0.05,Density);
+	OutColor0 = float4(FinalColor,1);//SimulationTexture.SampleLevel(SimulationTextureSampler,UV,0).b;
 }

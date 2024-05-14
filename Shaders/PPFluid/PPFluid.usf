@@ -60,7 +60,7 @@ void Advection(uint2 DispatchThreadId : SV_DispatchThreadID, uint2 GroupThreadId
 	{
 		float2 GradPressure = GetGradient(PressureGridUAV, int2(DispatchThreadId), dx);
 
-		float2 Velocity = SimValue.xy - GradPressure * dt;
+		float2 Velocity = SimValue.xy ;//- GradPressure * dt;
 
 		float2 ReadIndex = float2(DispatchThreadId + 0.5) - Velocity * (dt / dx);
 
@@ -68,7 +68,7 @@ void Advection(uint2 DispatchThreadId : SV_DispatchThreadID, uint2 GroupThreadId
 		SimValue.z = clamp(Density / (dt * DensityDissipate + 1) - dt * 0.1 * DensityDissipate, 0, 100);
 		//uint Stenlic = CalcSceneCustomStencil(DispatchThreadId );
 		uint SceneColor = SceneTexturesStruct.CustomStencilTexture.Load(uint3(DispatchThreadId, 0)) STENCIL_COMPONENT_SWIZZLE;//CalcSceneCustomDepth(DispatchThreadId /GridSize.xy);
-		SimGridUAV[DispatchThreadId] = SceneColor;//ConvertToDeviceZ(SceneColor);//float4(SceneColor,1);
+		SimGridUAV[DispatchThreadId] = SimValue;//ConvertToDeviceZ(SceneColor);//float4(SceneColor,1);
 	}
 	else
 	{
@@ -78,7 +78,7 @@ void Advection(uint2 DispatchThreadId : SV_DispatchThreadID, uint2 GroupThreadId
 
 		SimValue.x = clamp(Advection.x / (dt * VelocityDissipate + 1) - dt * 0.1 * VelocityDissipate, -1000, 1000);
 		SimValue.y = clamp(Advection.y / (dt * VelocityDissipate + 1) - dt * 0.1 * VelocityDissipate, -1000, 1000);
-
+		SimValue.z = Advection.z;
 		SimGridUAV[DispatchThreadId] = SimValue;
 
 		PressureGridUAV[DispatchThreadId] = 0;
@@ -102,9 +102,9 @@ void PreVelocity(uint2 DispatchThreadId : SV_DispatchThreadID, uint2 GroupThread
 	float2 CenterPoint = float2(sin(Time*0.01),cos(Time*0.01))*100 + float2(250,150);//
 	float2 Dis = float2(DispatchThreadId) - CenterPoint;
 	uint Stenlic = SceneTexturesStruct.CustomStencilTexture.Load(uint3(DispatchThreadId, 0)) STENCIL_COMPONENT_SWIZZLE;
-	if (Stenlic > 1)//(length(Dis) < 30)
+	if (Stenlic == 1u)//(length(Dis) < 30)
 	{
-		Density += saturate(noiseX)*0.1; //RandFast(DispatchThreadId*0.2,Time);
+		Density = 1;//+= saturate(noiseX)*0.1; //RandFast(DispatchThreadId*0.2,Time);
 		Velocity = float2(noiseX * 10, -noiseY * 30);
 	}
 
@@ -118,7 +118,7 @@ void PreVelocity(uint2 DispatchThreadId : SV_DispatchThreadID, uint2 GroupThread
 	}
 
 
-	Force += float2(0,G) * Density * GravityScale * 0.05; //normalize(float2(DispatchThreadId) -  float2(250.0,250.0)) * Density*10;//float2(G,0)*Density;
+	Force += float2(0,-G) * Density * GravityScale * 0.025; //normalize(float2(DispatchThreadId) -  float2(250.0,250.0)) * Density*10;//float2(G,0)*Density;
 	float2 TurbulenceForce = float2(noiseX, noiseY);
 	Force += TurbulenceForce * noiseIntensity;
 	Force -= WorldVelocity.xz * float2(-1, 1) * Density * 0.5;
