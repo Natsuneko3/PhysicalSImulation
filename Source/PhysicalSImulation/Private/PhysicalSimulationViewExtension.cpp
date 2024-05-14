@@ -96,7 +96,7 @@ void FPhysicalSimulationViewExtension::RemoveProxy(FPhysicalSimulationSceneProxy
 
 void FPhysicalSimulationViewExtension::Render_RenderThread(FPostOpaqueRenderParameters& Parameters)
 {
-	if (!SceneProxies.IsEmpty())
+	/*if (!SceneProxies.IsEmpty())
 	{
 		for (FPhysicalSimulationSceneProxy* SceneProxy : SceneProxies)
 		{
@@ -105,7 +105,7 @@ void FPhysicalSimulationViewExtension::Render_RenderThread(FPostOpaqueRenderPara
 				SceneProxy->PhysicalSolver->Render_RenderThread(Parameters);
 			}
 		}
-	}
+	}*/
 }
 
 void FPhysicalSimulationViewExtension::Initial(FRHICommandListBase& RHICmdList)
