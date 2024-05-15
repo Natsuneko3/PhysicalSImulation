@@ -86,38 +86,6 @@ public:
 IMPLEMENT_GLOBAL_SHADER(FPPFluidCS, "/PluginShader/PPFluid/PPFluid.usf", "MainCS", SF_Compute);
 IMPLEMENT_GLOBAL_SHADER(FPPPsychedelicPS, "/PluginShader/PPFluid/PPFluidPixelShader.usf", "MainPS", SF_Pixel);
 
-template <int GroupSize>
-class FPPFFTSolvePoissonCS : public FGlobalShader
-{
-public:
-	DECLARE_GLOBAL_SHADER(FPPFFTSolvePoissonCS);
-	SHADER_USE_PARAMETER_STRUCT(FPPFFTSolvePoissonCS, FGlobalShader);
-
-	BEGIN_SHADER_PARAMETER_STRUCT(FParameters,)
-		//SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D,FFTSolvePoissonSRV)
-		SHADER_PARAMETER_STRUCT_INCLUDE(FSolverBaseParameter, BaseParameter)
-		SHADER_PARAMETER(int, bIsInverse)
-		SHADER_PARAMETER(int, bTransformX)
-	SHADER_PARAMETER_RDG_TEXTURE(Texture2D, InPressureSRV)
-		SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D, PressureGridUAV)
-	END_SHADER_PARAMETER_STRUCT()
-
-	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
-	{
-		return true; //IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
-	}
-
-	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)
-	{
-		OutEnvironment.SetDefine(TEXT("THREADGROUP_SIZEX"), GroupSize);
-	}
-};
-IMPLEMENT_SHADER_TYPE(template<>, FPPFFTSolvePoissonCS<512>, TEXT("/PluginShader/FFTSolvePoisson.usf"), TEXT("MainCS"), SF_Compute);
-IMPLEMENT_SHADER_TYPE(template<>, FPPFFTSolvePoissonCS<256>, TEXT("/PluginShader/FFTSolvePoisson.usf"), TEXT("MainCS"), SF_Compute);
-IMPLEMENT_SHADER_TYPE(template<>, FPPFFTSolvePoissonCS<128>, TEXT("/PluginShader/FFTSolvePoisson.usf"), TEXT("MainCS"), SF_Compute);
-
-
-
 FPsychedelicSolver::FPsychedelicSolver(FPhysicalSimulationSceneProxy* InSceneProxy):FPhysicalSolverBase(InSceneProxy)
 {
 	GridSize = FIntPoint( InSceneProxy->GridSize.X,InSceneProxy->GridSize.Y);
@@ -225,8 +193,6 @@ void FPsychedelicSolver::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuild
 		                             FComputeShaderUtils::GetGroupCount(FIntVector(Inputs.ViewFamilyTexture->Desc.Extent.X, Inputs.ViewFamilyTexture->Desc.Extent.Y, 1), ThreadNumber));
 	}
 
-
-
 	//Advection Velocity
 	{
 
@@ -251,120 +217,8 @@ void FPsychedelicSolver::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuild
 		                             AdvectionPassParameters,
 		                             FComputeShaderUtils::GetGroupCount(FIntVector(Inputs.ViewFamilyTexture->Desc.Extent.X, Inputs.ViewFamilyTexture->Desc.Extent.Y, 1), ThreadNumber));
 	}
-	//Solver Pressure Fleid
-	/*if (CVarUseFFT.GetValueOnAnyThread())
-	{
-		{
 
-			//SetParameter(PassParameters, false, 0, SimUAV, PressureUAV, SimSRV, ComputeDivergence);
-			//PermutationVector.Set<FPPFluidCS::FAdvection>(true);
-			TShaderMapRef<FPPFluidCS> ComputeShader(ShaderMap);
-
-			FPPFluidCS::FParameters* ComputeDivergenceParameters = GraphBuilder.AllocParameters<FPPFluidCS::FParameters>();
-			//SetParameter(PassParameters, false, 0, SimUAV, PressureUAV, SimSRV, Advection);
-			ComputeDivergenceParameters->AdvectionDensity = false;
-			ComputeDivergenceParameters->IterationIndex = 0;
-			ComputeDivergenceParameters->FluidParameter = FluidParameter;
-			ComputeDivergenceParameters->PressureGridUAV = PressureUAV;
-			ComputeDivergenceParameters->bUseFFTPressure = bUseFFTSolverPressure;
-			ComputeDivergenceParameters->SceneTexturesStruct = Inputs.SceneTextures;
-			ComputeDivergenceParameters->SimGridSRV = AdvectionVelocityTexture;
-			ComputeDivergenceParameters->SimGridUAV = GraphBuilder.CreateUAV(AdvectionDensityTexture);
-			ComputeDivergenceParameters->FluidShaderType = ComputeDivergence;
-			FComputeShaderUtils::AddPass(GraphBuilder,
-			                             RDG_EVENT_NAME("ComputeDivergence"),
-			                             ERDGPassFlags::Compute,
-			                             ComputeShader,
-			                             ComputeDivergenceParameters,
-		                             FComputeShaderUtils::GetGroupCount(FIntVector(Inputs.ViewFamilyTexture->Desc.Extent.X, Inputs.ViewFamilyTexture->Desc.Extent.Y, 1), ThreadNumber));
-		}
-
-		FRDGTextureDesc TempPressureDesc = FRDGTextureDesc::Create2D(GridSize, PF_R32_FLOAT, FClearValueBinding::Black, TexCreate_ShaderResource | TexCreate_UAV | TexCreate_RenderTargetable);
-		FRDGTextureRef TempPressureGrid1 = GraphBuilder.CreateTexture(TempPressureDesc,TEXT("TempPressure1"));
-		FRDGTextureRef TempPressureGrid2 = GraphBuilder.CreateTexture(TempPressureDesc,TEXT("TempPressure2"));
-		FRDGTextureRef TempPressureGrid3 = GraphBuilder.CreateTexture(TempPressureDesc,TEXT("TempPressure3"));
-		//FFT Y
-		{
-			FPPFFTSolvePoissonCS<256>::FParameters* FFTPassParameters = GraphBuilder.AllocParameters<FPPFFTSolvePoissonCS<256>::FParameters>();
-
-			TShaderMapRef<FPPFFTSolvePoissonCS<256>> ComputeShader(ShaderMap);
-
-			FFTPassParameters->bIsInverse = false;
-			FFTPassParameters->bTransformX = false;
-			//AddCopyTexturePass(GraphBuilder,PressureTexture,TempPressureGrid);
-			FFTPassParameters->InPressureSRV = PressureTexture;
-			FFTPassParameters->PressureGridUAV =GraphBuilder.CreateUAV(TempPressureGrid1);
-			FFTPassParameters->BaseParameter = FluidParameter.SolverBaseParameter;
-
-			FComputeShaderUtils::AddPass(GraphBuilder,
-			                             RDG_EVENT_NAME("FFTY"),
-			                             ERDGPassFlags::Compute,
-			                             ComputeShader,
-			                             FFTPassParameters,
-			                             FIntVector(GridSize.X -1 , 1, 1)); //FComputeShaderUtils::GetGroupCount( FIntVector(GridSize.X,GridSize.Y,1),FIntVector(GridSize.X ,1,1)));
-		}
-
-		//FFT X
-		{
-			//FPPFFTSolvePoissonCS<256>::FParameters* PassParameters = GraphBuilder.AllocParameters<FPPFFTSolvePoissonCS<256>::FParameters>();
-			TShaderMapRef<FPPFFTSolvePoissonCS<256>> ComputeShader(ShaderMap);
-			//AddCopyTexturePass(GraphBuilder,PressureTexture,TempPressureGrid);
-			FPPFFTSolvePoissonCS<256>::FParameters* FFTPassParameters = GraphBuilder.AllocParameters<FPPFFTSolvePoissonCS<256>::FParameters>();
-			FFTPassParameters->InPressureSRV = TempPressureGrid1;
-			FFTPassParameters->bIsInverse = false;
-			FFTPassParameters->bTransformX = true;
-			FFTPassParameters->PressureGridUAV = GraphBuilder.CreateUAV(TempPressureGrid2);
-			FFTPassParameters->BaseParameter = FluidParameter.SolverBaseParameter;
-
-			FComputeShaderUtils::AddPass(GraphBuilder,
-			                             RDG_EVENT_NAME("FFTX"),
-			                             ERDGPassFlags::Compute,
-			                             ComputeShader,
-			                             FFTPassParameters,
-			                             FIntVector(GridSize.Y - 1, 1, 1)); //FComputeShaderUtils::GetGroupCount( FIntVector(GridSize.X,GridSize.Y,1),FIntVector(GridSize.X ,1,1)));
-		}
-
-		//Inv FFT X
-		{
-
-			TShaderMapRef<FPPFFTSolvePoissonCS<256>> ComputeShader(ShaderMap);
-			FPPFFTSolvePoissonCS<256>::FParameters* FFTPassParameters = GraphBuilder.AllocParameters<FPPFFTSolvePoissonCS<256>::FParameters>();
-			//AddCopyTexturePass(GraphBuilder,PressureTexture,TempPressureGrid);
-			FFTPassParameters->InPressureSRV = TempPressureGrid2;
-			FFTPassParameters->bIsInverse = true;
-			FFTPassParameters->bTransformX = true;
-			FFTPassParameters->PressureGridUAV = GraphBuilder.CreateUAV(TempPressureGrid3);
-			FFTPassParameters->BaseParameter = FluidParameter.SolverBaseParameter;
-
-			FComputeShaderUtils::AddPass(GraphBuilder,
-			                             RDG_EVENT_NAME("InvFFTX"),
-			                             ERDGPassFlags::Compute,
-			                             ComputeShader,
-			                             FFTPassParameters,
-			                             FIntVector(GridSize.Y - 1, 1, 1));
-		}
-
-		//Inv FFT Y
-		{
-
-			TShaderMapRef<FPPFFTSolvePoissonCS<256>> ComputeShader(ShaderMap);
-			FPPFFTSolvePoissonCS<256>::FParameters* FFTPassParameters = GraphBuilder.AllocParameters<FPPFFTSolvePoissonCS<256>::FParameters>();
-			//AddCopyTexturePass(GraphBuilder,PressureTexture,TempPressureGrid);
-			FFTPassParameters->InPressureSRV = TempPressureGrid3;
-			FFTPassParameters->bIsInverse = true;
-			FFTPassParameters->bTransformX = false;
-			FFTPassParameters->PressureGridUAV = PressureUAV;
-			FFTPassParameters->BaseParameter = FluidParameter.SolverBaseParameter;
-
-			FComputeShaderUtils::AddPass(GraphBuilder,
-			                             RDG_EVENT_NAME("InvFFTY"),
-			                             ERDGPassFlags::Compute,
-			                             ComputeShader,
-			                             FFTPassParameters,
-			                             FIntVector(GridSize.X - 1, 1, 1));
-		}
-	}
-	else
+	/*
 	{
 		for (int i = 0; i < 20; i++)
 		{
