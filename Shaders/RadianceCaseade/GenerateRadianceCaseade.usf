@@ -1,11 +1,21 @@
 ﻿#include "/Engine/Private/SceneTexturesCommon.ush"
-
+#include "/Engine/Private/ShaderPrint.ush"
 RWTexture2D<float4> GenerateRadianceCaseadeUAV;
+int3 GridSize;
 int CascadeLevel;
 int RayNum;
 
 [numthreads(THREADGROUP_SIZEX, THREADGROUP_SIZEY, 1)]
-void MainCS(uint2 DispatchThreadID : SV_DispatchThreadID)
+void MainCS(uint2 DispatchThreadID : SV_DispatchThreadID,uint2 GroupThreadID : SV_GroupThreadID)
 {
+
+	//AddAABBWS(0,100,ColorGreen);
 	float2 ScreenSize = View.BufferSizeAndInvSize.xy;
+	int2 ProbeNum = GridSize.xy / (THREADGROUP_SIZEX << CascadeLevel);
+	float2 ProbeSize = ScreenSize / float2(ProbeNum);
+	float2 ProbeScenePosition = floor(float2(GroupThreadID) / (CascadeLevel+ 1)) + 0.5 * ProbeSize;
+	FShaderPrintContext Context = InitShaderPrintContext(true, uint2(50,300));
+	//AddLineSS(ProbeScenePosition,ProbeScenePosition + float2(0,10),ColorGreen);
+	GenerateRadianceCaseadeUAV[DispatchThreadID] = float4(ProbeScenePosition,0,0);
+
 }

@@ -33,6 +33,7 @@ public:
 	SHADER_PARAMETER_STRUCT_REF(FViewUniformShaderParameters, View)
 	SHADER_PARAMETER_RDG_TEXTURE(Texture2D,SimulationTexture)
 	SHADER_PARAMETER_RDG_UNIFORM_BUFFER(FSceneTextureUniformParameters, SceneTexturesStruct)
+	SHADER_PARAMETER_STRUCT_INCLUDE(ShaderPrint::FShaderParameters, ShaderPrintParameters)
 	SHADER_PARAMETER_SAMPLER(SamplerState,SimulationTextureSampler)
 		RENDER_TARGET_BINDING_SLOTS()
 	END_SHADER_PARAMETER_STRUCT()
@@ -98,13 +99,7 @@ FPsychedelicSolver::~FPsychedelicSolver()
 
 void FPsychedelicSolver::Initial_RenderThread(FRHICommandListImmediate& RHICmdList)
 {
-	/*FPooledRenderTargetDesc RGBADesc(FPooledRenderTargetDesc::Create2DDesc(GridSize, PF_FloatRGBA,
-																			   FClearValueBinding(), TexCreate_None, TexCreate_ShaderResource | TexCreate_RenderTargetable | TexCreate_UAV, false));
 
-	FPooledRenderTargetDesc FloatDesc(FPooledRenderTargetDesc::Create2DDesc(GridSize, PF_R32_FLOAT,
-																			FClearValueBinding(), TexCreate_None, TexCreate_ShaderResource | TexCreate_RenderTargetable | TexCreate_UAV, false));
-	GRenderTargetPool.FindFreeElement(GraphBuilder.RHICmdList, RGBADesc, SimulationTexturePool, TEXT("PsyChedelicSimulationTexture"));
-	GRenderTargetPool.FindFreeElement(GraphBuilder .RHICmdList, FloatDesc, PressureTexturePool, TEXT("PsyChedelicPressureTexture"));*/
 }
 
 void FPsychedelicSolver::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& View, const FPostProcessingInputs& Inputs)
@@ -282,6 +277,7 @@ void FPsychedelicSolver::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuild
 		                             FComputeShaderUtils::GetGroupCount(FIntVector(Inputs.ViewFamilyTexture->Desc.Extent.X, Inputs.ViewFamilyTexture->Desc.Extent.Y, 1), ThreadNumber));
 		//SimulationTexturePool =  GraphBuilder.ConvertToExternalTexture(AdvectionDensityTexture);
 	}*/
+	const FViewInfo& ViewInfo = static_cast<const FViewInfo&>(View);
 	SimulationTexturePool =  GraphBuilder.ConvertToExternalTexture(AdvectionDensityTexture);
 	TShaderMapRef<FPPPsychedelicPS> PixelShader(ShaderMap);
 	FPPPsychedelicPS::FParameters* PixelShaderParameters = GraphBuilder.AllocParameters<FPPPsychedelicPS::FParameters>();
@@ -292,6 +288,8 @@ void FPsychedelicSolver::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuild
 	PixelShaderParameters->SceneTexturesStruct = Inputs.SceneTextures;
 	PixelShaderParameters->SimulationTexture = AdvectionDensityTexture;
 	PixelShaderParameters->SimulationTextureSampler = TStaticSamplerState<SF_Bilinear>::GetRHI();
+	ShaderPrint::SetParameters(GraphBuilder, ViewInfo.ShaderPrintData, PixelShaderParameters->ShaderPrintParameters);
+
 	FPixelShaderUtils::AddFullscreenPass(
 				GraphBuilder,
 				ShaderMap,
