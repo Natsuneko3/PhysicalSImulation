@@ -1,0 +1,17 @@
+﻿#include "/Engine/Private/Common.ush"
+Texture2D RCTexture;
+SamplerState RCTextureSampler;
+
+void MainPS(in float2: SV_Position,out float4 OutColor : SV_Target0)
+{
+	float2 UV = SvPositionToBufferUV(SvPosition);
+float3 RadianceCascades = RCTexture.SamplerLevel(RCTextureSampler,UV,0);
+	float3 SceneColor = CalcSceneColor(UV);
+	OutColor0 = float4(SceneColor,1);//SimulationTexture.SampleLevel(SimulationTextureSampler,UV,0).b;
+if(SV_Position < 128)
+{
+	OutColor0 = float4(RadianceCascades,1);
+}
+
+
+}

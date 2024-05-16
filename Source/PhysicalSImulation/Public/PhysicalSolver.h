@@ -49,7 +49,8 @@ enum class ESimulatorType : uint8
 {
 	PlaneSmokeFluid = 0,
 	Psychedelic = 1,
-	Liquid = 2
+	Liquid = 2,
+	RadianceCascades = 3
 };
 
 using FPSSpriteVertex = FDynamicMeshVertex;

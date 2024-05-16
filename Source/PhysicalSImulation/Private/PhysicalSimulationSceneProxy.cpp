@@ -7,6 +7,7 @@
 #include "PhysicalSimulationSystem.h"
 #include "PhysicalSolver.h"
 #include "PsychedelicSolver.h"
+#include "RadianceCascadesSolver.h"
 DECLARE_CYCLE_STAT(TEXT("GetDynamicMeshElements"), STAT_PS_GetDynamicMeshElements, STATGROUP_PS)
 
 
@@ -44,7 +45,10 @@ FPhysicalSimulationSceneProxy::FPhysicalSimulationSceneProxy(UPhysicalSimulation
 			break;
 		case ESimulatorType::Liquid:
 			PhysicalSolver = MakeShareable(new FPhysicalLiquidSolver(this));
+			break;
 
+		case ESimulatorType::RadianceCascades:
+			PhysicalSolver = MakeShareable(new FRadianceCascadesSolver(this));
 			break;
 		}
 		ENQUEUE_RENDER_COMMAND(InitPhysicalSolver)(

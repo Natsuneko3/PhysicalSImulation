@@ -78,7 +78,7 @@ void Advection(uint2 DispatchThreadId : SV_DispatchThreadID, uint2 GroupThreadId
 
 		SimValue.x = clamp(Advection.x / (dt * VelocityDissipate + 1) - dt * 0.1 * VelocityDissipate, -1000, 1000);
 		SimValue.y = clamp(Advection.y / (dt * VelocityDissipate + 1) - dt * 0.1 * VelocityDissipate, -1000, 1000);
-		SimValue.z = Advection.z;
+		SimValue.z = clamp(Advection.z / (dt * DensityDissipate + 1) - dt * 0.1 * DensityDissipate, 0, 100);
 		SimGridUAV[DispatchThreadId] = SimValue;
 
 		PressureGridUAV[DispatchThreadId] = 0;
