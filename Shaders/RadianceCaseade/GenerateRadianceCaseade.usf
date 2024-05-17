@@ -6,16 +6,40 @@ int CascadeLevel;
 int RayNum;
 
 [numthreads(THREADGROUP_SIZEX, THREADGROUP_SIZEY, 1)]
-void MainCS(uint2 DispatchThreadID : SV_DispatchThreadID,uint2 GroupThreadID : SV_GroupThreadID)
+void MainCS(uint2 DispatchThreadID : SV_DispatchThreadID,
+	uint2 GroupThreadID : SV_GroupThreadID,
+	uint2 GroupID : SV_GroupID,
+	uint GroupIndex : SV_GroupIndex)
 {
 
-	//AddAABBWS(0,100,ColorGreen);
-	float2 ScreenSize = View.BufferSizeAndInvSize.xy;
-	int2 ProbeNum = GridSize.xy / (THREADGROUP_SIZEX << CascadeLevel);
-	float2 ProbeSize = ScreenSize / float2(ProbeNum);
-	float2 ProbeScenePosition = floor(float2(GroupThreadID) / (CascadeLevel+ 1)) + 0.5 * ProbeSize;
 	FShaderPrintContext Context = InitShaderPrintContext(true, uint2(50,300));
+	float2 ScreenSize = View.BufferSizeAndInvSize.xy;
+	uint PreProbeRay = uint(THREADGROUP_SIZEX) << CascadeLevel;
+	uint2 ProbeNum = GridSize.xy / PreProbeRay;
+	float2 ProbeSize = ScreenSize / float2(ProbeNum);
+	float2 ProbeScenePosition = (floor(float2(GroupID) / float(CascadeLevel + 1)) + 0.5 )* ProbeSize;
+
+	uint2 ProbeThreadID = DispatchThreadID % PreProbeRay;
+	float Angle =  float(ProbeThreadID.x + ProbeThreadID.y * PreProbeRay) / (PreProbeRay * PreProbeRay);
+	float2x2 RotateMatrix = {cos(Angle),-sin(Angle),
+	sin(Angle),cos(Angle)};
+	float2 RayDirector = mul(float2(0,1),RotateMatrix);
+	int MaxStep = 10;
+	float2 StratProbeRayUV = (ProbeScenePosition + CascadeLevel * PreProbeRay * 1.414213 * 0.5)* View.BufferSizeAndInvSize.zw;
+	float CenterDepht = CalcSceneDepth(StratProbeRayUV);
+	float tolerance = 100;
+	float3 SampleSceneColor = 0;
+	for(int i = 0;i<MaxStep;i++)
+	{
+		StratProbeRayUV += RayDirector * (1 / float(MaxStep));
+		float SampleDepth = CalcSceneDepth(StratProbeRayUV);
+		if(abs(SampleDepth - CenterDepht) < tolerance)
+		{
+			SampleSceneColor = CalcSceneColor(StratProbeRayUV);
+			break;
+		}
+	}
 	//AddLineSS(ProbeScenePosition,ProbeScenePosition + float2(0,10),ColorGreen);
-	GenerateRadianceCaseadeUAV[DispatchThreadID] = float4(ProbeScenePosition,0,0);
+	GenerateRadianceCaseadeUAV[DispatchThreadID] = float4(ProbeScenePosition,0,0);//float4(SampleSceneColor,0);
 
 }

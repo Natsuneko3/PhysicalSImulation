@@ -1,5 +1,5 @@
 ﻿#include "RadianceCascadesSolver.h"
-
+#include "PixelShaderUtils.h"
 
 class FRadianceCascadeGIPS : public FGlobalShader
 {
@@ -108,4 +108,11 @@ void FRadianceCascadesSolver::PrePostProcessPass_RenderThread(FRDGBuilder& Graph
 	PixelShaderParameters->SceneTexturesStruct = Inputs.SceneTextures;
 	PixelShaderParameters->RCTexture = RadianceCascadesTexture;
 	PixelShaderParameters->RCTextureSampler = TStaticSamplerState<SF_Bilinear>::GetRHI();
+	FPixelShaderUtils::AddFullscreenPass(
+				GraphBuilder,
+				ShaderMap,
+				RDG_EVENT_NAME("RadianceCascadeMerge"),
+				PixelShader,
+				PixelShaderParameters,
+				ViewInfo.ViewRect);
 }
