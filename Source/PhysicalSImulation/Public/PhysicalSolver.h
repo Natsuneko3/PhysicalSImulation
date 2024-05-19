@@ -35,9 +35,12 @@ BEGIN_SHADER_PARAMETER_STRUCT(FFluidParameter, PHYSICALSIMULATION_API)
 	SHADER_PARAMETER(float, DensityDissipate)
 	SHADER_PARAMETER(float, GravityScale)
 
-SHADER_PARAMETER(FVector3f, WorldVelocity)
-SHADER_PARAMETER_SAMPLER(SamplerState, SimSampler)
-		SHADER_PARAMETER(FVector3f, WorldPosition)
+	SHADER_PARAMETER(FVector3f, WorldVelocity)
+
+	SHADER_PARAMETER_SAMPLER(SamplerState, SimSampler)
+	SHADER_PARAMETER_TEXTURE(Texture2D, InTexture)
+	SHADER_PARAMETER_SAMPLER(SamplerState, InTextureSampler)
+	SHADER_PARAMETER(FVector3f, WorldPosition)
 
 	SHADER_PARAMETER(int, UseFFT)
 END_SHADER_PARAMETER_STRUCT()
@@ -190,11 +193,14 @@ class FPhysicalSolverBase
 public:
 	FPhysicalSolverBase(FPhysicalSimulationSceneProxy* InSceneProxy)
 	{
-
 	}
-	virtual ~FPhysicalSolverBase(){}
+
+	virtual ~FPhysicalSolverBase()
+	{
+	}
 
 	int Frame = 0;
+
 	virtual void Initial_RenderThread(FRHICommandListImmediate& RHICmdList)
 	{
 	}
@@ -210,13 +216,16 @@ public:
 	virtual void Render_RenderThread(FPostOpaqueRenderParameters& Parameters)
 	{
 	}
-	virtual void PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& View, const FPostProcessingInputs& Inputs) {};
+
+	virtual void PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& View, const FPostProcessingInputs& Inputs)
+	{
+	};
 
 	FPhysicalSolverInitialed InitialedDelegate;
 
 protected:
 	FPhysicalSimulationSceneProxy* SceneProxy;
-	void SetupSolverBaseParameters(FSolverBaseParameter& Parameter, FSceneView& InView,FPhysicalSimulationSceneProxy* InSceneProxy);
+	void SetupSolverBaseParameters(FSolverBaseParameter& Parameter, FSceneView& InView, FPhysicalSimulationSceneProxy* InSceneProxy);
 	void InitialPlaneMesh();
 	void InitialCubeMesh();
 
@@ -231,11 +240,11 @@ protected:
 	void DrawMesh(const TShaderRef<TShaderClassVS>& VertexShader, const TShaderRef<TShaderClassPS>& PixelShader,
 	              typename TShaderClassVS::FParameters* InVSParameters,
 	              typename TShaderClassPS::FParameters* InPSParameters,
-	              FRDGBuilder& GraphBuilder,const FIntRect& ViewportRect,uint32 NumInstance)
+	              FRDGBuilder& GraphBuilder, const FIntRect& ViewportRect, uint32 NumInstance)
 	{
 		if (NumPrimitives == 0)
 		{
-			UE_LOG(LogSimulation,Log,TEXT("The Mesh has not initial yet"));
+			UE_LOG(LogSimulation, Log, TEXT("The Mesh has not initial yet"));
 			return;
 		}
 
@@ -264,6 +273,8 @@ protected:
 				RHICmdList.DrawIndexedPrimitive(IndexBufferRHI, 0, 0, 8, 0, NumPrimitives, NumInstance);
 			});
 	}
+
+	void AddTextureBlurPass(FRDGBuilder& GraphBuilder,FRDGTextureRef InTexture,FRDGTextureRef& OutTexture);
 
 private:
 	uint32 NumPrimitives;

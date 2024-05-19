@@ -3,6 +3,37 @@
 #include "DataDrivenShaderPlatformInfo.h"
 
 
+/*
+class FTextureBlurCS : public FGlobalShader
+{
+public:
+	DECLARE_GLOBAL_SHADER(FTextureBlurCS);
+	SHADER_USE_PARAMETER_STRUCT(FTextureBlurCS, FGlobalShader);
+
+
+	BEGIN_SHADER_PARAMETER_STRUCT(FParameters,)
+		SHADER_PARAMETER_STRUCT_REF(FViewUniformShaderParameters, ViewUniformBuffer)
+		SHADER_PARAMETER_RDG_TEXTURE(Texture2D, InputTexture)
+		SHADER_PARAMETER_SAMPLER(SamplerState, InputSampler)
+		SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D<float4>, OutComputeTexture)
+	END_SHADER_PARAMETER_STRUCT()
+
+	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
+	{
+		return true; //IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
+	}
+
+	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)
+	{
+		FGlobalShader::ModifyCompilationEnvironment(Parameters, OutEnvironment);
+		OutEnvironment.SetDefine(TEXT("THREADGROUP_SIZEX"), 8);
+		OutEnvironment.SetDefine(TEXT("THREADGROUP_SIZEY"), 8);
+	}
+};
+
+IMPLEMENT_GLOBAL_SHADER(FTextureBlurCS, "/Engine/Private/PostProcessDownsample.usf", "MainCS", SF_Compute);
+*/
+
 void FPSVertexBuffer::SetDynamicUsage(bool bInDynamicUsage)
 {
 	bDynamicUsage = bInDynamicUsage;
@@ -244,7 +275,7 @@ void FPSVertexFactory::Init(const FPSVertexBuffer* InVertexBuffer)
 }
 
 ///////////////////FPhysicalSolverBase/////////////////////
-void FPhysicalSolverBase::SetupSolverBaseParameters(FSolverBaseParameter& Parameter, FSceneView& InView,FPhysicalSimulationSceneProxy* InSceneProxy)
+void FPhysicalSolverBase::SetupSolverBaseParameters(FSolverBaseParameter& Parameter, FSceneView& InView, FPhysicalSimulationSceneProxy* InSceneProxy)
 {
 	Parameter.dt = InSceneProxy->World->GetDeltaSeconds();
 	Parameter.dx = *InSceneProxy->Dx;
@@ -259,7 +290,7 @@ void FPhysicalSolverBase::InitialPlaneMesh()
 	TResourceArray<FFilterVertex, VERTEXBUFFER_ALIGNMENT> Vertices;
 	Vertices.SetNumUninitialized(8);
 
-	// Front face
+
 	/*Vertices[0].Position = FVector4f(1, 1, 0, 1);
 	Vertices[0].UV = FVector2f(1, 1);
 
@@ -278,16 +309,16 @@ void FPhysicalSolverBase::InitialPlaneMesh()
 	Vertices[1].UV = FVector2f(1.f, 0.f);
 	Vertices[2].Position = FVector4f(0, 1, 0, 1.f);
 	Vertices[2].UV = FVector2f(0.f, 1.f);
-	Vertices[3].Position = FVector4f(1, 1,0, 1.f);
+	Vertices[3].Position = FVector4f(1, 1, 0, 1.f);
 	Vertices[3].UV = FVector2f(1.f, 1.f);
 	// Setup index buffer
 	const uint16 SpriteIndices[] = {
 		// bottom face
-		2,3,1,2,1,0
-
+		2, 3, 1, 2, 1, 0
+		/*0, 1, 2,
+		1, 3, 2,*/
 	};
-//0, 1, 2,
-  //		1, 3, 2,
+
 	FRHIResourceCreateInfo CreateInfoVB(TEXT("PSPlaneMeshVertexBuffer"), &Vertices);
 	VertexBufferRHI = RHICreateVertexBuffer(Vertices.GetResourceDataSize(), BUF_Static, CreateInfoVB);
 	TResourceArray<uint16, INDEXBUFFER_ALIGNMENT> IndexBuffer;
@@ -360,4 +391,8 @@ void FPhysicalSolverBase::InitialCubeMesh()
 	FRHIResourceCreateInfo CreateInfoIB(TEXT("PSCubeMeshIndexBuffer"), &IndexBuffer);
 	IndexBufferRHI = RHICreateIndexBuffer(sizeof(uint16), IndexBuffer.GetResourceDataSize(), BUF_Static, CreateInfoIB);
 	NumPrimitives = 12;
+}
+
+void FPhysicalSolverBase::AddTextureBlurPass(FRDGBuilder& GraphBuilder, FRDGTextureRef InTexture, FRDGTextureRef& OutTexture)
+{
 }

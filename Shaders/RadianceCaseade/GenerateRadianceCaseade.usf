@@ -1,6 +1,6 @@
 ﻿#include "/Engine/Private/SceneTexturesCommon.ush"
 #include "/Engine/Private/ShaderPrint.ush"
-RWTexture2D<float4> GenerateRadianceCaseadeUAV;
+RWTexture2DArray<float4> GenerateRadianceCaseadeUAV;
 int3 GridSize;
 int CascadeLevel;
 int RayNum;
@@ -15,6 +15,7 @@ void MainCS(uint2 DispatchThreadID : SV_DispatchThreadID,
 	FShaderPrintContext Context = InitShaderPrintContext(true, uint2(50,300));
 	float2 ScreenSize = View.BufferSizeAndInvSize.xy;
 	uint PreProbeRay = uint(THREADGROUP_SIZEX) << CascadeLevel;
+	uint LastPreProbeRay = uint(THREADGROUP_SIZEX) << max(CascadeLevel - 1,0);
 	uint2 ProbeNum = GridSize.xy / PreProbeRay;
 	float2 ProbeSize = ScreenSize / float2(ProbeNum);
 	float2 ProbeScenePosition = (floor(float2(GroupID) / float(CascadeLevel + 1)) + 0.5 )* ProbeSize;
@@ -25,13 +26,14 @@ void MainCS(uint2 DispatchThreadID : SV_DispatchThreadID,
 	sin(Angle),cos(Angle)};
 	float2 RayDirector = mul(float2(0,1),RotateMatrix);
 	int MaxStep = 10;
-	float2 StratProbeRayUV = (ProbeScenePosition + CascadeLevel * PreProbeRay * 1.414213 * 0.5)* View.BufferSizeAndInvSize.zw;
+	float2 StratProbeRayUV = (ProbeScenePosition + CascadeLevel * LastPreProbeRay * 1.414213 * 0.5)* View.BufferSizeAndInvSize.zw;
+	float MaxRayDiatance = PreProbeRay * 1.414213 * 0.5;
 	float CenterDepht = CalcSceneDepth(StratProbeRayUV);
 	float tolerance = 100;
 	float3 SampleSceneColor = 0;
 	for(int i = 0;i<MaxStep;i++)
 	{
-		StratProbeRayUV += RayDirector * (1 / float(MaxStep));
+		StratProbeRayUV += RayDirector * (MaxRayDiatance / float(MaxStep)) * View.BufferSizeAndInvSize.zw;
 		float SampleDepth = CalcSceneDepth(StratProbeRayUV);
 		if(abs(SampleDepth - CenterDepht) < tolerance)
 		{
@@ -40,6 +42,6 @@ void MainCS(uint2 DispatchThreadID : SV_DispatchThreadID,
 		}
 	}
 	//AddLineSS(ProbeScenePosition,ProbeScenePosition + float2(0,10),ColorGreen);
-	GenerateRadianceCaseadeUAV[DispatchThreadID] = float4(ProbeScenePosition,0,0);//float4(SampleSceneColor,0);
+	GenerateRadianceCaseadeUAV[uint3(DispatchThreadID,CascadeLevel)] = float4(SampleSceneColor,1);//float4(ProbeScenePosition,0,0);//float4(SampleSceneColor,0);
 
 }
