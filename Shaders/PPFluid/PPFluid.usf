@@ -5,6 +5,7 @@
 
 #define G 98
 int FluidShaderType;
+int DownScale;
 float3 WorldVelocity;
 float3 WorldPosition;
 int bUseFFTPressure;
@@ -87,7 +88,18 @@ void Advection(uint2 DispatchThreadId : SV_DispatchThreadID, uint2 GroupThreadId
 
 void PreVelocity(uint2 DispatchThreadId : SV_DispatchThreadID, uint2 GroupThreadId : SV_GroupThreadID)
 {
-	float4 SimValue = SimGridSRV.Load(int3(DispatchThreadId, 0));
+
+	float2 ViewportUV = SvPositionToBufferUV(float4(DispatchThreadId+0.5,0,0));
+	float DeviceZ = LookupDeviceZ(ViewportUV);
+	float2 ScreenPosition = ViewportUVToScreenPos(ViewportUV);
+	float4 ThisClip = float4(ScreenPosition, DeviceZ, 1);
+	float4 PrevClip = mul(ThisClip, View.ClipToPrevClip);
+	float2 PrevScreen = PrevClip.xy / PrevClip.w;
+	float2 MotionVector = ViewportUV.xy - PrevClip.xy;
+	float2 BackN = ScreenPosition - PrevScreen;
+	float2 PreVelocity = float2(BackN.x, -BackN.y) *0.5;
+	float4 SimValue = SimGridSRV.SampleLevel(SimSampler,ViewportUV - PreVelocity,0);//.Load(int3(ViewportUV + MotionVector * 10, 0));
+
 	float2 Velocity = SimValue.xy;
 	float Density = SimValue.z;
 	float2 Force = 0;
@@ -101,7 +113,7 @@ void PreVelocity(uint2 DispatchThreadId : SV_DispatchThreadID, uint2 GroupThread
 
 	float2 CenterPoint = float2(sin(Time*0.01),cos(Time*0.01))*100 + float2(250,150);//
 	float2 Dis = float2(DispatchThreadId) - CenterPoint;
-	uint Stenlic = SceneTexturesStruct.CustomStencilTexture.Load(uint3(DispatchThreadId, 0)) STENCIL_COMPONENT_SWIZZLE;
+	uint Stenlic = CalcSceneCustomStencil(DispatchThreadId / DownScale);//SceneTexturesStruct.CustomStencilTexture.Load(uint3(DispatchThreadId, 0)) STENCIL_COMPONENT_SWIZZLE;
 	if (Stenlic == 1u)//(length(Dis) < 30)
 	{
 		Density = 1;//+= saturate(noiseX)*0.1; //RandFast(DispatchThreadId*0.2,Time);

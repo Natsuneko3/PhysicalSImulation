@@ -34,6 +34,9 @@ struct FPlandFluidParameters
 
 	UPROPERTY(EditAnywhere,Category = "PlandFluidParameters")
 	float GravityScale = 10;
+
+	UPROPERTY(EditAnywhere,Category = "PlandFluidParameters")
+	TObjectPtr<UTexture> InTexture1;
 };
 
 class FPhysical2DFluidSolver : public FPhysicalSolverBase

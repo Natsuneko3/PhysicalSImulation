@@ -13,4 +13,5 @@ public:
 	FPhysicalSimulationSceneProxy* SceneProxy;
 	TRefCountPtr<IPooledRenderTarget> SimulationTexturePool;
 	TRefCountPtr<IPooledRenderTarget> PressureTexturePool;
+	FMatrix PreViewProject;
 };

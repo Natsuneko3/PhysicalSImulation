@@ -1,20 +1,64 @@
 ﻿#include "/Engine/Private/Common.ush"
 #include "/Engine/Private/SceneTexturesCommon.ush"
 #include "/Engine/Private/ShaderPrint.ush"
+#include "/Engine/Private/Stylization/StylizationCommon.ush"
 
+#define SIGMA 10.0
+#define BSIGMA 5.0
+#define MSIZE 10
+
+Texture2D ColorTexture;
 Texture2D SimulationTexture;
+SamplerState ColorTextureSampler;
 SamplerState SimulationTextureSampler;
 void MainPS(in float4 SvPosition:SV_position,out float4 OutColor0 : SV_Target0)
 {
 	float2 UV = SvPositionToBufferUV(SvPosition);
 	//uint SceneColor = SceneTexturesStruct.CustomStencilTexture.Load(uint3(UV * View.BufferSizeAndInvSize.xy, 0)) STENCIL_COMPONENT_SWIZZLE;
-	float Density = SimulationTexture.SampleLevel(SimulationTextureSampler,UV,0).b;
-	float3 SceneColor = CalcSceneColor(UV);
-	float3 SceneColor1 = CalcSceneColor(UV + float2(0,0.005));
-	float3 SceneColor2 = CalcSceneColor(UV + float2(0.005,0));
-	float3 SceneColor3 = CalcSceneColor(UV + float2(0.005,0.005));
-	float3 BlurColor = (SceneColor+SceneColor1+SceneColor2+SceneColor3)*0.25;
-	float3 FinalColor = lerp(SceneColor,BlurColor,Density);
+	float4 OutTexture = SimulationTexture.SampleLevel(SimulationTextureSampler,UV,0);
+	float DeviceZ = LookupDeviceZ(UV);
 
-	OutColor0 = float4(FinalColor,1);//SimulationTexture.SampleLevel(SimulationTextureSampler,UV,0).b;
+	float4 InColor  =ColorTexture.SampleLevel(ColorTextureSampler,UV * 2,0);
+	float2 BoxFilter = float2(1,1)*10;
+	float3 SceneColor = CalcSceneColor(UV);
+	/*float3 SceneColor1 = CalcSceneColor(UV + BoxFilter*View.BufferSizeAndInvSize.zw);
+	float3 SceneColor2 = CalcSceneColor(UV + BoxFilter*2*View.BufferSizeAndInvSize.zw);
+	float3 SceneColor3 = CalcSceneColor(UV + float2(OutTexture.xy)*1.5*View.BufferSizeAndInvSize.zw);
+	float3 BlurColor = (SceneColor+SceneColor1+SceneColor2+SceneColor3)*0.25;*/
+	
+	const int kSize = (MSIZE-1)/2;
+	float kernel[MSIZE];
+	float3 final_colour = 0;
+		
+	//create the 1-D kernel
+	float Z = 0.0;
+	for (int j = 0; j <= kSize; ++j)
+	{
+		kernel[kSize+j] = kernel[kSize-j] = normpdf(float(j), SIGMA);
+	}
+		
+		
+	float3 cc;
+	float factor;
+	float bZ = 1.0/normpdf(0.0, BSIGMA);
+	//read out the texels
+	for (int i=-kSize; i <= kSize; ++i)
+	{
+		for (int j=-kSize; j <= kSize; ++j)
+		{
+			float SceneColorR  = CalcSceneColor((SvPosition.xy+float2(float(i),float(j))) * View.BufferSizeAndInvSize.zw).x;
+			float SceneColorG = CalcSceneColor((SvPosition.xy + float2(float(i),float(j))  +BoxFilter)*View.BufferSizeAndInvSize.zw).y;
+			float SceneColorB = CalcSceneColor((SvPosition.xy + float2(float(i),float(j)) - BoxFilter )*View.BufferSizeAndInvSize.zw).z;
+			 cc = float3(SceneColorR,SceneColorG,SceneColorB);
+			factor = normpdf3(cc-SceneColor, BSIGMA)*bZ*kernel[kSize+j]*kernel[kSize+i];
+			Z += factor;
+			final_colour += factor*cc;
+
+		}
+	}
+
+	float4 fragColor = float4(final_colour/Z, 1.0);
+	float3 FinalColor = lerp(SceneColor, fragColor.xyz , OutTexture.b);
+
+	OutColor0 =  float4(FinalColor,1);
 }

@@ -9,16 +9,11 @@ void MainVS(in float4 InPosition : ATTRIBUTE0,
 	out float4 OutPosition : SV_Position,
 	out float2 UV : TEXCOORD0)
 {
-	float4 LocalPosition = InPosition * float4(100.0,100.0,100.0,1);
-	float4x4 T = {0,0,-1,1,
-	0,1,0,1,
-	1,0,0,1,
-	0,0,0,1};
-	float4 CameraP = mul(LocalPosition,T);//,LWCHackToFloat(PrimaryView.ClipToWorld));
+	float4 LocalPosition = InPosition* float4(100.0,100.0,0.0,1) ;//+float4(50,50,0,0);//+ float4(View.RelativeWorldCameraOrigin,0);
 	float4 World = mul(LocalPosition,LocalToWorld) ;
-	float4 WorldPos = mul(World , LWCHackToFloat(PrimaryView.WorldToClip));
+	float4 WorldPos = mul( World, LWCHackToFloat(PrimaryView.WorldToClip));
 
-	OutPosition = WorldPos;//float4((WorldPos.xy), 0, 1);//WorldPos
+	OutPosition = WorldPos ;//WorldPos
 	UV = InUV.xy;
 }
 void MainPS(in float4 SvPosition : SV_POSITION,
