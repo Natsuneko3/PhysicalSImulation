@@ -16,12 +16,22 @@ RWTexture2D<float3> FluidColorUAV;
 void Advection(uint2 DispatchThreadId : SV_DispatchThreadID, uint2 GroupThreadId)
 {
 
-	float2 UV = SvPositionToBufferUV(float4(DispatchThreadId + 0.5,0,0));
+	//float2 UV = SvPositionToBufferUV(float4(DispatchThreadId + 0.5,0,0));
+	float2 UV = float2(DispatchThreadId + 0.5) / GridSize.xy;//SvPositionToBufferUV(float4(DispatchThreadId+0.5,0,0) * DownScale);
+	float DeviceZ = LookupDeviceZ(UV);
+	float2 ScreenPosition = ViewportUVToScreenPos(UV);
+	float4 ThisClip = float4(ScreenPosition, DeviceZ, 1);
+	float4 PrevClip = mul(ThisClip, View.ClipToPrevClip);
+	float2 PrevScreen = PrevClip.xy / PrevClip.w;
+
+	float2 BackN = ScreenPosition - PrevScreen;
+	float2 PreVelocity = float2(BackN.x, -BackN.y) *0.5;
 
 	float4 SimValue = SimGridSRV.SampleLevel(SimSampler, UV, 0);//.Load(int3(DispatchThreadId, 0));
 	float2 ReadIndex = float2(DispatchThreadId + 0.5) - SimValue.xy * (dt / dx);
 	float4 Advection = SimGridSRV.SampleLevel(SimSampler, ReadIndex / GridSize.xy, 0);
-	float3 FluidColor = FluidColorUAV[ReadIndex];
+
+	float3 FluidColor = FluidColorUAV[ReadIndex - PreVelocity * GridSize.xy];
 	float3 FluidColor1 = FluidColorUAV[ReadIndex - uint2(1,1)];
 	float3 FluidColor2 = FluidColorUAV[ReadIndex+uint2(1,1)];
 
@@ -54,18 +64,21 @@ void PreVelocity(uint2 DispatchThreadId : SV_DispatchThreadID, uint2 GroupThread
 
 	float noiseScale = .05 * NoiseFrequency;
 	float noiseIntensity = NoiseIntensity;
-	float4 noise = (InTexture.SampleLevel(InTextureSampler,ViewportUV,0) - 0.5f) * 2.f;//simplex3d(float3(DispatchThreadId.xy, Time * 0.1) * noiseScale);
-	//float noiseY = simplex3d(float3(DispatchThreadId.xy, Time * 0.05) * noiseScale);
+	float noiseX = simplex3d(float3(DispatchThreadId.xy, Time * 0.1) * noiseScale);
+	float noiseY = simplex3d(float3(DispatchThreadId.xy, Time * 0.05) * noiseScale);
+	float3 noise = float3(noiseX,noiseY,1) ;//(NoiseTileWrap(float3(DispatchThreadId.xy, Time * 0.1),true,1) - 0.5 )* 2.0;//(simplex3d(float3(DispatchThreadId.xy, Time * 0.1) ) - 0.5 );
+	float4 NoiseTexture = InTexture.SampleLevel(InTextureSampler,ViewportUV * NoiseFrequency*2.f,0);//simplex3d(float3(DispatchThreadId.xy, Time * 0.1) * noiseScale);
 
 	uint Stenlic = SceneTexturesStruct.CustomStencilTexture.Load(uint3(DispatchThreadId * DownScale, 0)) STENCIL_COMPONENT_SWIZZLE;//CalcSceneCustomStencil(DispatchThreadId / DownScale);
 	if (Stenlic == 1u)
 	{
 		Density = 1;//+= saturate(noiseX)*0.1; //RandFast(DispatchThreadId*0.2,Time);
-		Velocity = noise;//float2(noiseX * 100, - noiseY * 300);
-		float Dispersion = CalcSceneColor(ViewportUV - PreVelocity + 2 * View.ViewSizeAndInvSize.zw).r;
-		float Dispersion1 = CalcSceneColor(ViewportUV - PreVelocity - 2 * View.ViewSizeAndInvSize.zw).g;
-		float Dispersion2 = CalcSceneColor(ViewportUV - PreVelocity).b;
-		FluidColorUAV[DispatchThreadId] = float3(Dispersion,Dispersion1,Dispersion2);//CalcSceneColor(ViewportUV - PreVelocity);
+		Velocity = noise * NoiseIntensity;//float2(noiseX * 100, - noiseY * 300);
+		float Dispersion = CalcSceneColor(ViewportUV - PreVelocity + float2(10,0) * View.ViewSizeAndInvSize.zw).r;
+		float Dispersion1 = CalcSceneColor(ViewportUV - PreVelocity ).g;
+		float Dispersion2 = CalcSceneColor(ViewportUV - PreVelocity- float2(10,0) * View.ViewSizeAndInvSize.zw).b;
+
+		FluidColorUAV[DispatchThreadId] = max(float3(Dispersion,Dispersion1,Dispersion2), NoiseTexture.xyz*0.5);//
 	}
 
 	float2 Grad = GetGradient(SimGridSRV, int2(DispatchThreadId), dx);
@@ -76,7 +89,7 @@ void PreVelocity(uint2 DispatchThreadId : SV_DispatchThreadID, uint2 GroupThread
 		Force += cross(float3(Grad / GradCurlLength, 0), float3(0, 0, 1)).xy;//VorticityMult * dx * Grad / GradCurlLength; //
 	}
 
-	Force += float2(0,-G) * Density * GravityScale * 0.025;
+	Force += float2(G,0.5 * -G) * Density * GravityScale * 0.025;
 
 	Force += noise.xy * noiseIntensity;
 	Force -= WorldVelocity.xz * float2(-1, 1) * Density * 0.5;

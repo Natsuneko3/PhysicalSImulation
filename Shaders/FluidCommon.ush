@@ -134,7 +134,7 @@ float3 random3(float3 c) {
 
 
 
-float simplex3d(float3 p) {
+float4 simplex3d(float3 p) {
 	/* 1. find current tetrahedron T and it's four vertices */
 	/* s, s+i1, s+i2, s+1.0 - absolute skewed (integer) coordinates of T vertices */
 	/* x, x1, x2, x3 - unskewed coordinates of p relative to each of T vertices*/
