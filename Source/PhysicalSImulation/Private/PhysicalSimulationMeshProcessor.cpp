@@ -68,8 +68,8 @@ public:
 	//LAYOUT_FIELD(FShaderResourceParameter, InTexture1);
 };
 
-IMPLEMENT_SHADER_TYPE(, FPhysicalSimulationMeshVS, TEXT("/PluginShader/PhysicalSimulationPassShader.usf"), TEXT("MainVS"), SF_Vertex);
-IMPLEMENT_SHADER_TYPE(, FPhysicalSimulationMeshPS, TEXT("/PluginShader/PhysicalSimulationPassShader.usf"), TEXT("MainPS"), SF_Pixel);
+IMPLEMENT_SHADER_TYPE(, FPhysicalSimulationMeshVS, TEXT("/Plugin/PhysicalSimulation/PhysicalSimulationPassShader.usf"), TEXT("MainVS"), SF_Vertex);
+IMPLEMENT_SHADER_TYPE(, FPhysicalSimulationMeshPS, TEXT("/Plugin/PhysicalSimulation/PhysicalSimulationPassShader.usf"), TEXT("MainPS"), SF_Pixel);
 IMPLEMENT_SHADERPIPELINE_TYPE_VSPS(PShaderPipeline, FPhysicalSimulationMeshVS, FPhysicalSimulationMeshPS, true);
 
 

@@ -13,7 +13,7 @@ void FPhysicalSImulationModule::StartupModule()
 		PluginShaderDir = FPaths::Combine(FPaths::ProjectPluginsDir(), TEXT("PhysicalSImulation/Shaders"));
 	}
 
-	AddShaderSourceDirectoryMapping(TEXT("/PluginShader"), PluginShaderDir);
+	AddShaderSourceDirectoryMapping(TEXT("/Plugin/PhysicalSimulation"), PluginShaderDir);
 }
 
 void FPhysicalSImulationModule::ShutdownModule()

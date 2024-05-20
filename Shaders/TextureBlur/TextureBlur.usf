@@ -1,0 +1,44 @@
+﻿#include "/Engine/Private/Common.ush"
+
+Texture2D<float4>InputTexture;
+SamplerState InputTextureSampler;
+RWTexture2D<float3>OutTexture;
+
+float2 BlurDir;
+float Coefficient;
+float normpdf(float x, float sigma)
+{
+	return 0.39894 * exp(-0.5 * x * x / (sigma * sigma)) / sigma;
+}
+
+float normpdf3(float3 v, float sigma)
+{
+	return 0.39894 * exp(-0.5 * dot(v, v) / (sigma * sigma)) / sigma;
+}
+
+[numthreads(THREADGROUP_SIZEX, THREADGROUP_SIZEY, 1)]
+void MainCS(uint2 DispatchThreadID : SV_DispatchThreadID)
+{
+	float2 TextureSize = float2(0.0, 0.0);
+
+	OutTexture.GetDimensions(TextureSize.x,TextureSize.y);
+	float2 UV = float2(DispatchThreadID +0.5) / TextureSize;
+	float3 final_colour = float3(0.0, 0.0, 0.0);
+	float Z = 0.0;
+	float Sigma = 10.0;
+
+	float factor;
+	float bZ = 1.0 / normpdf(0.0, Coefficient);
+	float3 CenterColor = InputTexture.SampleLevel(InputTextureSampler, UV, 0).xyz;
+
+	for (int i = -3; i <= 3; ++i)
+	{
+		float2 UVBias = float2(i, i) * BlurDir / TextureSize;
+		float3 OtherColor = InputTexture.SampleLevel(InputTextureSampler, UV + UVBias, 0).xyz;
+		factor = normpdf3(CenterColor - OtherColor, Coefficient) * bZ * normpdf(i, Sigma) * normpdf(0.0, Sigma);
+		Z += factor;
+		final_colour += factor * OtherColor;
+	}
+	OutTexture[DispatchThreadID] = final_colour / Z;//float4(final_colour / Z,1);
+
+}
