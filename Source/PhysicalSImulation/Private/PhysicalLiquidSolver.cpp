@@ -149,12 +149,12 @@ public:
 	END_SHADER_PARAMETER_STRUCT()
 };
 
-//IMPLEMENT_GLOBAL_SHADER(FTestShaderCS, "/PluginShader/test.usf", "MainPS", SF_Pixel);
-IMPLEMENT_GLOBAL_SHADER(FSpawnParticleCS, "/PluginShader/InitialParticle.usf", "SpawnParticleCS", SF_Compute);
-IMPLEMENT_GLOBAL_SHADER(FLiquidParticleCS, "/PluginShader/MPM.usf", "MainCS", SF_Compute);
+//IMPLEMENT_GLOBAL_SHADER(FTestShaderCS, "/Plugin/PhysicalSimulation/test.usf", "MainPS", SF_Pixel);
+IMPLEMENT_GLOBAL_SHADER(FSpawnParticleCS, "/Plugin/PhysicalSimulation/InitialParticle.usf", "SpawnParticleCS", SF_Compute);
+IMPLEMENT_GLOBAL_SHADER(FLiquidParticleCS, "/Plugin/PhysicalSimulation/MPM.usf", "MainCS", SF_Compute);
 
-IMPLEMENT_GLOBAL_SHADER(LiquidShaderVS, "/PluginShader/LiquidShader.usf", "MainVS", SF_Vertex);
-IMPLEMENT_GLOBAL_SHADER(LiquidShaderPS, "/PluginShader/LiquidShader.usf", "MainPS", SF_Pixel);
+IMPLEMENT_GLOBAL_SHADER(LiquidShaderVS, "/Plugin/PhysicalSimulation/LiquidShader.usf", "MainVS", SF_Vertex);
+IMPLEMENT_GLOBAL_SHADER(LiquidShaderPS, "/Plugin/PhysicalSimulation/LiquidShader.usf", "MainPS", SF_Pixel);
 
 FPhysicalLiquidSolver::FPhysicalLiquidSolver(FPhysicalSimulationSceneProxy* InSceneProxy)
 	: FPhysicalSolverBase(InSceneProxy)

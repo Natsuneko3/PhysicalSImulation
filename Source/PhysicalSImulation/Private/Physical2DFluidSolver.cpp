@@ -66,8 +66,8 @@ public:
 	END_SHADER_PARAMETER_STRUCT()
 };
 
-IMPLEMENT_GLOBAL_SHADER(FSmokePlanePS, "/PluginShader/SmokePlanePass.usf", "MainPS", SF_Pixel);
-IMPLEMENT_GLOBAL_SHADER(FSmokePlaneVS, "/PluginShader/SmokePlanePass.usf", "MainVS", SF_Vertex);
+IMPLEMENT_GLOBAL_SHADER(FSmokePlanePS, "/Plugin/PhysicalSimulation/SmokePlanePass.usf", "MainPS", SF_Pixel);
+IMPLEMENT_GLOBAL_SHADER(FSmokePlaneVS, "/Plugin/PhysicalSimulation/SmokePlanePass.usf", "MainVS", SF_Vertex);
 
 
 class F2DFluidCS : public FGlobalShader
@@ -110,7 +110,7 @@ public:
 	}
 };
 
-IMPLEMENT_GLOBAL_SHADER(F2DFluidCS, "/PluginShader/2DFluid.usf", "MainCS", SF_Compute);
+IMPLEMENT_GLOBAL_SHADER(F2DFluidCS, "/Plugin/PhysicalSimulation/2DFluid.usf", "MainCS", SF_Compute);
 
 template <int GroupSize>
 class FFFTSolvePoissonCS : public FGlobalShader
@@ -139,9 +139,9 @@ public:
 	}
 };
 
-IMPLEMENT_SHADER_TYPE(template<>, FFFTSolvePoissonCS<512>, TEXT("/PluginShader/FFTSolvePoisson.usf"), TEXT("MainCS"), SF_Compute);
-IMPLEMENT_SHADER_TYPE(template<>, FFFTSolvePoissonCS<256>, TEXT("/PluginShader/FFTSolvePoisson.usf"), TEXT("MainCS"), SF_Compute);
-IMPLEMENT_SHADER_TYPE(template<>, FFFTSolvePoissonCS<128>, TEXT("/PluginShader/FFTSolvePoisson.usf"), TEXT("MainCS"), SF_Compute);
+IMPLEMENT_SHADER_TYPE(template<>, FFFTSolvePoissonCS<512>, TEXT("/Plugin/PhysicalSimulation/FFTSolvePoisson.usf"), TEXT("MainCS"), SF_Compute);
+IMPLEMENT_SHADER_TYPE(template<>, FFFTSolvePoissonCS<256>, TEXT("/Plugin/PhysicalSimulation/FFTSolvePoisson.usf"), TEXT("MainCS"), SF_Compute);
+IMPLEMENT_SHADER_TYPE(template<>, FFFTSolvePoissonCS<128>, TEXT("/Plugin/PhysicalSimulation/FFTSolvePoisson.usf"), TEXT("MainCS"), SF_Compute);
 
 
 FPhysical2DFluidSolver::FPhysical2DFluidSolver(FPhysicalSimulationSceneProxy* InSceneProxy)

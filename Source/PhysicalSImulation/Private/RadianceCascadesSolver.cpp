@@ -46,7 +46,7 @@ public:
 
 	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
 	{
-		return true; //IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
+		return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
 	}
 
 	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)
@@ -56,8 +56,8 @@ public:
 	}
 };
 
-IMPLEMENT_GLOBAL_SHADER(FRadianceCascadeGIPS, "/PluginShader/RadianceCaseade/RadianceCascadeGI.usf", "MainPS", SF_Pixel)
-IMPLEMENT_GLOBAL_SHADER(FGenerateRadianceCaseadeCS, "/PluginShader/RadianceCaseade/GenerateRadianceCaseade.usf", "MainCS", SF_Compute);
+IMPLEMENT_GLOBAL_SHADER(FRadianceCascadeGIPS, "/Plugin/PhysicalSimulation/RadianceCaseade/RadianceCascadeGI.usf", "MainPS", SF_Pixel)
+IMPLEMENT_GLOBAL_SHADER(FGenerateRadianceCaseadeCS, "/Plugin/PhysicalSimulation/RadianceCaseade/GenerateRadianceCaseade.usf", "MainCS", SF_Compute);
 
 FRadianceCascadesSolver::FRadianceCascadesSolver(FPhysicalSimulationSceneProxy* InScaneProxy): FPhysicalSolverBase(InScaneProxy)
 {
