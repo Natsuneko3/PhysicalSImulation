@@ -1,4 +1,7 @@
 ﻿#include "RadianceCascadesSolver.h"
+#if ENGINE_MINOR_VERSION >1
+#include "DataDrivenShaderPlatformInfo.h"
+#endif
 #include "PixelShaderUtils.h"
 
 class FRadianceCascadeGIPS : public FGlobalShader

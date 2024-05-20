@@ -1,6 +1,8 @@
 #include "PhysicalSolver.h"
+#if ENGINE_MINOR_VERSION >1
+#include "DataDrivenShaderPlatformInfo.h"
+#endif
 #include "PhysicalSimulationSceneProxy.h"
-
 
 
 class FBilateralFilterCS : public FGlobalShader
@@ -10,7 +12,7 @@ public:
 	SHADER_USE_PARAMETER_STRUCT(FBilateralFilterCS, FGlobalShader);
 
 	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters,
-											 FShaderCompilerEnvironment& OutEnvironment)
+	                                         FShaderCompilerEnvironment& OutEnvironment)
 	{
 		OutEnvironment.SetDefine(TEXT("THREADGROUP_SIZEX"), 8);
 		OutEnvironment.SetDefine(TEXT("THREADGROUP_SIZEY"), 8);
@@ -22,13 +24,13 @@ public:
 	}
 
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters,)
-	SHADER_PARAMETER_RDG_TEXTURE(Texture2D,InputTexture)
-	SHADER_PARAMETER_SAMPLER(SamplerState,InputTextureSampler)
+		SHADER_PARAMETER_RDG_TEXTURE(Texture2D, InputTexture)
+		SHADER_PARAMETER_SAMPLER(SamplerState, InputTextureSampler)
 
-	SHADER_PARAMETER(FVector2f, DownSampleScale)
-		SHADER_PARAMETER(FVector2f,BlurDir)
-	SHADER_PARAMETER(FVector2f,TextureSize)
-	SHADER_PARAMETER(float, Coefficient)
+		SHADER_PARAMETER(FVector2f, DownSampleScale)
+		SHADER_PARAMETER(FVector2f, BlurDir)
+		SHADER_PARAMETER(FVector2f, TextureSize)
+		SHADER_PARAMETER(float, Coefficient)
 		SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D, OutTexture)
 
 	END_SHADER_PARAMETER_STRUCT()
@@ -139,19 +141,18 @@ void FPhysicalSolverBase::InitialCubeMesh()
 	NumPrimitives = 12;
 }
 
-void FPhysicalSolverBase::AddTextureBlurPass(FRDGBuilder& GraphBuilder,const FViewInfo& View,FRDGTextureRef InTexture,FRDGTextureRef& OutTexture,float BlurSize)
+void FPhysicalSolverBase::AddTextureBlurPass(FRDGBuilder& GraphBuilder, const FViewInfo& View, FRDGTextureRef InTexture, FRDGTextureRef& OutTexture, float BlurSize)
 {
-
 	FIntPoint ViewSize = OutTexture->Desc.Extent;
 
 	FString IsHorizon;
 	FVector2f BlurDir;
 
 	IsHorizon = "Horizon";
-	BlurDir = FVector2f(1.0f,0.0f);
+	BlurDir = FVector2f(1.0f, 0.0f);
 
 	FRDGTextureRef TempTexture = GraphBuilder.CreateTexture(OutTexture->Desc,TEXT("BilateralFilterTempTexture"));
-	FVector2f DownSampleScale = FVector2f(InTexture->Desc.Extent.X / OutTexture->Desc.Extent.X ,InTexture->Desc.Extent.Y / OutTexture->Desc.Extent.Y);
+	FVector2f DownSampleScale = FVector2f(InTexture->Desc.Extent.X / OutTexture->Desc.Extent.X, InTexture->Desc.Extent.Y / OutTexture->Desc.Extent.Y);
 
 	FBilateralFilterCS::FParameters* HorizonPassParameters = GraphBuilder.AllocParameters<FBilateralFilterCS::FParameters>();
 	HorizonPassParameters->DownSampleScale = DownSampleScale;
@@ -159,33 +160,32 @@ void FPhysicalSolverBase::AddTextureBlurPass(FRDGBuilder& GraphBuilder,const FVi
 	HorizonPassParameters->InputTextureSampler = TStaticSamplerState<SF_Point>::GetRHI();
 	HorizonPassParameters->Coefficient = BlurSize;
 	HorizonPassParameters->BlurDir = BlurDir;
-	HorizonPassParameters->OutTexture =  GraphBuilder.CreateUAV(TempTexture);
-	TShaderMapRef<FBilateralFilterCS> ComputeShader (View.ShaderMap);
+	HorizonPassParameters->OutTexture = GraphBuilder.CreateUAV(TempTexture);
+	TShaderMapRef<FBilateralFilterCS> ComputeShader(View.ShaderMap);
 
-	FIntVector GroupCount = FComputeShaderUtils::GetGroupCount(ViewSize,FIntPoint(8,8));
+	FIntVector GroupCount = FComputeShaderUtils::GetGroupCount(ViewSize, FIntPoint(8, 8));
 	FComputeShaderUtils::AddPass(
 		GraphBuilder,
 		RDG_EVENT_NAME("BilateralFilter %s %dx%d(CS)",
-			 *IsHorizon,ViewSize.X, ViewSize.Y),
-			ComputeShader,HorizonPassParameters,
-			GroupCount);
+		               *IsHorizon, ViewSize.X, ViewSize.Y),
+		ComputeShader, HorizonPassParameters,
+		GroupCount);
 
 	IsHorizon = "Vertical";
-	BlurDir = FVector2f(0.0f,1.0f);
+	BlurDir = FVector2f(0.0f, 1.0f);
 	FBilateralFilterCS::FParameters* VerticalPassParameters = GraphBuilder.AllocParameters<FBilateralFilterCS::FParameters>();
 	VerticalPassParameters->DownSampleScale = DownSampleScale;
 	VerticalPassParameters->InputTexture = TempTexture;
 	VerticalPassParameters->InputTextureSampler = TStaticSamplerState<SF_Point>::GetRHI();
 	VerticalPassParameters->Coefficient = BlurSize;
 	VerticalPassParameters->BlurDir = BlurDir;
-	VerticalPassParameters->OutTexture =  GraphBuilder.CreateUAV(OutTexture);
+	VerticalPassParameters->OutTexture = GraphBuilder.CreateUAV(OutTexture);
 
 	FComputeShaderUtils::AddPass(
 		GraphBuilder,
 		RDG_EVENT_NAME("BilateralFilter %s %dx%d(CS)",
-			 *IsHorizon,ViewSize.X, ViewSize.Y),
-			ComputeShader,VerticalPassParameters,
-			GroupCount);
-		//AddCopyTexturePass(GraphBuilder,PassParameters->OutTexture->GetRHI(),SceneColor)
-
+		               *IsHorizon, ViewSize.X, ViewSize.Y),
+		ComputeShader, VerticalPassParameters,
+		GroupCount);
+	//AddCopyTexturePass(GraphBuilder,PassParameters->OutTexture->GetRHI(),SceneColor)
 }
