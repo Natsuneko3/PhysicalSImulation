@@ -3,6 +3,7 @@
 int bIsInverse;
 int bTransformX;
 RWTexture2D<float> FFTSolvePoissonSRV;
+RWTexture2D<float> PressureGridUAV;
 Texture2D InPressureSRV;
 groupshared float2 FFTGroupShared[2*THREADGROUP_SIZEX];
 [numthreads(THREADGROUP_SIZEX, 1, 1)]

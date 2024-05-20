@@ -10,92 +10,39 @@ float3 WorldVelocity;
 float3 WorldPosition;
 int bUseFFTPressure;
 
-void ComputeDivergence(uint2 DispatchThreadId : SV_DispatchThreadID)
-{
-	float Divergence = GetDivergence(SimGridSRV, int2(DispatchThreadId), dx);
-	PressureGridUAV[DispatchThreadId] = Divergence / dt;
-}
-
-void IteratePressure(uint2 DispatchThreadId : SV_DispatchThreadID)
-{
-	float4 SimValue = SimGridUAV.Load(DispatchThreadId);
-	float2 Velocity = SimValue.xy;
-	//float Density;
-	int FluidCellCount = 4;
-	int2 UVs[4] = {
-		DispatchThreadId + int2(0, 1),
-		DispatchThreadId + int2(0, -1),
-		DispatchThreadId + int2(-1, 0),
-		DispatchThreadId + int2(1, 0)
-	};
-
-	float BoundaryAdd = 0.0;
-	float4 UpVelocity = SimGridUAV.Load(UVs[0]);
-	float4 DownVelocity = SimGridUAV.Load(UVs[1]);
-	float4 LeftVelocity = SimGridUAV.Load(UVs[2]);
-	float4 RightUpVelocity = SimGridUAV.Load(UVs[3]);
-
-	float Divergence = (RightUpVelocity.x - LeftVelocity.x + (UpVelocity.y - DownVelocity.y)) / (2 * dx); //GetDivergence(SimGridUAV,DispatchThreadId,dx);//
-
-	float Density = 1; //SimValue.z;
-
-	float P_up = PressureGridUAV.Load(UVs[0]);
-	float P_down = PressureGridUAV.Load(UVs[1]);
-	float P_left = PressureGridUAV.Load(UVs[2]);
-	float P_right = PressureGridUAV.Load(UVs[3]);
-
-
-	float P_center = PressureGridUAV.Load(DispatchThreadId);
-	int RowParity = (DispatchThreadId.y + IterationIndex) % 2;
-	int CellParity = (DispatchThreadId.x + RowParity) % 2;
-	float Weight = CellParity * 1.93;
-	float JacobiPressure = (P_right + P_left + P_up + P_down - Density * dx * dx * Divergence / dt + BoundaryAdd) / FluidCellCount;
-
-	PressureGridUAV[DispatchThreadId] = (1.f - Weight) * P_center + Weight * JacobiPressure; //lerp(P_center,JacobiPressure ,Weight);
-}
-
+Texture2D<float4> InTexture;
+SamplerState InTextureSampler;
+RWTexture2D<float3> FluidColorUAV;
 void Advection(uint2 DispatchThreadId : SV_DispatchThreadID, uint2 GroupThreadId)
 {
-	float4 SimValue = SimGridSRV.Load(int3(DispatchThreadId, 0));
-	if (AdvectionDensity)
-	{
-		float2 GradPressure = GetGradient(PressureGridUAV, int2(DispatchThreadId), dx);
 
-		float2 Velocity = SimValue.xy ;//- GradPressure * dt;
+	float2 UV = SvPositionToBufferUV(float4(DispatchThreadId + 0.5,0,0));
 
-		float2 ReadIndex = float2(DispatchThreadId + 0.5) - Velocity * (dt / dx);
+	float4 SimValue = SimGridSRV.SampleLevel(SimSampler, UV, 0);//.Load(int3(DispatchThreadId, 0));
+	float2 ReadIndex = float2(DispatchThreadId + 0.5) - SimValue.xy * (dt / dx);
+	float4 Advection = SimGridSRV.SampleLevel(SimSampler, ReadIndex / GridSize.xy, 0);
+	float3 FluidColor = FluidColorUAV[ReadIndex];
+	float3 FluidColor1 = FluidColorUAV[ReadIndex - uint2(1,1)];
+	float3 FluidColor2 = FluidColorUAV[ReadIndex+uint2(1,1)];
 
-		float Density = SimGridSRV.SampleLevel(SimSampler, ReadIndex/ GridSize.xy, 0).z; //
-		SimValue.z = clamp(Density / (dt * DensityDissipate + 1) - dt * 0.1 * DensityDissipate, 0, 100);
-		//uint Stenlic = CalcSceneCustomStencil(DispatchThreadId );
-		uint SceneColor = SceneTexturesStruct.CustomStencilTexture.Load(uint3(DispatchThreadId, 0)) STENCIL_COMPONENT_SWIZZLE;//CalcSceneCustomDepth(DispatchThreadId /GridSize.xy);
-		SimGridUAV[DispatchThreadId] = SimValue;//ConvertToDeviceZ(SceneColor);//float4(SceneColor,1);
-	}
-	else
-	{
-		float2 ReadIndex = float2(DispatchThreadId + 0.5) - SimValue.xy * (dt / dx);
+	SimValue.x = clamp(Advection.x / (dt * VelocityDissipate + 1) - dt * 0.1 * VelocityDissipate, -1000, 1000);
+	SimValue.y = clamp(Advection.y / (dt * VelocityDissipate + 1) - dt * 0.1 * VelocityDissipate, -1000, 1000);
+	SimValue.z = clamp(Advection.z / (dt * DensityDissipate + 1) - dt * 0.1 * DensityDissipate, 0, 100);
+	SimGridUAV[DispatchThreadId] = SimValue;
+	FluidColorUAV[DispatchThreadId] = FluidColor;//float3(FluidColor.r,FluidColor1.g,FluidColor2.b);
 
-		float4 Advection = SimGridSRV.SampleLevel(SimSampler, float3((ReadIndex)/ GridSize.xy, 0), 0);
-
-		SimValue.x = clamp(Advection.x / (dt * VelocityDissipate + 1) - dt * 0.1 * VelocityDissipate, -1000, 1000);
-		SimValue.y = clamp(Advection.y / (dt * VelocityDissipate + 1) - dt * 0.1 * VelocityDissipate, -1000, 1000);
-		SimValue.z = clamp(Advection.z / (dt * DensityDissipate + 1) - dt * 0.1 * DensityDissipate, 0, 100);
-		SimGridUAV[DispatchThreadId] = SimValue;
-
-		PressureGridUAV[DispatchThreadId] = 0;
-	}
 }
 
 void PreVelocity(uint2 DispatchThreadId : SV_DispatchThreadID, uint2 GroupThreadId : SV_GroupThreadID)
 {
 
-	float2 ViewportUV = SvPositionToBufferUV(float4(DispatchThreadId+0.5,0,0));
+	float2 ViewportUV = float2(DispatchThreadId+0.5) / GridSize.xy;//SvPositionToBufferUV(float4(DispatchThreadId+0.5,0,0) * DownScale);
 	float DeviceZ = LookupDeviceZ(ViewportUV);
 	float2 ScreenPosition = ViewportUVToScreenPos(ViewportUV);
 	float4 ThisClip = float4(ScreenPosition, DeviceZ, 1);
 	float4 PrevClip = mul(ThisClip, View.ClipToPrevClip);
 	float2 PrevScreen = PrevClip.xy / PrevClip.w;
-	float2 MotionVector = ViewportUV.xy - PrevClip.xy;
+
 	float2 BackN = ScreenPosition - PrevScreen;
 	float2 PreVelocity = float2(BackN.x, -BackN.y) *0.5;
 	float4 SimValue = SimGridSRV.SampleLevel(SimSampler,ViewportUV - PreVelocity,0);//.Load(int3(ViewportUV + MotionVector * 10, 0));
@@ -105,38 +52,35 @@ void PreVelocity(uint2 DispatchThreadId : SV_DispatchThreadID, uint2 GroupThread
 	float2 Force = 0;
 	float Boundary = 0;
 
-
 	float noiseScale = .05 * NoiseFrequency;
 	float noiseIntensity = NoiseIntensity;
-	float noiseX = simplex3d(float3(DispatchThreadId.xy, Time * 0.1) * noiseScale);
-	float noiseY = simplex3d(float3(DispatchThreadId.xy, Time * 0.05) * noiseScale);
+	float4 noise = (InTexture.SampleLevel(InTextureSampler,ViewportUV,0) - 0.5f) * 2.f;//simplex3d(float3(DispatchThreadId.xy, Time * 0.1) * noiseScale);
+	//float noiseY = simplex3d(float3(DispatchThreadId.xy, Time * 0.05) * noiseScale);
 
-	float2 CenterPoint = float2(sin(Time*0.01),cos(Time*0.01))*100 + float2(250,150);//
-	float2 Dis = float2(DispatchThreadId) - CenterPoint;
-	uint Stenlic = CalcSceneCustomStencil(DispatchThreadId / DownScale);//SceneTexturesStruct.CustomStencilTexture.Load(uint3(DispatchThreadId, 0)) STENCIL_COMPONENT_SWIZZLE;
-	if (Stenlic == 1u)//(length(Dis) < 30)
+	uint Stenlic = SceneTexturesStruct.CustomStencilTexture.Load(uint3(DispatchThreadId * DownScale, 0)) STENCIL_COMPONENT_SWIZZLE;//CalcSceneCustomStencil(DispatchThreadId / DownScale);
+	if (Stenlic == 1u)
 	{
 		Density = 1;//+= saturate(noiseX)*0.1; //RandFast(DispatchThreadId*0.2,Time);
-		Velocity = float2(noiseX * 10, -noiseY * 30);
+		Velocity = noise;//float2(noiseX * 100, - noiseY * 300);
+		float Dispersion = CalcSceneColor(ViewportUV - PreVelocity + 2 * View.ViewSizeAndInvSize.zw).r;
+		float Dispersion1 = CalcSceneColor(ViewportUV - PreVelocity - 2 * View.ViewSizeAndInvSize.zw).g;
+		float Dispersion2 = CalcSceneColor(ViewportUV - PreVelocity).b;
+		FluidColorUAV[DispatchThreadId] = float3(Dispersion,Dispersion1,Dispersion2);//CalcSceneColor(ViewportUV - PreVelocity);
 	}
 
 	float2 Grad = GetGradient(SimGridSRV, int2(DispatchThreadId), dx);
-	//float Curl = GetCurl(SimGridUAV, int2(DispatchThreadId), dx);
 	float GradCurlLength = length(Grad);
 
 	if (GradCurlLength > 1e-5)
 	{
-		Force += VorticityMult * dx * Grad / GradCurlLength; //cross(float3(Grad / GradCurlLength, 0), float3(0, 0, 1)).xy;
+		Force += cross(float3(Grad / GradCurlLength, 0), float3(0, 0, 1)).xy;//VorticityMult * dx * Grad / GradCurlLength; //
 	}
 
+	Force += float2(0,-G) * Density * GravityScale * 0.025;
 
-	Force += float2(0,-G) * Density * GravityScale * 0.025; //normalize(float2(DispatchThreadId) -  float2(250.0,250.0)) * Density*10;//float2(G,0)*Density;
-	float2 TurbulenceForce = float2(noiseX, noiseY);
-	Force += TurbulenceForce * noiseIntensity;
+	Force += noise.xy * noiseIntensity;
 	Force -= WorldVelocity.xz * float2(-1, 1) * Density * 0.5;
 	Velocity += Force * dt;
-
-	//Density = saturate(Density);
 
 	SimGridUAV[DispatchThreadId] = float4(Velocity.x, Velocity.y, Density, Boundary);
 }
@@ -155,21 +99,5 @@ void MainCS(uint2 DispatchThreadId : SV_DispatchThreadID, uint2 GroupThreadId : 
 		Advection(DispatchThreadId, GroupThreadId);
 
 		break;
-	case ITERATEPRESSURE:
-		IteratePressure(DispatchThreadId);
-
-		break;
-	case COMPUTEDIVERGENCE:
-		ComputeDivergence(DispatchThreadId);
-
-		break;
-	default:
-		break;
 	}
-	/*if(DispatchThreadId.x == 0)
-	{
-		FShaderPrintContext Ctx = InitShaderPrintContext(true, float2(0.5, 0.1));
-		Print(Ctx, int(1111));
-		Newline(Ctx);
-	}*/
 }
