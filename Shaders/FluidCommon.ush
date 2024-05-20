@@ -4,7 +4,6 @@
 Texture2D SimGridSRV;
 
 RWTexture2D<float4> SimGridUAV;
-RWTexture2D<float> PressureGridUAV;
 
 SamplerState WarpSampler;
 float VorticityMult;

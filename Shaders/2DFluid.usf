@@ -7,7 +7,7 @@ int FluidShaderType;
 float3 WorldVelocity;
 float3 WorldPosition;
 int bUseFFTPressure;
-
+RWTexture2D<float> PressureGridUAV;
 
 // groupshared float PressureShared[THREADGROUP_SIZEX * THREADGROUP_SIZEX];
 // groupshared float4 SimShared[THREADGROUP_SIZEX * THREADGROUP_SIZEX];
