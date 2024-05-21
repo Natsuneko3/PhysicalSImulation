@@ -57,6 +57,7 @@ public:
 		SHADER_PARAMETER(int, DownScale)
 
 		SHADER_PARAMETER_RDG_TEXTURE(Texture2D, SimGridSRV)
+	SHADER_PARAMETER_RDG_TEXTURE(Texture2D,TranslucencyTexture)
 		SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D, SimGridUAV)
 		SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D, FluidColorUAV)
 	END_SHADER_PARAMETER_STRUCT()
@@ -164,6 +165,7 @@ void FPsychedelicSolver::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuild
 		PassParameters->FluidParameter = FluidParameter;
 		PassParameters->FluidShaderType = PreVel;
 		PassParameters->SimGridSRV = SimulationTexture;
+		PassParameters->TranslucencyTexture = Inputs.TranslucencyViewResourcesMap.Get(ETranslucencyPass::TPT_TranslucencyAfterDOF).ColorTexture.Target;
 		PassParameters->SimGridUAV = GraphBuilder.CreateUAV(PreVelocityTexture); //SimUAV;
 		PassParameters->FluidColorUAV = GraphBuilder.CreateUAV(FluidColorTexture);
 		PassParameters->SceneTexturesStruct = Inputs.SceneTextures;
@@ -194,6 +196,7 @@ void FPsychedelicSolver::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuild
 		AdvectionPassParameters->FluidColorUAV = FluidColorTextureUAV;
 		AdvectionPassParameters->bUseFFTPressure = bUseFFTSolverPressure;
 		AdvectionPassParameters->SceneTexturesStruct = Inputs.SceneTextures;
+		AdvectionPassParameters->TranslucencyTexture = Inputs.TranslucencyViewResourcesMap.Get(ETranslucencyPass::TPT_TranslucencyAfterDOF).ColorTexture.Target;
 		AdvectionPassParameters->SimGridSRV = PreVelocityTexture;
 		AdvectionPassParameters->SimGridUAV = GraphBuilder.CreateUAV(SimulationTexture);
 		AdvectionPassParameters->FluidShaderType = Advection;
@@ -221,6 +224,7 @@ void FPsychedelicSolver::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuild
 	PixelShaderParameters->SimulationTextureSampler = TStaticSamplerState<SF_Bilinear>::GetRHI();
 	PixelShaderParameters->ColorTexture = BlurColorTexture;//SceneProxy->PlandFluidParameters->InTexture1->GetResource()->GetTextureRHI();
 	PixelShaderParameters->ColorTextureSampler = TStaticSamplerState<SF_Bilinear, AM_Wrap, AM_Wrap, AM_Wrap>::GetRHI();
+
 	ShaderPrint::SetParameters(GraphBuilder, ViewInfo.ShaderPrintData, PixelShaderParameters->ShaderPrintParameters);
 
 	FPixelShaderUtils::AddFullscreenPass(
