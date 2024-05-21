@@ -11,6 +11,7 @@ float3 WorldPosition;
 int bUseFFTPressure;
 
 Texture2D<float4> InTexture;
+Texture2D TranslucencyTexture;
 SamplerState InTextureSampler;
 RWTexture2D<float3> FluidColorUAV;
 void Advection(uint2 DispatchThreadId : SV_DispatchThreadID, uint2 GroupThreadId)
@@ -74,11 +75,13 @@ void PreVelocity(uint2 DispatchThreadId : SV_DispatchThreadID, uint2 GroupThread
 	{
 		Density = 1;//+= saturate(noiseX)*0.1; //RandFast(DispatchThreadId*0.2,Time);
 		Velocity = noise * NoiseIntensity;//float2(noiseX * 100, - noiseY * 300);
-		float Dispersion = CalcSceneColor(ViewportUV - PreVelocity + float2(10,0) * View.ViewSizeAndInvSize.zw).r;
-		float Dispersion1 = CalcSceneColor(ViewportUV - PreVelocity ).g;
-		float Dispersion2 = CalcSceneColor(ViewportUV - PreVelocity- float2(10,0) * View.ViewSizeAndInvSize.zw).b;
-
-		FluidColorUAV[DispatchThreadId] = max(float3(Dispersion,Dispersion1,Dispersion2), NoiseTexture.xyz*0.5);//
+		float Dispersion = Texture2DSample(SceneTexturesStruct.SceneColorTexture, InTextureSampler,ViewportUV - PreVelocity + float2(10,0) * View.ViewSizeAndInvSize.zw).r;
+		//CalcSceneColor(ViewportUV - PreVelocity + float2(10,0) * View.ViewSizeAndInvSize.zw).r;
+		float Dispersion1 = Texture2DSample(SceneTexturesStruct.SceneColorTexture, InTextureSampler,ViewportUV - PreVelocity ).g;
+		//CalcSceneColor(ViewportUV - PreVelocity ).g;
+		float Dispersion2 = Texture2DSample(SceneTexturesStruct.SceneColorTexture, InTextureSampler,ViewportUV - PreVelocity - float2(10,0) * View.ViewSizeAndInvSize.zw).b;
+		float3 Translucency =  TranslucencyTexture.SampleLevel(InTextureSampler,ViewportUV - PreVelocity,0).xyz;
+		FluidColorUAV[DispatchThreadId] = Translucency + max(float3(Dispersion,Dispersion1,Dispersion2), NoiseTexture.xyz*0.5);//
 	}
 
 	float2 Grad = GetGradient(SimGridSRV, int2(DispatchThreadId), dx);
