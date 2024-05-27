@@ -21,13 +21,13 @@ struct FPlandFluidParameters
 	float VorticityMult = 10;
 
 	UPROPERTY(EditAnywhere,Category = "PlandFluidParameters")
-	float NoiseFrequency = 4;
+	float NoiseFrequency = 3;
 
 	UPROPERTY(EditAnywhere,Category = "PlandFluidParameters")
-	float NoiseIntensity = 50;
+	float NoiseIntensity = 100;
 
 	UPROPERTY(EditAnywhere,Category = "PlandFluidParameters")
-	float DensityDissipate = 0.05;
+	float DensityDissipate = 0.5;
 
 	UPROPERTY(EditAnywhere,Category = "PlandFluidParameters")
 	float VelocityDissipate = 0.05;

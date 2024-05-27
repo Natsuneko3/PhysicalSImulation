@@ -26,13 +26,13 @@ void MainPS(in float4 SvPosition:SV_position,out float4 OutColor0 : SV_Target0)
 {
 	float2 UV = SvPositionToBufferUV(SvPosition);
 	float4 OutTexture = SimulationTexture.SampleLevel(SimulationTextureSampler,UV,0);
-	float DeviceZ = LookupDeviceZ(UV);
-
+	float SceneDepth = CalcSceneDepth(UV);
+	float Visibility = SceneDepth > OutTexture.a? 0:1;
 	float3 InColor  = ColorTexture.SampleLevel(ColorTextureSampler,UV ,0).xyz;
 
 	float2 SceneColorUV = UV + OutTexture .xy * OutTexture.b * View.BufferSizeAndInvSize.zw;
 	float3 SceneColor = Texture2DSampleLevel(SceneTexturesStruct.SceneColorTexture, SimulationTextureSampler, SceneColorUV, 0).rgb;//CalcSceneColor(UV);
-	float3 FinalColor = lerp(SceneColor, InColor, OutTexture.b*0.9);
+	float3 FinalColor = lerp(SceneColor, InColor, OutTexture.b * 0.7 * Visibility);
 
 	OutColor0 =  float4(FinalColor,1);
 }

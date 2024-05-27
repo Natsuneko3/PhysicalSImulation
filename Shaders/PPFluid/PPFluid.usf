@@ -70,8 +70,11 @@ void PreVelocity(uint2 DispatchThreadId : SV_DispatchThreadID, uint2 GroupThread
 	float3 noise = float3(noiseX,noiseY,1) ;//(NoiseTileWrap(float3(DispatchThreadId.xy, Time * 0.1),true,1) - 0.5 )* 2.0;//(simplex3d(float3(DispatchThreadId.xy, Time * 0.1) ) - 0.5 );
 	float4 NoiseTexture = InTexture.SampleLevel(InTextureSampler,ViewportUV * NoiseFrequency*2.f,0);//simplex3d(float3(DispatchThreadId.xy, Time * 0.1) * noiseScale);
 
-	uint Stenlic = SceneTexturesStruct.CustomStencilTexture.Load(uint3(DispatchThreadId * DownScale, 0)) STENCIL_COMPONENT_SWIZZLE;//CalcSceneCustomStencil(DispatchThreadId / DownScale);
-	if (Stenlic == 1u)
+	uint Stenlic = CalcSceneCustomStencil(DispatchThreadId / DownScale);
+	float CustomDepth = CalcSceneCustomDepth(ViewportUV);
+	float Depth = CalcSceneDepth(ViewportUV);
+	//SceneTexturesStruct.CustomStencilTexture.Load(uint3(DispatchThreadId * DownScale, 0)) STENCIL_COMPONENT_SWIZZLE;//CalcSceneCustomStencil(DispatchThreadId / DownScale);
+	if (Stenlic == 1u )
 	{
 		Density = 1;//+= saturate(noiseX)*0.1; //RandFast(DispatchThreadId*0.2,Time);
 		Velocity = noise * NoiseIntensity;//float2(noiseX * 100, - noiseY * 300);
@@ -98,7 +101,7 @@ void PreVelocity(uint2 DispatchThreadId : SV_DispatchThreadID, uint2 GroupThread
 	Force -= WorldVelocity.xz * float2(-1, 1) * Density * 0.5;
 	Velocity += Force * dt;
 
-	SimGridUAV[DispatchThreadId] = float4(Velocity.x, Velocity.y, Density, Boundary);
+	SimGridUAV[DispatchThreadId] = float4(Velocity.x, Velocity.y, Density, CustomDepth);
 }
 
 [numthreads(THREADGROUP_SIZEX, THREADGROUP_SIZEY, 1)]
