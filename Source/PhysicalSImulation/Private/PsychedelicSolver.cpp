@@ -24,7 +24,7 @@ public:
 
 	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
 	{
-		return true; //IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
+		return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
 	}
 
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters,)
@@ -64,7 +64,7 @@ public:
 
 	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
 	{
-		return true;
+		return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);;
 	}
 
 	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)
@@ -116,10 +116,10 @@ void FPsychedelicSolver::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuild
 		FPooledRenderTargetDesc RGBADesc(FPooledRenderTargetDesc::Create2DDesc(TextureSize, PF_FloatRGBA,
 		                                                                       FClearValueBinding(), TexCreate_None, TexCreate_ShaderResource | TexCreate_RenderTargetable | TexCreate_UAV, false));
 
-		FPooledRenderTargetDesc FloatDesc(FPooledRenderTargetDesc::Create2DDesc(TextureSize, PF_FloatRGB,
+		FPooledRenderTargetDesc FloatDesc(FPooledRenderTargetDesc::Create2DDesc((*Inputs.SceneTextures)->SceneColorTexture->Desc.Extent, (*Inputs.SceneTextures)->SceneColorTexture->Desc.Format,
 		                                                                        FClearValueBinding(), TexCreate_None, TexCreate_ShaderResource | TexCreate_RenderTargetable | TexCreate_UAV, false));
 		GRenderTargetPool.FindFreeElement(GraphBuilder.RHICmdList, RGBADesc, SimulationTexturePool, TEXT("PsyChedelicSimulationTexture"));
-		GRenderTargetPool.FindFreeElement(GraphBuilder.RHICmdList, (*Inputs.SceneTextures)->SceneColorTexture->Desc, PressureTexturePool, TEXT("PsyChedelicPressureTexture"));
+		GRenderTargetPool.FindFreeElement(GraphBuilder.RHICmdList, FloatDesc, PressureTexturePool, TEXT("PsyChedelicPressureTexture"));
 		AddClearUAVPass(GraphBuilder, GraphBuilder.CreateUAV(GraphBuilder.RegisterExternalTexture(SimulationTexturePool)), FLinearColor::Black);
 		AddCopyTexturePass(GraphBuilder,(*Inputs.SceneTextures)->SceneColorTexture,GraphBuilder.RegisterExternalTexture(PressureTexturePool));
 	}
