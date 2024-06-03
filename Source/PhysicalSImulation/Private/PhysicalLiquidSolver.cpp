@@ -110,7 +110,7 @@ class LiquidShaderVS : public FGlobalShader
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters,)
 		SHADER_PARAMETER_STRUCT_REF(FViewUniformShaderParameters, View)
 		SHADER_PARAMETER(FMatrix44f, LocalToWorld)
-		SHADER_PARAMETER(uint32, bIsfacingCamera)
+
 	SHADER_PARAMETER_RDG_BUFFER_SRV(Buffer<float>,ParticleBuffer)
 	END_SHADER_PARAMETER_STRUCT()
 
@@ -339,9 +339,6 @@ void FPhysicalLiquidSolver::Render_RenderThread(FPostOpaqueRenderParameters& Par
 	LiquidShaderPS::FParameters* InPSParameters = GraphBuilder.AllocParameters<LiquidShaderPS::FParameters>();
 	InVSParameters->View = View->ViewUniformBuffer;
 	InVSParameters->LocalToWorld = FMatrix44f(SceneProxy->ActorTransform->ToMatrixWithScale());
-	InVSParameters->bIsfacingCamera = *SceneProxy->bFacingCamera;
-	//InVSParameters->ParticleBuffer = GraphBuilder.CreateSRV(GraphBuilder.RegisterExternalBuffer(ParticleAttributeBufferPool));
-
 	InPSParameters->RenderTargets[0] = FRenderTargetBinding(Parameters.ColorTexture, ERenderTargetLoadAction::ELoad);
 	InPSParameters->Rasterize = GraphBuilder.CreateSRV(GraphBuilder.RegisterExternalTexture(RasterizeTexturePool));
 	InPSParameters->Depth = GraphBuilder.CreateSRV(Parameters.DepthTexture);

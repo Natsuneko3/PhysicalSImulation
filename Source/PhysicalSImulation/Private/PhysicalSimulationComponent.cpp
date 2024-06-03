@@ -71,7 +71,5 @@ FPrimitiveSceneProxy* UPhysicalSimulationComponent::CreateSceneProxy()
 
 void UPhysicalSimulationComponent::SetTextureToMaterial()
 {
-	FPhysicalSimulationSceneProxy* PSSceneProxy = static_cast<FPhysicalSimulationSceneProxy*>(SceneProxy);
-	UMaterialInstanceDynamic* MID = CreateDynamicMaterialInstance(0, Material.Get());
-	int RTNum = 0;
+
 }

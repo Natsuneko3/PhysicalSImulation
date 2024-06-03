@@ -3,12 +3,14 @@
 #pragma once
 
 #include "CommonRenderResources.h"
-#include "DynamicMeshBuilder.h"
 #include "RenderGraphBuilder.h"
 #include "RenderGraphEvent.h"
 #include "ShaderParameterStruct.h"
 #include "PostProcess/PostProcessing.h"
 
+#if ENGINE_MINOR_VERSION >1
+#include "DataDrivenShaderPlatformInfo.h"
+#endif
 //#include "PhysicalSolver.generated.h"
 
 class FPhysicalSimulationSceneProxy;
@@ -50,7 +52,8 @@ enum class ESimulatorType : uint8
 	PlaneSmokeFluid = 0,
 	Psychedelic = 1,
 	Liquid = 2,
-	RadianceCascades = 3
+	RadianceCascades = 3,
+	TranslucentPostPrecess = 4
 };
 
 class FPhysicalSolverBase
