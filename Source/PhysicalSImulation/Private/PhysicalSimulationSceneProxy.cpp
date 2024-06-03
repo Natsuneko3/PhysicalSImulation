@@ -21,14 +21,15 @@ FPhysicalSimulationSceneProxy::FPhysicalSimulationSceneProxy(UPhysicalSimulation
 	GridSize = FIntVector(x, y, z);
 	bSimulation = Component->bSimulation;
 	StaticMesh = InComponent->GetStaticMesh();
-	Material = InComponent->Material.Get();
-	FeatureLevel = InComponent->GetWorld()->FeatureLevel;
+	for(int i = 0;i < InComponent->Materials.Num();i++)
+	{
+		Materials.Add(InComponent->Materials[i].Get());
+	}
 
 	World = Component->GetWorld();
 	Dx = &Component->Dx;
 	PlandFluidParameters = &Component->PlandFluidParameters;
 	LiquidSolverParameter = &Component->LiquidSolverParameter;
-	bFacingCamera = &Component->FacingCamera;
 	ActorTransform = &Component->GetOwner()->GetActorTransform();
 
 	if (SubSystem)
@@ -50,7 +51,10 @@ FPhysicalSimulationSceneProxy::FPhysicalSimulationSceneProxy(UPhysicalSimulation
 		case ESimulatorType::RadianceCascades:
 			PhysicalSolver = MakeShareable(new FRadianceCascadesSolver(this));
 			break;
+		case ESimulatorType::TranslucentPostPrecess:
+			PhysicalSolver = MakeShareable(new FTranslucentPostProcess(this));
 		}
+
 		ENQUEUE_RENDER_COMMAND(InitPhysicalSolver)(
 		[this](FRHICommandListImmediate& RHICmdList)
 		{

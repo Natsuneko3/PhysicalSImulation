@@ -3,7 +3,7 @@
 
 #include "SceneViewExtension.h"
 #include "Physical2DFluidSolver.h"
-#include "Physical3DFluidSolver.h"
+#include "TranslucentPostprocess.h"
 #include "PhysicalLiquidSolver.h"
 #include "Engine/InstancedStaticMesh.h"
 

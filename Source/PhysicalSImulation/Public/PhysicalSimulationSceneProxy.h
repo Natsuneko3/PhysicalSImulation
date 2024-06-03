@@ -22,19 +22,19 @@ public:
 	FPhysicalSimulationSceneProxy( UPhysicalSimulationComponent* InComponent);
 	~FPhysicalSimulationSceneProxy();
 	 UStaticMesh* GetStaticMesh() const {return StaticMesh;}
-	 UMaterialInterface* GetMeterial() const{return  Material;}
+	TArray<const UMaterialInterface*>GetMaterials() const{return  Materials;}
 	bool bSimulation = false;
 	TSharedPtr<FPhysicalSolverBase> PhysicalSolver;
 	FIntVector GridSize;
 
-	ERHIFeatureLevel::Type FeatureLevel;
 	const FPlandFluidParameters* PlandFluidParameters;
 	const FLiquidSolverParameter* LiquidSolverParameter;
 	UWorld* World;
 	const float* Dx;
 	const FTransform* ActorTransform;
-	const bool* bFacingCamera;
+
 	bool IsInitialized =false;
+
 protected:
 
 	virtual SIZE_T GetTypeHash() const override;
@@ -50,6 +50,6 @@ private:
 	TSharedPtr<class FPhysicalSimulationViewExtension>  ViewExtension;
 	const UPhysicalSimulationComponent* Component = nullptr;
 	UStaticMesh* StaticMesh;
-	UMaterialInterface* Material;
+	 TArray<const UMaterialInterface*> Materials;
 
 };

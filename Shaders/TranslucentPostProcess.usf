@@ -1,0 +1,12 @@
+#include "/Engine/Private/Common.ush"
+#include "/Engine/Private/SceneTexturesCommon.ush"
+Texture2D<float4> TranslucentTexture;
+SamplerState TranslucentTextureSampler;
+void MainPS(in float4 SvPosition:SV_position,out float4 OutColor0 : SV_Target0)
+{
+	float2 UV = SvPositionToBufferUV(SvPosition);
+	float4 Translucent = TranslucentTexture.SampleLevel(TranslucentTextureSampler,UV,0);
+	float4 Translucent1 = TranslucentTexture.SampleLevel(TranslucentTextureSampler,UV  +0.001,0);
+	float4 Translucent2 = TranslucentTexture.SampleLevel(TranslucentTextureSampler,UV - 0.001,0);
+	OutColor0 = float4(Translucent1.r,Translucent.g,Translucent2.b,Translucent.a);
+}
