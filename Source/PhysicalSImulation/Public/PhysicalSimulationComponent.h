@@ -29,7 +29,13 @@ public:
 	bool bSimulation;
 
 	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation ")
-	TArray<TSoftObjectPtr<UMaterialInterface>> Materials;
+	TSoftObjectPtr<UMaterialInterface> Material;
+
+	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation ")
+	bool FacingCamera;
+
+	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation",meta = (DisplayName = "Use Physical Solver"))
+	bool bUsePhysicalSolver;
 
 	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation")
 	ESimulatorType SimulatorType = ESimulatorType::PlaneSmokeFluid;
@@ -37,10 +43,10 @@ public:
 	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation")
 	float Dx = 1;
 
-	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation|2D Smoke Fluid")
+	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation|2D Smoke Fluid")//,meta = (EditCondition = "SimulatorType==ESimulatorType::PlaneSmokeFluid"))
 	FPlandFluidParameters PlandFluidParameters;
 
-	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation|Liquid")
+	UPROPERTY(EditAnywhere,Category = "PhysicalSimulation|Liquid")//,meta = (EditCondition = "SimulatorType==ESimulatorType::Liquid"))
 	FLiquidSolverParameter LiquidSolverParameter;
 
 	virtual void BeginDestroy() override;

@@ -1,5 +1,7 @@
 #include "PhysicalSolver.h"
-
+#if ENGINE_MINOR_VERSION >1
+#include "DataDrivenShaderPlatformInfo.h"
+#endif
 #include "PhysicalSimulationSceneProxy.h"
 
 
