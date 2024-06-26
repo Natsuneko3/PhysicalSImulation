@@ -94,8 +94,8 @@ public:
 protected:
 	FPhysicalSimulationSceneProxy* SceneProxy;
 	void SetupSolverBaseParameters(FSolverBaseParameter& Parameter, FSceneView& InView, FPhysicalSimulationSceneProxy* InSceneProxy);
-	void InitialPlaneMesh();
-	void InitialCubeMesh();
+	void InitialPlaneMesh(FRHICommandList& RHICmdList);
+	void InitialCubeMesh(FRHICommandList& RHICmdList);
 
 	virtual void Release()
 	{

@@ -320,7 +320,7 @@ void FPhysicalLiquidSolver::Initial_RenderThread(FRHICommandListImmediate& RHICm
 	FRDGBufferDesc floatBufferDesc = FRDGBufferDesc::CreateBufferDesc(sizeof(float), NUMATTRIBUTE);
 	ParticleIDBufferPool = AllocatePooledBuffer(IntBufferDesc , TEXT("ParticleIDBuffer"));
 	ParticleAttributeBufferPool = AllocatePooledBuffer(floatBufferDesc, TEXT("ParticleAttributeBuffer"));
-	InitialCubeMesh();
+	InitialCubeMesh(RHICmdList);
 }
 
 void FPhysicalLiquidSolver::Render_RenderThread(FPostOpaqueRenderParameters& Parameters)

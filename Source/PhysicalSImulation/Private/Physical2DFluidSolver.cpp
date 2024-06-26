@@ -465,7 +465,7 @@ void FPhysical2DFluidSolver::Initial_RenderThread(FRHICommandListImmediate& RHIC
 	                                                                        FClearValueBinding(), TexCreate_None, TexCreate_ShaderResource | TexCreate_RenderTargetable | TexCreate_UAV, false));
 	GRenderTargetPool.FindFreeElement(RHICmdList, RGBADesc, SimulationTexturePool, TEXT("SimulationTexture"));
 	GRenderTargetPool.FindFreeElement(RHICmdList, FloatDesc, PressureTexturePool, TEXT("PressureTexture"));
-	InitialPlaneMesh();
+	InitialPlaneMesh(RHICmdList);
 }
 
 void FPhysical2DFluidSolver::Render_RenderThread(FPostOpaqueRenderParameters& Parameters)

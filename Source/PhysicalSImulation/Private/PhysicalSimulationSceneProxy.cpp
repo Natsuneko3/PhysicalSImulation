@@ -38,16 +38,13 @@ FPhysicalSimulationSceneProxy::FPhysicalSimulationSceneProxy(UPhysicalSimulation
 		{
 		case ESimulatorType::PlaneSmokeFluid:
 			PhysicalSolver = MakeShareable(new FPhysical2DFluidSolver(this));
-
 			break;
 		case ESimulatorType::Psychedelic:
 			PhysicalSolver = MakeShareable(new FPsychedelicSolver(this));
-
 			break;
 		case ESimulatorType::Liquid:
 			PhysicalSolver = MakeShareable(new FPhysicalLiquidSolver(this));
 			break;
-
 		case ESimulatorType::RadianceCascades:
 			PhysicalSolver = MakeShareable(new FRadianceCascadesSolver(this));
 			break;

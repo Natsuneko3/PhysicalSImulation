@@ -47,7 +47,7 @@ void FPhysicalSolverBase::SetupSolverBaseParameters(FSolverBaseParameter& Parame
 	Parameter.WarpSampler = TStaticSamplerState<SF_Bilinear, AM_Wrap, AM_Wrap, AM_Wrap>::GetRHI();
 }
 
-void FPhysicalSolverBase::InitialPlaneMesh()
+void FPhysicalSolverBase::InitialPlaneMesh(FRHICommandList& RHICmdList)
 {
 	TResourceArray<FFilterVertex, VERTEXBUFFER_ALIGNMENT> Vertices;
 	Vertices.SetNumUninitialized(8);
@@ -66,18 +66,19 @@ void FPhysicalSolverBase::InitialPlaneMesh()
 	};
 
 	FRHIResourceCreateInfo CreateInfoVB(TEXT("PSPlaneMeshVertexBuffer"), &Vertices);
-	VertexBufferRHI = RHICreateVertexBuffer(Vertices.GetResourceDataSize(), BUF_Static, CreateInfoVB);
+	VertexBufferRHI = RHICmdList.CreateVertexBuffer(Vertices.GetResourceDataSize(), BUF_Static, CreateInfoVB);
 	TResourceArray<uint16, INDEXBUFFER_ALIGNMENT> IndexBuffer;
 	const uint32 NumIndices = UE_ARRAY_COUNT(SpriteIndices);
 	IndexBuffer.AddUninitialized(NumIndices);
 	FMemory::Memcpy(IndexBuffer.GetData(), SpriteIndices, NumIndices * sizeof(uint16));
 
 	FRHIResourceCreateInfo CreateInfoIB(TEXT("PSPlaneMeshIndexBuffer"), &IndexBuffer);
-	IndexBufferRHI = RHICreateIndexBuffer(sizeof(uint16), IndexBuffer.GetResourceDataSize(), BUF_Static, CreateInfoIB);
+	IndexBufferRHI = RHICmdList.CreateIndexBuffer(sizeof(uint16), IndexBuffer.GetResourceDataSize(), BUF_Static, CreateInfoIB);
+	//RHICreateIndexBuffer(sizeof(uint16), IndexBuffer.GetResourceDataSize(), static_cast<uint32>(BUF_Static), CreateInfoIB);
 	NumPrimitives = 2;
 }
 
-void FPhysicalSolverBase::InitialCubeMesh()
+void FPhysicalSolverBase::InitialCubeMesh(FRHICommandList& RHICmdList)
 {
 	TResourceArray<FFilterVertex, VERTEXBUFFER_ALIGNMENT> Vertices;
 	Vertices.SetNumUninitialized(8);
@@ -105,7 +106,7 @@ void FPhysicalSolverBase::InitialCubeMesh()
 	Vertices[3].UV = FVector2f(0.f, 0.f);
 
 	FRHIResourceCreateInfo CreateInfoVB(TEXT("PSCubeMeshVertexBuffer"), &Vertices);
-	VertexBufferRHI = RHICreateVertexBuffer(Vertices.GetResourceDataSize(), BUF_Static, CreateInfoVB);
+	VertexBufferRHI = RHICmdList.CreateVertexBuffer(Vertices.GetResourceDataSize(), BUF_Static, CreateInfoVB) ;//RHICreateVertexBuffer();
 
 	// Setup index buffer
 	const uint16 Indices[] = {
@@ -135,7 +136,7 @@ void FPhysicalSolverBase::InitialCubeMesh()
 	FMemory::Memcpy(IndexBuffer.GetData(), Indices, NumIndices * sizeof(uint16));
 
 	FRHIResourceCreateInfo CreateInfoIB(TEXT("PSCubeMeshIndexBuffer"), &IndexBuffer);
-	IndexBufferRHI = RHICreateIndexBuffer(sizeof(uint16), IndexBuffer.GetResourceDataSize(), BUF_Static, CreateInfoIB);
+	IndexBufferRHI = RHICmdList.CreateIndexBuffer(sizeof(uint16), IndexBuffer.GetResourceDataSize(), BUF_Static, CreateInfoIB);
 	NumPrimitives = 12;
 }
 
