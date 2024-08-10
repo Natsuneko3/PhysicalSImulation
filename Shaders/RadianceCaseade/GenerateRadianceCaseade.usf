@@ -4,7 +4,6 @@
 RWTexture2DArray<float4> GenerateRadianceCaseadeUAV;
 int3 GridSize;
 int CascadeLevel;
-int Step;
 
 [numthreads(THREADGROUP_SIZEX, THREADGROUP_SIZEY, 1)]
 void MainCS(uint2 DispatchThreadID : SV_DispatchThreadID,
@@ -15,12 +14,15 @@ void MainCS(uint2 DispatchThreadID : SV_DispatchThreadID,
 
 	FShaderPrintContext Context = InitShaderPrintContext(true, uint2(50,300));
 	float2 ScreenSize = View.BufferSizeAndInvSize.xy;
-	int2 ProbeID = flood(DispatchThreadID / ProbeInfo.RayNum[CascadeLevel]);
-	float2 ProbeScenePosition = (ProbeID + 0.5) * ProbeInfo.ProbeIntervel[CascadeLevel];
+	int3 GridSize;
+	GenerateRadianceCaseadeUAV.GetDimensions(GridSize.x,GridSize.y,GridSize.z);
+	int2 RayNum = ProbeInfo.RayNum[CascadeLevel];
+	int2 ProbeID = floor(DispatchThreadID / RayNum);
+	float2 ProbeScenePosition = (ProbeID + 0.5) * ProbeInfo.ProbeIntervel[CascadeLevel].xy;
 
 	uint2 ProbeThreadID = DispatchThreadID % ProbeInfo.RayNum[CascadeLevel];
 
-	float Angle =  float(ProbeThreadID.x + ProbeThreadID.y * RayNum) / (RayNum * RayNum);
+	float Angle =  float(ProbeThreadID.x + ProbeThreadID.y * RayNum.x) / (RayNum.x * RayNum.x);
 	float2x2 RotateMatrix = {cos(Angle),-sin(Angle),
 	sin(Angle),cos(Angle)};
 	float2 RayDirector = mul(float2(0,1),RotateMatrix);
@@ -28,7 +30,7 @@ void MainCS(uint2 DispatchThreadID : SV_DispatchThreadID,
 	float CenterDepht = CalcSceneDepth(StratProbeRayUV);
 	float tolerance = 100;
 	float3 SampleSceneColor = 0;
-	for(int i = 0;i<Step;i++)
+	for(int i = 0;i<10;i++)
 	{
 		StratProbeRayUV += RayDirector * ProbeInfo.Step[CascadeLevel] * View.BufferSizeAndInvSize.zw;
 		float SampleDepth = CalcSceneDepth(StratProbeRayUV);
