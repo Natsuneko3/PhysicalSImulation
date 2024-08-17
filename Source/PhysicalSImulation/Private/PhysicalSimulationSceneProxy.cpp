@@ -6,8 +6,9 @@
 #include "PhysicalSimulationComponent.h"
 #include "PhysicalSimulationSystem.h"
 #include "PhysicalSolver.h"
-#include "PsychedelicSolver.h"
-#include "RadianceCascadesSolver.h"
+#include "Psychedelic/PsychedelicSolver.h"
+#include "RandianceCascade/RadianceCascadesSolver.h"
+#include "TranslucentPP/TranslucentPostprocess.h"
 DECLARE_CYCLE_STAT(TEXT("GetDynamicMeshElements"), STAT_PS_GetDynamicMeshElements, STATGROUP_PS)
 
 

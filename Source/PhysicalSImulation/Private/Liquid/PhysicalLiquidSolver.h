@@ -35,10 +35,9 @@ public:
 	void SetLiuquidParameter(FLiuquidParameter& Parameter, FSceneView& InView,FPhysicalSimulationSceneProxy* InSceneProxy);
 
 	virtual void PreRenderView_RenderThread(FRDGBuilder& GraphBuilder, FSceneView& InView) override;
-
+virtual void PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& View, const FPostProcessingInputs& Inputs) override;
 	virtual void Initial_RenderThread(FRHICommandListImmediate& RHICmdList) override;
 	virtual void Release() override;
-	virtual void Render_RenderThread(FPostOpaqueRenderParameters& Parameters) override;
 	void PostSimulation();
 
 	bool bIsInitial = false;
@@ -55,4 +54,5 @@ private:
 	FRHIGPUBufferReadback* ParticleReadback = nullptr;
 	FRHIGPUBufferReadback* ParticleIDReadback = nullptr;
 	void EnqueueGPUReadback(FRDGBuilder& GraphBuilder);
+	TArray<uint16>TestArray;
 };

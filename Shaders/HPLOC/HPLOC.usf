@@ -78,7 +78,7 @@ uint __fns(uint mask, uint n) {
 uint delta(const int a, const int b, const uint n, Buffer mc)
 {
     if (a < 0 || b >= n) return (uint)(-1);
-    uint c = load<uint>(mc, a) ^ load<uint>(mc, b);
+    uint c = mc.Load(b);
     if (c == 0) return a ^ (a + 1ull);
     return c;
 }
@@ -163,7 +163,7 @@ uint GetGeometryID(in HPLOCParams params, uint3 DispatchThreadID) {
     params.primPrefix.GetDimensions(numGeoms);
     uint geomID = INVALID_ID;
     for (int i = 0; i < numGeoms; ++i) {
-        uint geomIDPrefixSum = load<uint>(params.primPrefix, i);
+        uint geomIDPrefixSum = params.primPrefix.Load(i);
         if (geomIDPrefixSum <= threadID) geomID++;
         else break;
     }
@@ -185,7 +185,7 @@ uint GetPrimitiveID(in HPLOCParams params, uint3 DispatchThreadID, uint geomID) 
     if (geomID < 0 || geomID >= numGeoms) return INVALID_ID;
 
     // Otherwise, return the primitive ID by subtracting the prefix sum of the previous geometry
-    uint primOffset = load<uint>(params.primPrefix, geomID);
+    uint primOffset = params.primPrefix.Load(geomID);
     return threadID - primOffset;
 }
 
@@ -198,16 +198,16 @@ bool LoadTriangle(in HPLOCParams params, uint primID, uint geomID, out float3 v[
     params.primPrefix.GetDimensions(numGeoms);
     if (geomID < 0 || geomID >= numGeoms) return false;
 
-    gprt::Buffer triangles = load<gprt::Buffer>(params.triangles, geomID);
-    gprt::Buffer vertices = load<gprt::Buffer>(params.vertices, geomID);
+    gprt::Buffer triangles = params.triangles.Load(geomID);
+    gprt::Buffer vertices = params.vertices.Load(geomID);
 
     // Check for invalid primitive ID
     if (primID >= triangles.size) return false;
 
-    uint3 tri = load<uint3>(triangles, primID);
-    v[0] = load<float3>(vertices, tri.x);
-    v[1] = load<float3>(vertices, tri.y);
-    v[2] = load<float3>(vertices, tri.z);
+    uint3 tri = triangles.Load(primID);
+    v[0] = vertices.Load(tri.x);
+    v[1] = vertices.Load(tri.y);
+    v[2] = vertices.Load(tri.z);
 
     // Check for invalid vertex data
     if (any(isnan(v[0])) || any(isnan(v[1])) || any(isnan(v[2]))) return false;
@@ -237,8 +237,8 @@ bool LoadTriangleBounds(in HPLOCParams params, uint primID, uint geomID, out flo
 bool LoadBvh2Bounds(in HPLOCParams params, uint nodeID, out float2x3 bounds) {
     bounds = float2x3(float3(FLT_MAX), -float3(FLT_MAX));
     if (nodeID >= params.BVH2.size) return false;
-    bounds[0] = load<float4>(params.BVH2, nodeID * 2 + 0).xyz;
-    bounds[1] = load<float4>(params.BVH2, nodeID * 2 + 1).xyz;
+    bounds[0] = params.BVH2.Load(nodeID * 2 + 0).xyz;
+    bounds[1] = params.BVH2.Load(nodeID * 2 + 1).xyz;
     return true;
 }
 
@@ -265,7 +265,7 @@ bool LoadAABB(in HPLOCParams params, uint2 clusterIndex, out float2x3 bounds) {
 }
 
 // Redirects to the above function, extracting the primitive and geometry ID from a compressed cluster ID.
-bool LoadAABB(in HPLOCParams params, uint32_t compressedClusterID, out float2x3 bounds) {
+bool LoadAABB(in HPLOCParams params, uint compressedClusterID, out float2x3 bounds) {
     uint primID = compressedClusterID & 0x00FFFFFF;
     uint geomID = compressedClusterID >> 24;
     return LoadAABB(params, uint2(primID, geomID), bounds);
@@ -384,8 +384,8 @@ void HPLOC_SFC(uint3 DispatchThreadID: SV_DispatchThreadID, uint3 GroupID: SV_Gr
     if (primID >= params.N) return;
 
     // Transform center into 0-1 range
-    float3 aabbMin = load<float3>(params.rootBounds, 0);
-    float3 aabbMax = load<float3>(params.rootBounds, 1);
+    float3 aabbMin = params.rootBounds.Load(0);
+    float3 aabbMax = params.rootBounds.Load(1);
 
     float3 center;
     bool valid = LoadCenter(params, clusterIndex, center);
@@ -394,25 +394,25 @@ void HPLOC_SFC(uint3 DispatchThreadID: SV_DispatchThreadID, uint3 GroupID: SV_Gr
     uint code = (valid) ? morton64_encode(center) : UINT64_MAX;
 
     // Store the sfc code as the key, and the cluster index as the value
-    store<uint>(params.C, threadID, code);
-    store<int2>(params.I, threadID, clusterIndex);
+    params.C[threadID] = code;
+    params.I[threadID] = clusterIndex;
 
     // Also, initialize the scratch "parent IDs" buffer to an invalid state.
     // As we walk up the tree from the leaves, this will be used to deactivate lanes.
 
     // While here, clear our parent ID buffer
-    store<uint>(params.pID, threadID, INVALID_ID);
+    params.pID[threadID] = INVALID_ID;
 
     // Array of index pairs for BVH2 to BVH8 conversion
     if (threadID == 0) {
         // Allocate the wide root node
         uint pair = /*root bvh2 cluster ID*/ (uint(GEOM_ID_BVH2 << 24) << 32ull) | /*where bvh8 root will go*/ (0ull);
-        store<uint>(params.indexPairs, threadID, pair);
-        store<int>(params.AC, 3, 1); // global counter of allocated BVH8 nodes
+        params.indexPairs[threadID] = pair;
+        params.AC[3] = 1; // global counter of allocated BVH8 nodes
     }
     else {
         uint pair = UINT64_MAX; // invalid pair
-        store<uint>(params.indexPairs, threadID, pair);
+        params.indexPairs[threadID] = pair;
     }
 }
 
@@ -479,7 +479,7 @@ uint mergeClustersCreateBVH2Node(uint numPrims, uint NN, inout uint2 CI, inout f
 
     // This should never happen, but if it does, we need to set the error bit and stop.
     if (numNodesAllocated >= N - 1) {
-       store<int>(params.AC, 5, ERROR_OUT_OF_BOUNDS);
+       params.AC[5] = ERROR_OUT_OF_BOUNDS;
        return 0;
     }
 
@@ -498,7 +498,7 @@ uint mergeClustersCreateBVH2Node(uint numPrims, uint NN, inout uint2 CI, inout f
                 new_bounds[1] = max(leftBounds[1], rightBounds[1]);
 
                 const BVH2Node newNode = BVH2Node(leftCluster, rightCluster, new_bounds);
-                store<BVH2Node>(params.BVH2, bvh2Index, newNode);
+                params.BVH2[bvh2Index] = newNode;
                 bounds = new_bounds;
                 newCI = uint2(bvh2Index, GEOM_ID_BVH2); // Note, marking the merged cluster type here as a BVH2 node
             }
@@ -532,7 +532,7 @@ uint loadIndices(uint start, uint end, Buffer I, inout uint2 CI, uint offset)
     uint indexID = localWaveID - offset;
     bool laneActive = (indexID >= 0 && indexID < numIndices);
     if (laneActive)
-        CI = load<uint2>(I, start + indexID);
+        CI = I.Load(start + indexID); 
     uint numValid = WaveActiveCountBits(laneActive && CI.x != INVALID_ID);
     numIndices = min(numIndices, numValid);
     return numIndices;
@@ -545,7 +545,7 @@ uint loadIndices(uint start, uint end, Buffer I, inout uint2 CI, uint offset)
 void storeIndices(int origNumPrims, uint2 CI, Buffer I, uint LStart) {
     uint localWaveID = WaveGetLaneIndex();
     if (localWaveID < origNumPrims) {
-        store<uint2>(I, LStart + localWaveID, CI);
+        I[LStart + localWaveID] = CI;
     }
 }
 
@@ -630,47 +630,41 @@ void HPLOC_Build(uint3 DispatchThreadID: SV_DispatchThreadID, uint3 GroupThreadI
         }
     }
 }
-
+#define WIDTH 8
 // A special stack for the BVH2->BVH8 conversion algorithm.
-struct ChildStack <let WIDTH : uint> {
+struct ChildStack  {
     uint numLeaves;
     uint numNodes;
 
     // Cluster IDs representing inner nodes and leaves
-    uint32_t leaves[WIDTH];
-    uint32_t nodes[WIDTH];
-
-    __init() {
-        numLeaves = 0;
-        numNodes = 0;
-    }
-
+    uint leaves[WIDTH];
+    uint nodes[WIDTH];
+    
     uint size() {
         return numNodes + numLeaves;
     }
 
     [mutating]
-    bool pushLeaf(uint32_t leaf) {
+    bool pushLeaf(uint leaf) {
         if (numNodes + numLeaves >= WIDTH) return false;
         leaves[numLeaves++] = leaf;
         return true;
     }
 
     [mutating]
-    bool pushNode(uint32_t node) {
+    bool pushNode(uint node) {
         if (numNodes + numLeaves >= WIDTH) return false;
         nodes[numNodes++] = node;
         return true;
     }
 
-    [mutating]
-    bool pushCluster(uint32_t clusterID) {
+
+    bool pushCluster(uint clusterID) {
         if (clusterID >> 24 == GEOM_ID_BVH2) return pushNode(clusterID);
         else return pushLeaf(clusterID);
     }
 
-    [mutating]
-    uint32_t popNode() {
+    uint popNode() {
         if (numNodes == 0) return INVALID_ID;
         return nodes[--numNodes];
     }
@@ -685,24 +679,21 @@ struct ChildStack <let WIDTH : uint> {
         bool hasInnerNode = numNodes > 0;
         return hasRoom && hasInnerNode;
     }
-}
-
-struct Stack<let N : uint> {
+};
+#define StackN 8
+struct Stack{
+    
     uint top;
-    uint data[N];
-
-    __init() {
-        top = 0;
-    }
-
+    uint data[StackN];
+    
     [mutating]
     bool push(uint val) {
-        if (top >= N) return false;
+        if (top >= StackN) return false;
         data[top++] = val;
         return true;
     }
 
-    [mutating]
+
     uint pop() {
         if (top == 0) return INVALID_ID;
         return data[--top];
@@ -719,22 +710,22 @@ struct Stack<let N : uint> {
 void HPLOC_ToBVH8(uint3 DispatchThreadID: SV_DispatchThreadID, uniform HPLOCParams params)
 {
     int failsafe = 10000;
-    uint32_t bvh2ClusterID = INVALID_ID;
-    uint32_t bvh8ClusterID = INVALID_ID;
+    uint bvh2ClusterID = INVALID_ID;
+    uint bvh8ClusterID = INVALID_ID;
 
     int threadID = DispatchThreadID.x;
     if (threadID >= params.N) return;
 
     while (true) {
-        int signal = load<int>(params.AC, 5);
+        int signal = params.AC.Load(5);
         if (signal != 0) return; // break out early if we're signaled to stop
 
-        uint val = load<uint>(params.indexPairs, threadID);
-        bvh2ClusterID = uint32_t(val >> 32ull);
-        bvh8ClusterID = uint32_t(val);
+        uint val = params.indexPairs.Load(threadID);
+        bvh2ClusterID = uint(val >> 32ull);
+        bvh8ClusterID = uint(val);
 
         // temp failsafe to prevent infinite loops
-        if (failsafe-- <= 0) { store<int>(params.AC, 5, ERROR_TIMEOUT); break;}
+        if (failsafe-- <= 0) { params.AC[5] = ERROR_TIMEOUT; break;}
 
         // Only continue if we were assigned an inner BVH2 node
         // (assuming architecture guarantees forward progress)
@@ -746,7 +737,7 @@ void HPLOC_ToBVH8(uint3 DispatchThreadID: SV_DispatchThreadID, uniform HPLOCPara
             BVH8Leaf leaf;
             leaf.clusterID = bvh2ClusterID;
             LoadTriangle(params, bvh2ClusterID, leaf.v);
-            store<BVH8Leaf>(params.BVH8L, bvh8ClusterID, leaf);
+            params.BVH8L[bvh8ClusterID] = leaf;
             break;
         }
 
@@ -757,7 +748,7 @@ void HPLOC_ToBVH8(uint3 DispatchThreadID: SV_DispatchThreadID, uniform HPLOCPara
         var children = ChildStack<8>();
 
         // Push the children of the assigned BVH2 node onto a fresh stack, ordered by surface area.
-        BVH2Node bvh2Node = load<BVH2Node>(params.BVH2, bvh2ClusterID & 0x00FFFFFF);
+        BVH2Node bvh2Node = params.BVH2.Load(bvh2ClusterID & 0x00FFFFFF);
         float2x3 bounds[2];
         uint2 childClusters = uint2(bvh2Node.getChildCluster(0), bvh2Node.getChildCluster(1));
         LoadAABB(params, childClusters[0], bounds[0]);
@@ -773,7 +764,7 @@ void HPLOC_ToBVH8(uint3 DispatchThreadID: SV_DispatchThreadID, uniform HPLOCPara
             uint nodeID = children.popNode();
 
             // Now we need to add back the two children of that node.
-            BVH2Node innerNode = load<BVH2Node>(params.BVH2, nodeID & 0x00FFFFFF);
+            BVH2Node innerNode = params.BVH2.Load(nodeID & 0x00FFFFFF);
 
             // Determine which of this nodes children has the largest area...
             float2x3 bounds[2];
@@ -796,7 +787,7 @@ void HPLOC_ToBVH8(uint3 DispatchThreadID: SV_DispatchThreadID, uniform HPLOCPara
 
         // Shouldn't happen, but useful for debugging purposes.
         if (childNodeBaseIndex + children.numNodes >= params.BVH8.size) {
-            store<int>(params.AC, 5, ERROR_OUT_OF_BOUNDS);
+            params.AC[5] = ERROR_OUT_OF_BOUNDS;
             return;
         }
 
@@ -811,7 +802,7 @@ void HPLOC_ToBVH8(uint3 DispatchThreadID: SV_DispatchThreadID, uniform HPLOCPara
                 newPair = (uint(children.leaves[i]) << 32ull) | (uint(primitiveBaseIndex + i));
             else
                 newPair = (uint(children.nodes[j] ) << 32ull) | (uint(childNodeBaseIndex + j));
-            store<uint>(params.indexPairs, workerAddr, newPair);
+            params.indexPairs[workerAddr] = newPair;
         }
 
         // At this point, we're ready to generate the actual BVH8 node.
@@ -819,7 +810,7 @@ void HPLOC_ToBVH8(uint3 DispatchThreadID: SV_DispatchThreadID, uniform HPLOCPara
         float2x3 parentBounds = float2x3(float3(FLT_MAX), -float3(FLT_MAX));
         float2x3 childBounds[8];
         for (int i = 0; i < children.size(); ++i) {
-            uint32_t clusterID = (i < children.numLeaves) ? children.leaves[i] : children.nodes[i - children.numLeaves];
+            uint clusterID = (i < children.numLeaves) ? children.leaves[i] : children.nodes[i - children.numLeaves];
             LoadAABB(params, clusterID, childBounds[i]);
             parentBounds[0] = min(parentBounds[0], childBounds[i][0]);
             parentBounds[1] = max(parentBounds[1], childBounds[i][1]);
@@ -827,7 +818,7 @@ void HPLOC_ToBVH8(uint3 DispatchThreadID: SV_DispatchThreadID, uniform HPLOCPara
 
         // Now, we "auction off" the children to the octants of the parent node.
         float payoffs[8][8];
-        uint32_t assignments[8];
+        uint assignments[8];
         float prices[8];
         for (int i = 0; i < 8; ++i) {
             assignments[i] = INVALID_ID;
@@ -849,13 +840,13 @@ void HPLOC_ToBVH8(uint3 DispatchThreadID: SV_DispatchThreadID, uniform HPLOCPara
         }
 
         float epsilon = 1.f / children.size();
-        Stack<8> bidders;
+        Stack bidders;
         for (int i = 0; i < children.size(); ++i) {
             bidders.push(i);
         }
 
         while (!bidders.isEmpty()) {
-            if (failsafe-- <= 0) { store<int>(params.AC, 5, ERROR_TIMEOUT); return; }
+            if (failsafe-- <= 0) { params.AC[5] = ERROR_TIMEOUT; return; }
             int c = bidders.pop();
 
             float winningReward = -FLT_MAX;
@@ -959,6 +950,6 @@ void HPLOC_ToBVH8(uint3 DispatchThreadID: SV_DispatchThreadID, uniform HPLOCPara
         }
 
         // Finally, store the BVH8 node
-        store<BVH8Node>(params.BVH8, bvh8ClusterID, node);
+        params.BVH8[bvh8ClusterID] = node;
     }
 }

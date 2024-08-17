@@ -2,9 +2,7 @@
 
 
 #include "SceneViewExtension.h"
-#include "Physical2DFluidSolver.h"
-#include "TranslucentPostprocess.h"
-#include "PhysicalLiquidSolver.h"
+#include "Liquid/PhysicalLiquidSolver.h"
 #include "Engine/InstancedStaticMesh.h"
 
 class FPhysicalSimulationSceneProxy;

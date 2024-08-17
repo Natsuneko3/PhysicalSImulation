@@ -33,6 +33,7 @@ public:
 
 	END_SHADER_PARAMETER_STRUCT()
 };
+IMPLEMENT_GLOBAL_SHADER(FCommonMeshVS, "/Plugin/PhysicalSimulation/SmokePlanePass.usf", "MainVS", SF_Vertex);
 
 IMPLEMENT_GLOBAL_SHADER(FBilateralFilterCS, "/Plugin/PhysicalSimulation/TextureBlur/TextureBlur.usf", "MainCS", SF_Compute);
 

@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Engine/TextureRenderTarget2D.h"
+#include "Physical2DFluidSolver.h"
 #include "GameFramework/Actor.h"
 
 #include "PhysicalSimulationViewExtension.h"

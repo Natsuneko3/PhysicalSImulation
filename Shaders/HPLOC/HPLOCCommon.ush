@@ -58,7 +58,7 @@ struct HPLOCParams {
     Buffer BVH8L; // BVH8 leaves (N x 64 bytes)
     Buffer AC;    // Some atomic counters for allocation and scheduling, all initialized to 0 (6 x 4 bytes)
     Buffer I;     // Cluster indices reordered by space filling curve codes (N x 4 bytes)
-    Buffer C;     // Space filling curve codes, sorted in ascending order (N x 8 bytes)
+    RWBuffer<uint2> C;     // Space filling curve codes, sorted in ascending order (N x 8 bytes)
     Buffer pID;   // BVH2 parent IDs. initialized to -1. (N x 4 bytes)
 
     Buffer indexPairs; // BVH2 -> BVH8 pairs (N x 8bytes)
