@@ -28,10 +28,11 @@
 #define FLAG_MASK           3       //Mask used to retrieve flag values
 
 #define MAX_SPIN_COUNT      1       //How much should we allow threadblocks to wait on preceeding tiles?
-
-RWBuffer<uint> b_globalHist   ; //buffer holding device level offsets for each binning pass
- RWBuffer<uint> b_passHist    ; //buffer used to store reduced sums of partition tiles
- RWBuffer<uint> b_index       ; //buffer used to atomically assign partition tile indexes
+//k_radixPasses :4
+//k_radix : 256
+RWBuffer<uint> b_globalHist   ; //buffer holding device level offsets for each binning pass ,size is k_radix * k_radixPasses * sizeof(uint32_t)
+RWBuffer<uint> b_passHist    ; //buffer used to store reduced sums of partition tiles, size k_radix * k_radixPasses * threadBlocks * sizeof(uint32_t)
+RWBuffer<uint> b_index       ; //buffer used to atomically assign partition tile indexes size k_radixPasses * sizeof(uint32_t)
 
 groupshared uint4 g_gHist[RADIX * 2];   //Shared memory for GlobalHistogram
 groupshared uint g_scan[RADIX];         //Shared memory for Scan
