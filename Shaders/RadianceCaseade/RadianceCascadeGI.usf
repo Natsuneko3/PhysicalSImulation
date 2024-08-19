@@ -6,7 +6,20 @@ SamplerState RCTextureSampler;
 void MainPS(in float4 SvPosition: SV_Position,out float4 OutColor : SV_Target0)
 {
 	float2 UV = SvPositionToBufferUV(SvPosition);
-	float3 RadianceCascades = RCTexture.Load(uint4(SvPosition.xy,0,0));//SampleLevel(RCTextureSampler,UV,0);
+	float3 RadianceCascades = RCTexture.Load(uint4(SvPosition.xy,1,0));//SampleLevel(RCTextureSampler,UV,0);
+	for(int i = 0;i<4;i++)
+	{
+		int RayNum = 8 << i;
+		int ProbeNum = 128 / RayNum;
+		float2 ProbeSize =  View.BufferSizeAndInvSize.xy / ProbeNum;
+		float2 ProbeID = floor(SvPosition / ProbeNum);
+		float2 ProbeScenePosition1 = (ProbeID + 0.5) * ProbeSize;
+		float2 ProbeScenePosition2 = (ProbeID +float2(1,0) + 0.5) * ProbeSize;
+		float2 ProbeScenePosition3 = (ProbeID +float2(0,1) + 0.5) * ProbeSize;
+		float2 ProbeScenePosition4 = (ProbeID +float2(1,1) + 0.5) * ProbeSize;
+
+
+	}
 	float3 SceneColor = CalcSceneColor(UV);
 	OutColor =CalcFullSceneColor(UV);// float4(SceneColor,1);//SimulationTexture.SampleLevel(SimulationTextureSampler,UV,0).b;
 	if(SvPosition.x < 128 && SvPosition.y < 128 )

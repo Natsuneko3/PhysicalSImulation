@@ -1,0 +1,85 @@
+#include "/Engine/Private/SceneTexturesCommon.ush"
+#include "/Engine/Private/ShaderPrint.ush"
+#include "Common.ush"
+RWTexture2D<float4> FarRadianceMap;
+RWTexture2D<float4> NearRadianceMap;
+
+uint FarProbeSpacing, NearProbeSpacing;
+uint FarAngularRes, NearAngularRes;
+
+struct AngleOffsets {
+	uint2 OuterLeft;
+	uint2 InnerLeft;
+	uint2 Center;
+	uint2 InnerRight;
+	uint2 OuterRight;
+};
+
+AngleOffsets CalcAngleOffsets(uint FarAngleIndex) {
+	AngleOffsets FarAngles;
+	FarAngles.OuterLeft = AngleIndexToOffset(ClampAngleIndex(FarAngleIndex, FarAngularRes - 2));
+	FarAngles.InnerLeft = AngleIndexToOffset(ClampAngleIndex(FarAngleIndex, FarAngularRes - 1));
+	FarAngles.Center = AngleIndexToOffset(FarAngleIndex);
+	FarAngles.InnerRight = AngleIndexToOffset(ClampAngleIndex(FarAngleIndex, 1));
+	FarAngles.OuterRight = AngleIndexToOffset(ClampAngleIndex(FarAngleIndex, 2));
+	return FarAngles;
+}
+
+uint ClampAngleIndex(uint FarAngleIndex, int Offset) {
+	return (FarAngleIndex + Offset) % FarAngularRes;
+}
+
+uint2 AngleIndexToOffset(uint FarAngleIndex) {
+	uint OffsetY = FarAngleIndex / FarProbeSpacing;
+	return uint2(FarAngleIndex - OffsetY * FarProbeSpacing, OffsetY);
+}
+
+float4 SampleAngles(uint2 FarCellPos, in AngleOffsets Offset) {
+	return 0.25 * float4(
+		FarRadianceMap[FarCellPos + Offset.OuterLeft] * 0.5 +
+		FarRadianceMap[FarCellPos + Offset.InnerLeft] +
+		FarRadianceMap[FarCellPos + Offset.Center] +
+		FarRadianceMap[FarCellPos + Offset.InnerRight] +
+		FarRadianceMap[FarCellPos + Offset.OuterRight] * 0.5
+	);
+}
+
+[numthreads(8,8,1)]
+void MainCS(uint3 Pos : SV_DispatchThreadID) {
+
+	uint2 RadianceMapSize = TexSize(NearRadianceMap);
+
+	if (Pos.x >= RadianceMapSize.x || Pos.y >= RadianceMapSize.y)
+		return;
+
+	uint2 NearCellIndex = Pos.xy / NearProbeSpacing;
+	uint2 NearCellPos = NearCellIndex * NearProbeSpacing;
+	uint2 NearCellOffset = Pos.xy - NearCellPos;
+	uint2 NearCellCenter = NearCellPos + (NearProbeSpacing / 2);
+
+	uint NearAngleIndex = NearCellOffset.x + NearCellOffset.y * NearProbeSpacing;
+
+	AngleOffsets FarAngles = CalcAngleOffsets(4 * NearAngleIndex);
+
+	int2 CenterOffsetNearCell = max(int2(NearCellCenter) - NearProbeSpacing, 0);
+	int2 FarCellIndexLL = CenterOffsetNearCell / FarProbeSpacing;
+
+	uint2 FarCellLL = (FarCellIndexLL + uint2(0, 0)) * FarProbeSpacing;
+	uint2 FarCellRL = (FarCellIndexLL + uint2(1, 0)) * FarProbeSpacing;
+	uint2 FarCellLU = (FarCellIndexLL + uint2(0, 1)) * FarProbeSpacing;
+	uint2 FarCellRU = (FarCellIndexLL + uint2(1, 1)) * FarProbeSpacing;
+
+	float4 FarRadiance = BilinearInterpolation(
+		SampleAngles(FarCellLU, FarAngles),
+		SampleAngles(FarCellRU, FarAngles),
+		SampleAngles(FarCellLL, FarAngles),
+		SampleAngles(FarCellRL, FarAngles),
+		float2(CenterOffsetNearCell - FarCellLL) / FarProbeSpacing
+	);
+
+	float4 NearRadiance = NearRadianceMap[Pos.xy];
+
+	MergeRays(NearRadiance, FarRadiance);
+
+	NearRadianceMap[Pos.xy] = NearRadiance;
+}

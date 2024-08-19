@@ -1,77 +1,80 @@
-#include "/Engine/Private/SceneTexturesCommon.ush"
 #define TWO_PI 6.28318530718
 
-float2 Direction2D(float a) {
-	float angle = a * TWO_PI;
-	return float2(cos(angle), sin(angle));
+float2 Direction2D(float A) {
+	float Angle = A * TWO_PI;
+	return float2(cos(Angle), sin(Angle));
 }
 
-void MergeRays(inout float4 near, in float4 far) {
-	near.xyz += near.w * far.xyz;
-	near.w *= far.w;
+void MergeRays(inout float4 Near, in float4 Far) {
+	Near.xyz += Near.w * Far.xyz;
+	Near.w *= Far.w;
 }
 
 void RayTraceStep(
-	inout float4 radiance,
-	inout float2 uv,
-	in float2 step
+	in Texture2D<float4> Tex,
+	in SamplerState Sampler,
+	inout float4 Radiance,
+	inout float2 Uv,
+	in float2 Step
 ) {
-	float4 pointRadiance = CalcSceneColor(uv);//tex.SampleLevel(samplerState, uv, 0);
+	float4 PointRadiance = Tex.SampleLevel(Sampler, Uv, 0);
 
-	pointRadiance.w = 1.0 - pointRadiance.w;
+	PointRadiance.w = 1.0 - PointRadiance.w;
 
-	MergeRays(radiance, pointRadiance);
+	MergeRays(Radiance, PointRadiance);
 
-	uv += step;
+	Uv += Step;
 }
 
 float4 RayTrace(
-	float2 uv,
-	float2 step,
-	uint quarterSampleCount
+	in Texture2D<float4> Tex,
+	in SamplerState Sampler,
+	float2 Uv,
+	float2 Step,
+	uint QuarterSampleCount
 ) {
-	float4 radiance = float4(0, 0, 0, 1);
+	float4 Radiance = float4(0, 0, 0, 1);
 
-	for (uint i = 0; i != quarterSampleCount; ++i) {
-		RayTraceStep(radiance, uv, step);
-		RayTraceStep(radiance, uv, step);
-		RayTraceStep(radiance, uv, step);
-		RayTraceStep(radiance, uv, step);
+	for (uint I = 0; I != QuarterSampleCount; ++I) {
+		RayTraceStep(Tex, Sampler, Radiance, Uv, Step);
+		RayTraceStep(Tex, Sampler, Radiance, Uv, Step);
+		RayTraceStep(Tex, Sampler, Radiance, Uv, Step);
+		RayTraceStep(Tex, Sampler, Radiance, Uv, Step);
 	}
 
-	return radiance;
+	return Radiance;
 }
 
 float4 BilinearInterpolation(
-	in float4 radianceLU,
-	in float4 radianceRU,
-	in float4 radianceLL,
-	in float4 radianceRL,
-	in float2 uv
+	in float4 RadianceLU,
+	in float4 RadianceRU,
+	in float4 RadianceLL,
+	in float4 RadianceRL,
+	in float2 Uv
 ) {
-	float4 u4 = uv.x;
-	float4 v4 = uv.y;
+	float4 U4 = Uv.x;
+	float4 V4 = Uv.y;
 	return lerp(
-		lerp(radianceLL, radianceRL, u4),
-		lerp(radianceLU, radianceRU, u4),
-		v4
+		lerp(RadianceLL, RadianceRL, U4),
+		lerp(RadianceLU, RadianceRU, U4),
+		V4
 	);
 }
 
-uint2 TexSize(in Texture2D<float4> tex2D) {
-	uint2 size;
-	tex2D.GetDimensions(size.x, size.y);
-	return size;
+uint2 TexSize(in Texture2D<float4> Tex2D) {
+	uint2 Size;
+	Tex2D.GetDimensions(Size.x, Size.y);
+	return Size;
 }
 
-uint2 TexSize(in RWTexture2D<float4> tex2D) {
-	uint2 size;
-	tex2D.GetDimensions(size.x, size.y);
-	return size;
+uint2 TexSize(in RWTexture2D<float4> Tex2D) {
+	uint2 Size;
+	Tex2D.GetDimensions(Size.x, Size.y);
+	return Size;
 }
 
-uint3 TexSize(in RWTexture3D<half4> tex3D) {
-	uint3 size;
-	tex3D.GetDimensions(size.x, size.y, size.z);
-	return size;
+uint3 TexSize(in RWTexture3D<half4> Tex3D) {
+	uint3 Size;
+	Tex3D.GetDimensions(Size.x, Size.y, Size.z);
+	return Size;
 }

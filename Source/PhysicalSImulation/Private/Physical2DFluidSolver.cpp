@@ -22,27 +22,6 @@ DECLARE_CYCLE_STAT(TEXT("AdvectionDensity"), STAT_AdvectionDensity, STATGROUP_PS
 const bool bUseFFT = true;
 const FIntVector ThreadNum = FIntVector(8, 8, 1); //!bUseFFT? FIntVector(256,1,1):
 
-class FSmokePlaneVS : public FGlobalShader
-{
-public:
-	DECLARE_GLOBAL_SHADER(FSmokePlaneVS);
-	SHADER_USE_PARAMETER_STRUCT(FSmokePlaneVS, FGlobalShader);
-
-	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)
-	{
-	}
-
-	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
-	{
-		return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
-	}
-
-	BEGIN_SHADER_PARAMETER_STRUCT(FParameters,)
-		SHADER_PARAMETER_STRUCT_REF(FViewUniformShaderParameters, View)
-		SHADER_PARAMETER(FMatrix44f, LocalToWorld)
-	END_SHADER_PARAMETER_STRUCT()
-};
-
 class FSmokePlanePS : public FGlobalShader
 {
 public:
@@ -67,7 +46,7 @@ public:
 };
 
 IMPLEMENT_GLOBAL_SHADER(FSmokePlanePS, "/Plugin/PhysicalSimulation/SmokePlanePass.usf", "MainPS", SF_Pixel);
-IMPLEMENT_GLOBAL_SHADER(FSmokePlaneVS, "/Plugin/PhysicalSimulation/SmokePlanePass.usf", "MainVS", SF_Vertex);
+
 
 
 class F2DFluidCS : public FGlobalShader
@@ -465,7 +444,7 @@ void FPhysical2DFluidSolver::Initial_RenderThread(FRHICommandListImmediate& RHIC
 	                                                                        FClearValueBinding(), TexCreate_None, TexCreate_ShaderResource | TexCreate_RenderTargetable | TexCreate_UAV, false));
 	GRenderTargetPool.FindFreeElement(RHICmdList, RGBADesc, SimulationTexturePool, TEXT("SimulationTexture"));
 	GRenderTargetPool.FindFreeElement(RHICmdList, FloatDesc, PressureTexturePool, TEXT("PressureTexture"));
-	InitialPlaneMesh();
+	InitialPlaneMesh(RHICmdList);
 }
 
 void FPhysical2DFluidSolver::Render_RenderThread(FPostOpaqueRenderParameters& Parameters)
@@ -501,11 +480,8 @@ void FPhysical2DFluidSolver::PrePostProcessPass_RenderThread(FRDGBuilder& GraphB
 	{
 		return;
 	};
-const FViewInfo& ViewInfo = static_cast<const FViewInfo&>(View);
-	FSmokePlaneVS::FParameters* InVSParameters = GraphBuilder.AllocParameters<FSmokePlaneVS::FParameters>();
+	const FViewInfo& ViewInfo = static_cast<const FViewInfo&>(View);
 	FSmokePlanePS::FParameters* InPSParameters = GraphBuilder.AllocParameters<FSmokePlanePS::FParameters>();
-	InVSParameters->View = View.ViewUniformBuffer;
-	InVSParameters->LocalToWorld = FMatrix44f(SceneProxy->ActorTransform->ToMatrixWithScale());
 
 	InPSParameters->RenderTargets[0] = FRenderTargetBinding((*Inputs.SceneTextures)->SceneColorTexture, ERenderTargetLoadAction::ELoad);
 	InPSParameters->SimulationTexture = GraphBuilder.CreateSRV(GraphBuilder.RegisterExternalTexture(SimulationTexturePool));
@@ -513,9 +489,9 @@ const FViewInfo& ViewInfo = static_cast<const FViewInfo&>(View);
 	InPSParameters->View = View.ViewUniformBuffer;
 
 	FGlobalShaderMap* GlobalShaderMap = GetGlobalShaderMap(GMaxRHIFeatureLevel);
-	TShaderMapRef<FSmokePlaneVS> VertexShader(GlobalShaderMap);
 	TShaderMapRef<FSmokePlanePS> PixelShader(GlobalShaderMap);
-	DrawMesh(VertexShader, PixelShader, InVSParameters, InPSParameters, GraphBuilder, ViewInfo.ViewRect, 1);
+	DrawMesh(ViewInfo, FMatrix44f(SceneProxy->ActorTransform->ToMatrixWithScale()),
+		PixelShader, InPSParameters, GraphBuilder, ViewInfo.ViewRect, 1);
 }
 
 void FPhysical2DFluidSolver::Release()

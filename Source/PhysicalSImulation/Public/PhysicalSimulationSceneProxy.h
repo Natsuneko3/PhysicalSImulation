@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Physical2DFluidSolver.h"
-#include "PhysicalLiquidSolver.h"
+#include "Liquid//PhysicalLiquidSolver.h"
 #include "PhysicalSolver.h"
 
 #include "UObject/Object.h"

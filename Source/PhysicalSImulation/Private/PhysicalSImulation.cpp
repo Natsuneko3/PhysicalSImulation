@@ -2,15 +2,21 @@
 
 #include "PhysicalSImulation.h"
 
+#include "Misc/Paths.h"
+#include "ShaderCore.h"
 #define LOCTEXT_NAMESPACE "FPhysicalSImulationModule"
 
 void FPhysicalSImulationModule::StartupModule()
 {
 	// This code will execute after your module is loaded into memory; the exact timing is specified in the .uplugin file per-module
-	FString PluginShaderDir = FPaths::Combine(FPaths::EnginePluginsDir(), TEXT("PhysicalSImulation/Shaders"));
+	FString PluginShaderDir = FPaths::Combine(FPaths::ProjectPluginsDir(), TEXT("OutsidePlugins/PhysicalSImulation/Shaders"));
 	if(!FPaths::DirectoryExists(PluginShaderDir))
 	{
 		PluginShaderDir = FPaths::Combine(FPaths::ProjectPluginsDir(), TEXT("PhysicalSImulation/Shaders"));
+	}
+	else
+	{
+		PluginShaderDir = FPaths::Combine(FPaths::EnginePluginsDir(), TEXT("PhysicalSImulation/Shaders"));
 	}
 
 	AddShaderSourceDirectoryMapping(TEXT("/Plugin/PhysicalSimulation"), PluginShaderDir);
