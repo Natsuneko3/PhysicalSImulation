@@ -2,7 +2,7 @@
 #include "ParticleCommon.ush"
 Texture3D<float> Rasterize;
 Texture2D Depth;
-Buffer<uint> ParticleBuffer;
+Buffer<float> ParticleBuffer;
 SamplerState DepthSampler;
 float4x4 LocalToWorld;
 
@@ -17,11 +17,12 @@ void MainVS(in float4 InPosition : ATTRIBUTE0,
 {
 	float4 LocalPosition = InPosition * float4(100.0,100.0,100.0,1);
 
-	//ParticleContext Context = GetParticle(ParticleBuffer,InstanceId);
+	ParticleContext Context = GetParticle(ParticleBuffer,InstanceId);
 	float4 World = mul(LocalPosition,LocalToWorld) ;//float4(Context.Position,0.0);
 	uint Size;
+
 	//ParticleBuffer.GetDimensions(Size);
-	World += float4(ParticleBuffer[InstanceId].xxx,1);
+	World += float4(Context.Position,1);
 	float4 ClipPos = mul(World , LWCHackToFloat(PrimaryView.WorldToClip));
 
 	OutPosition = ClipPos;//mul(WorldPos,View.ClipToView);//mul(WorldPos, LWCHackToFloat(PrimaryView.WorldToClip));

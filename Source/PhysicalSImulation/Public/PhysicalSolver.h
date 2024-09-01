@@ -90,6 +90,7 @@ public:
 
 	int Frame = 0;
 
+
 	virtual void Initial_RenderThread(FRHICommandListImmediate& RHICmdList)
 	{
 	}
@@ -167,13 +168,14 @@ protected:
 				RHICmdList.SetViewport(ViewportRect.Min.X, ViewportRect.Min.Y, 0.0f, ViewportRect.Max.X, ViewportRect.Max.Y, 1.0f);
 				RHICmdList.SetStreamSource(0, VertexBufferRHI, 0);
 
-				RHICmdList.DrawIndexedPrimitive(IndexBufferRHI, 0, 0, NumPrimitives==2? 4:8, 0, NumPrimitives, NumInstance);
+				RHICmdList.DrawIndexedPrimitive(IndexBufferRHI, 0, 0, NumVertices, 0, NumPrimitives, NumInstance);
 			});
 	}
 
 
 	void AddTextureBlurPass(FRDGBuilder& GraphBuilder,const FViewInfo& View,FRDGTextureRef InTexture,FRDGTextureRef& OutTexture,float BlurSize);
 
-private:
+protected:
 	uint32 NumPrimitives;
+	uint32 NumVertices;
 };

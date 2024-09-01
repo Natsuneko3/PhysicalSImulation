@@ -1,7 +1,5 @@
 ﻿#include  "/Engine/Public/Platform.ush"
 #include "/Engine/Private/Random.ush"
-RWBuffer<float> ParticleAttributeBuffer;
-RWBuffer<uint> ParticleIDBuffer;
 
 float3 GridSize;
 float dt;
@@ -25,23 +23,9 @@ ParticleContext SpawnParticle(uint DispatchThreadId)
 	ParticleContext Particle;
 	Particle.Age = 0.0;
 	Particle.Position = float3(RandBBSfloat(float(DispatchThreadId)), RandBBSfloat(float(DispatchThreadId + 2)), RandBBSfloat(float(DispatchThreadId + 3)));
-	Particle.Position = 0;//Particle.Position * 100 ;
+	Particle.Position *= 500 ;
 	//Particle.Position += 100;
 	Particle.Velocity = float3(0, 0, -9.8);
-	return Particle;
-}
-
-ParticleContext GetParticle(uint DispatchThreadId)
-{
-	ParticleContext Particle;
-	Particle.Age = ParticleAttributeBuffer[DispatchThreadId * NUMATTRIBUTE];
-	Particle.Position.x = ParticleAttributeBuffer[DispatchThreadId * NUMATTRIBUTE + 1];
-	Particle.Position.y = ParticleAttributeBuffer[DispatchThreadId * NUMATTRIBUTE + 2];
-	Particle.Position.z = ParticleAttributeBuffer[DispatchThreadId * NUMATTRIBUTE + 3];
-
-	Particle.Velocity.x = ParticleAttributeBuffer[DispatchThreadId * NUMATTRIBUTE + 4];
-	Particle.Velocity.y = ParticleAttributeBuffer[DispatchThreadId * NUMATTRIBUTE + 5];
-	Particle.Velocity.z = ParticleAttributeBuffer[DispatchThreadId * NUMATTRIBUTE + 6];
 	return Particle;
 }
 
@@ -57,17 +41,6 @@ ParticleContext GetParticle(Buffer<float> ParticleAttributeBuffer, uint Dispatch
 	Particle.Velocity.y = ParticleAttributeBuffer[DispatchThreadId * NUMATTRIBUTE + 5];
 	Particle.Velocity.z = ParticleAttributeBuffer[DispatchThreadId * NUMATTRIBUTE + 6];
 	return Particle;
-}
-
-void OutPutParticle(uint DispatchThreadId, ParticleContext Particle)
-{
-	ParticleAttributeBuffer[DispatchThreadId * NUMATTRIBUTE] = Particle.Age;
-	ParticleAttributeBuffer[DispatchThreadId * NUMATTRIBUTE + 1] = Particle.Position.x;
-	ParticleAttributeBuffer[DispatchThreadId * NUMATTRIBUTE + 2] = Particle.Position.y;
-	ParticleAttributeBuffer[DispatchThreadId * NUMATTRIBUTE + 3] = Particle.Position.z;
-	ParticleAttributeBuffer[DispatchThreadId * NUMATTRIBUTE + 4] = Particle.Velocity.x;
-	ParticleAttributeBuffer[DispatchThreadId * NUMATTRIBUTE + 5] = Particle.Velocity.y;
-	ParticleAttributeBuffer[DispatchThreadId * NUMATTRIBUTE + 6] = Particle.Velocity.z;
 }
 
 void OutPutParticle(RWBuffer<float>InParticleAttributeBuffer,uint DispatchThreadId, ParticleContext Particle)

@@ -10,11 +10,10 @@ groupshared uint GroupWriteStart;
 
 int ShaderType;
 RWTexture3D<float> RasterizeTexture;
+Buffer<float> ParticleAttributeBuffer;
 float GravityScale;
 float LifeTime;
-Buffer<uint> ParticleIDBufferSRV;
-Buffer<float> ParticleAttributeBufferSRV;
-
+RWBuffer<float> OutParticleAttributeBuffer;
 void ParticleToCell(uint DispatchThreadId )
 {
 	/*ParticleContext Particle = GetParticle(DispatchThreadId);
@@ -28,29 +27,24 @@ void ParticleToCell(uint DispatchThreadId )
 void CellToParticle(uint DispatchThreadId )
 {
 	int active = 1;
-	ParticleContext Particle = GetParticle(ParticleAttributeBufferSRV,DispatchThreadId);
+	ParticleContext Particle = GetParticle(ParticleAttributeBuffer,DispatchThreadId);
 	//GroupMemoryBarrierWithGroupSync();
 	Particle.Velocity += float3(0,0,-9.8);
 	Particle.Position += Particle.Velocity * dt;
 	Particle.Age += dt;
-	if(Particle.Age > LifeTime)
-	{
-		active = 0;
-		int DeadNum = 0;
-		InterlockedAdd(ParticleIDBuffer[0],1,DeadNum);
-	}
-	ParticleIDBuffer[DispatchThreadId + 1] = active;
-	//OutPutParticle(DispatchThreadId,Particle);
+	OutPutParticle(OutParticleAttributeBuffer,DispatchThreadId,Particle);
+
 }
 void Rasterize(uint DispatchThreadId)
 {
-	ParticleContext Particle = GetParticle(DispatchThreadId);
+	ParticleContext Particle = GetParticle(ParticleAttributeBuffer,DispatchThreadId);
 
 	Particle.Velocity += float3(0,0,-9.8);
+	//Particle.Velocity = Particle.Position.z < 1000? 0 : Particle.Velocity;
 	Particle.Position += Particle.Velocity * dt;
 	Particle.Age += dt;
-	OutPutParticle(DispatchThreadId,Particle);
-	float3 GridPosition = Particle.Position / (GridSize * dx);
+	OutPutParticle(OutParticleAttributeBuffer,DispatchThreadId,Particle);
+	/*float3 GridPosition = Particle.Position / (GridSize * dx);
 	GridPosition = saturate(GridPosition) * GridSize;
 	int Radius = 10;
 	for(int x = -Radius; x < Radius;x++)
@@ -67,7 +61,7 @@ void Rasterize(uint DispatchThreadId)
 	}
 
 	//RasterizeTexture[uint3(0,0,0)] = 1;
-	//InterlockedMax(RasterizeTexture[int3(GridPosition)],asfloat(a));
+	//InterlockedMax(RasterizeTexture[int3(GridPosition)],asfloat(a));*/
 
 }
 [numthreads(THREADGROUP_SIZEX, THREADGROUP_SIZEY, 1)]

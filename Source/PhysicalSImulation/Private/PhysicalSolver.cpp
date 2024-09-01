@@ -77,6 +77,7 @@ void FPhysicalSolverBase::InitialPlaneMesh(FRHICommandList& RHICmdList)
 	IndexBufferRHI = RHICmdList.CreateIndexBuffer(sizeof(uint16), IndexBuffer.GetResourceDataSize(), BUF_Static, CreateInfoIB);
 	//RHICreateIndexBuffer(sizeof(uint16), IndexBuffer.GetResourceDataSize(), static_cast<uint32>(BUF_Static), CreateInfoIB);
 	NumPrimitives = 2;
+	NumVertices = 4;
 }
 
 void FPhysicalSolverBase::InitialCubeMesh(FRHICommandList& RHICmdList)
@@ -139,6 +140,7 @@ void FPhysicalSolverBase::InitialCubeMesh(FRHICommandList& RHICmdList)
 	FRHIResourceCreateInfo CreateInfoIB(TEXT("PSCubeMeshIndexBuffer"), &IndexBuffer);
 	IndexBufferRHI = RHICmdList.CreateIndexBuffer(sizeof(uint16), IndexBuffer.GetResourceDataSize(), BUF_Static, CreateInfoIB);
 	NumPrimitives = 12;
+	NumVertices = 8;
 }
 
 void FPhysicalSolverBase::AddTextureBlurPass(FRDGBuilder& GraphBuilder, const FViewInfo& View, FRDGTextureRef InTexture, FRDGTextureRef& OutTexture, float BlurSize)

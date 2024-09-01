@@ -38,21 +38,19 @@ public:
 virtual void PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& View, const FPostProcessingInputs& Inputs) override;
 	virtual void Initial_RenderThread(FRHICommandListImmediate& RHICmdList) override;
 	virtual void Release() override;
-	void PostSimulation();
 
 	bool bIsInitial = false;
 
 	FIntVector GridSize;
-	float LastNumParticle;
+	int LastNumParticle;
 	uint32 DeadParticle;
 
 private:
 	int32 AllocatedInstanceCounts = 0;
-	TRefCountPtr<FRDGPooledBuffer> ParticleIDBufferPool;
+
 	TRefCountPtr<FRDGPooledBuffer> ParticleAttributeBufferPool;
 	TRefCountPtr<IPooledRenderTarget> RasterizeTexturePool;
 	FRHIGPUBufferReadback* ParticleReadback = nullptr;
 	FRHIGPUBufferReadback* ParticleIDReadback = nullptr;
-	void EnqueueGPUReadback(FRDGBuilder& GraphBuilder);
-	TArray<uint16>TestArray;
+
 };
