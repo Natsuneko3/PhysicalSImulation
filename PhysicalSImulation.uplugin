@@ -18,6 +18,11 @@
 			"Name": "PhysicalSImulation",
 			"Type": "Runtime",
 			"LoadingPhase": "PostConfigInit"
+		},
+		{
+			"Name": "CustomPostProcess",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
 		}
 	]
 }
