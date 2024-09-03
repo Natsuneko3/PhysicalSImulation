@@ -2,23 +2,17 @@
 #include "RenderAdapter.h"
 #include "TranslucentPostprocess.generated.h"
 
-USTRUCT(BlueprintType)
-struct FTranslucentParameterSet
+
+UCLASS(MinimalAPI)
+class UTranslucentPostProcess: public URenderAdapterBase
 {
-	GENERATED_BODY();
+public:
+	GENERATED_BODY()
+	UTranslucentPostProcess();
 
 	UPROPERTY(Category = CustomPostProcessVolume,EditAnywhere)
 	TArray<UMaterial*> Materials;
-};
 
-//UCLASS()
-class FTranslucentPostProcess: public FRenderAdapterBase
-{
-public:
-	//GENERATED_BODY();
-	FTranslucentPostProcess(FCPPSceneProxy* InSceneProxy,FTranslucentParameterSet* InParameterSet);
-
-	FTranslucentParameterSet* Parameters;
 	virtual void PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& View, const FPostProcessingInputs& Inputs) override;
 
 	virtual void Initial_RenderThread(FRHICommandListImmediate& RHICmdList) override;

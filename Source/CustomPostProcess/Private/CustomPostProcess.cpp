@@ -20,9 +20,10 @@ void FCustomPostProcessModule::StartupModule()
 	AddShaderSourceDirectoryMapping(TEXT("/Plugin/CustomPostProcess"), PluginShaderDir);*/
 	FPropertyEditorModule& PropertyModule = FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor");
 	PropertyModule.RegisterCustomClassLayout(
-		"CustomPostProcess",
-		FOnGetDetailCustomizationInstance::CreateStatic(&FCustomPostProcessDetalis::MakeInstance)
+		"CustomPostProcessVolume",
+		FOnGetDetailCustomizationInstance::CreateStatic(&FCustomPostProcessDetail::MakeInstance)
 	);
+	PropertyModule.NotifyCustomizationModuleChanged();
 }
 
 void FCustomPostProcessModule::ShutdownModule()

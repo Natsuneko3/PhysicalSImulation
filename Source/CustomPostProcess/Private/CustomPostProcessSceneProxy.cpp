@@ -9,33 +9,27 @@ DECLARE_STATS_GROUP(TEXT("Custom PostProcess"), STATGROUP_CPP, STATCAT_Advanced)
 FCPPSceneProxy::FCPPSceneProxy(UCustomPostProcessComponent* InComponent)
 	: FPrimitiveSceneProxy(InComponent), Component(InComponent)
 {
-	UCPPWorldSystem* SubSystem = InComponent->GetWorld()->GetSubsystem<UCPPWorldSystem>();
-	/*if (SubSystem)
+	/*UCPPWorldSystem* SubSystem = InComponent->GetWorld()->GetSubsystem<UCPPWorldSystem>();
+	if (SubSystem)
 	{
 		ViewExtension = SubSystem->CustomPostProcessViewExtension;
-		for(FCustomPostProcessSet* CustomPostProcess : &Component->GetCPPVolume()->CustomPostProcessSet)
-		{
-			switch (CustomPostProcess->Feature)
-			{
-			case 0:
-				RenderAdapters.Add(new FTranslucentPostProcess(this,&CustomPostProcess->PostProcessSetMaterial));
-				break;
-			case 1:
-			case 2:
-			case 3:
-			case 4:
-				break;
-			}
-		}
-	}*/
-	ENQUEUE_RENDER_COMMAND(InitPhysicalSolver)(
+		RenderAdapters = Component->GetCPPVolume()->RenderFeatures;
+	}
+	if(RenderAdapters.Num() > 0)
+	{
+		ENQUEUE_RENDER_COMMAND(InitPhysicalSolver)(
 		[this](FRHICommandListImmediate& RHICmdList)
 		{
-			for(FRenderAdapterBase* RednerAdapter:RenderAdapters)
+			for(URenderAdapterBase* RednerAdapter:RenderAdapters)
 			{
-				RednerAdapter->Initial_RenderThread(RHICmdList);
+				if(RednerAdapter)
+				{
+					RednerAdapter->Initial_RenderThread(RHICmdList);
+				}
 			}
 		});
+	}*/
+
 }
 
 FCPPSceneProxy::~FCPPSceneProxy()
@@ -51,19 +45,19 @@ SIZE_T FCPPSceneProxy::GetTypeHash() const
 	return reinterpret_cast<size_t>(&UniquePointer);
 }
 
-void FCPPSceneProxy::CreateRenderThreadResources()
+void FCPPSceneProxy::CreateRenderThreadResources(FRHICommandListBase& RHICmdList)
 {
-	FPrimitiveSceneProxy::CreateRenderThreadResources();
+	FPrimitiveSceneProxy::CreateRenderThreadResources(RHICmdList);
 	if (ViewExtension)
 	{
-		ViewExtension->AddProxy(this);
+		//ViewExtension->AddProxy(this);
 	}
 }
 
 void FCPPSceneProxy::DestroyRenderThreadResources()
 {
-	if (ViewExtension)
-		ViewExtension->RemoveProxy(this);
+	if (ViewExtension){}
+		//ViewExtension->RemoveProxy(this);
 }
 
 // These setups associated volume mesh for built-in Unreal passes.

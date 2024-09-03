@@ -1,20 +1,16 @@
 #pragma once
-//#include "RenderAdapter.generated.h"
-
-#include "PostProcess/PostProcessing.h"
+#include "PostProcess/PostProcessInputs.h"
+#include "RenderAdapter.generated.h"
 class FCPPSceneProxy;
 
-//UCLASS(BlueprintType)
-class FRenderAdapterBase //:public UObject
+UCLASS(Abstract,hidecategories=(Object), MinimalAPI)
+class URenderAdapterBase :public UObject
 {
-	//GENERATED_BODY()
+	GENERATED_BODY()
 public:
 
-	//RenderAdapterBase();
-	FRenderAdapterBase(FCPPSceneProxy* InSceneProxy)
-	{
-		SceneProxy = InSceneProxy;
-	}
+	URenderAdapterBase()
+	{SceneProxy = nullptr;}
 
 	virtual void Initial_RenderThread(FRHICommandListImmediate& RHICmdList)
 	{

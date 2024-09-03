@@ -28,7 +28,8 @@ public class CustomPostProcess : ModuleRules
                 "Renderer",
                 "RenderCore",
                 "RHI",
-                "RHICore"
+                "RHICore",
+                "UnrealEd"
             }
         );
     }

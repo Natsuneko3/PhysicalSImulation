@@ -24,11 +24,14 @@ void FCPPViewExtension::PreRenderView_RenderThread(FRDGBuilder& GraphBuilder, FS
 	for (FCPPSceneProxy* SceneProxy : SceneProxies)
 	{
 		//SceneProxy->PhysicalSolver->SetParameter(SceneProxy);
-		if (SceneProxy)
+		if (SceneProxy && SceneProxy->RenderAdapters.Num() > 0)
 		{
-			for(FRenderAdapterBase* RenderAdapter: SceneProxy->RenderAdapters)
+			for(URenderAdapterBase* RenderAdapter: SceneProxy->RenderAdapters)
 			{
-				RenderAdapter->PreRenderView_RenderThread(GraphBuilder, InView);
+				if(RenderAdapter)
+				{
+					RenderAdapter->PreRenderView_RenderThread(GraphBuilder, InView);
+				}
 			}
 		}
 	}
@@ -49,13 +52,18 @@ bool FCPPViewExtension::IsActiveThisFrame_Internal(const FSceneViewExtensionCont
 
 void FCPPViewExtension::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& View, const FPostProcessingInputs& Inputs)
 {
+
 	for (FCPPSceneProxy* SceneProxy : SceneProxies)
 	{
-		if (SceneProxy)
+		//SceneProxy->PhysicalSolver->SetParameter(SceneProxy);
+		if (SceneProxy && SceneProxy->RenderAdapters.Num() > 0)
 		{
-			for(FRenderAdapterBase* RenderAdapter: SceneProxy->RenderAdapters)
+			for(URenderAdapterBase* RenderAdapter: SceneProxy->RenderAdapters)
 			{
-				RenderAdapter->PrePostProcessPass_RenderThread(GraphBuilder, View,Inputs);
+				if(RenderAdapter)
+				{
+					RenderAdapter->PrePostProcessPass_RenderThread(GraphBuilder, View,Inputs);
+				}
 			}
 		}
 	}
