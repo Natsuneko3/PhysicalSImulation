@@ -1,11 +1,13 @@
 ﻿#include "CustomPostProcess.h"
+
+#include "CustomPostProcessDetalis.h"
 #include "Misc/Paths.h"
 #include "ShaderCore.h"
 #define LOCTEXT_NAMESPACE "FCustomPostProcessModule"
 
 void FCustomPostProcessModule::StartupModule()
 {
-	FString PluginShaderDir = FPaths::Combine(FPaths::ProjectPluginsDir(), TEXT("OutsidePlugins/PhysicalSImulation/Shaders"));
+	/*FString PluginShaderDir = FPaths::Combine(FPaths::ProjectPluginsDir(), TEXT("OutsidePlugins/PhysicalSImulation/Shaders"));
 	if(!FPaths::DirectoryExists(PluginShaderDir))
 	{
 		PluginShaderDir = FPaths::Combine(FPaths::ProjectPluginsDir(), TEXT("PhysicalSImulation/Shaders"));
@@ -15,7 +17,12 @@ void FCustomPostProcessModule::StartupModule()
 		PluginShaderDir = FPaths::Combine(FPaths::EnginePluginsDir(), TEXT("PhysicalSImulation/Shaders"));
 	}
 
-	AddShaderSourceDirectoryMapping(TEXT("/Plugin/CustomPostProcess"), PluginShaderDir);
+	AddShaderSourceDirectoryMapping(TEXT("/Plugin/CustomPostProcess"), PluginShaderDir);*/
+	FPropertyEditorModule& PropertyModule = FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor");
+	PropertyModule.RegisterCustomClassLayout(
+		"CustomPostProcess",
+		FOnGetDetailCustomizationInstance::CreateStatic(&FCustomPostProcessDetalis::MakeInstance)
+	);
 }
 
 void FCustomPostProcessModule::ShutdownModule()

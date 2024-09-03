@@ -26,7 +26,7 @@ void FCPPViewExtension::PreRenderView_RenderThread(FRDGBuilder& GraphBuilder, FS
 		//SceneProxy->PhysicalSolver->SetParameter(SceneProxy);
 		if (SceneProxy)
 		{
-			for(URenderAdapterBase* RenderAdapter: SceneProxy->RenderAdapters)
+			for(FRenderAdapterBase* RenderAdapter: SceneProxy->RenderAdapters)
 			{
 				RenderAdapter->PreRenderView_RenderThread(GraphBuilder, InView);
 			}
@@ -53,7 +53,7 @@ void FCPPViewExtension::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilde
 	{
 		if (SceneProxy)
 		{
-			for(URenderAdapterBase* RenderAdapter: SceneProxy->RenderAdapters)
+			for(FRenderAdapterBase* RenderAdapter: SceneProxy->RenderAdapters)
 			{
 				RenderAdapter->PrePostProcessPass_RenderThread(GraphBuilder, View,Inputs);
 			}
@@ -61,7 +61,7 @@ void FCPPViewExtension::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilde
 	}
 }
 
-void FCPPViewExtension::AddProxy(FCPPSceneProxy* Proxy, FRHICommandListBase& RHICmdList)
+void FCPPViewExtension::AddProxy(FCPPSceneProxy* Proxy)
 {
 	if (SceneProxies.Find(Proxy) == INDEX_NONE)
 	{

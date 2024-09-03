@@ -26,7 +26,7 @@ public:
 	virtual void PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& View, const FPostProcessingInputs& Inputs) override;
 	//~ End ISceneViewExtension Interface
 
-	void AddProxy(FCPPSceneProxy* Proxy,FRHICommandListBase& RHICmdList);
+	void AddProxy(FCPPSceneProxy* Proxy);
 	void RemoveProxy(FCPPSceneProxy* Proxy);
 	void Render_RenderThread(FPostOpaqueRenderParameters& Parameters);
 	void Initial(FRHICommandListBase& RHICmdList);

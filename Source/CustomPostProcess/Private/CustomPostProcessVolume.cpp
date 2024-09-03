@@ -8,6 +8,7 @@ ACustomPostProcessVolume::ACustomPostProcessVolume()
 	PrimaryActorTick.bCanEverTick = true;
 	CPPComponent = CreateDefaultSubobject<UCustomPostProcessComponent>(TEXT("CustomPostProcessComponent"));
 	SetRootComponent(CPPComponent);
+	CPPComponent->SetPostProcessVolume(this);
 }
 
 // Called when the game starts or when spawned

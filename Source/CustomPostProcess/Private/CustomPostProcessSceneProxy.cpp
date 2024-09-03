@@ -1,17 +1,41 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
 #include "CustomPostProcessSceneProxy.h"
 #include "CustomPostProcessViewExtension.h"
+#include "CustomPostProcessVolume.h"
 #include "CustomPostProcessWorldSystem.h"
+#include "TranslucentPP/TranslucentPostprocess.h"
 DECLARE_STATS_GROUP(TEXT("Custom PostProcess"), STATGROUP_CPP, STATCAT_Advanced)
 
 FCPPSceneProxy::FCPPSceneProxy(UCustomPostProcessComponent* InComponent)
 	: FPrimitiveSceneProxy(InComponent), Component(InComponent)
 {
 	UCPPWorldSystem* SubSystem = InComponent->GetWorld()->GetSubsystem<UCPPWorldSystem>();
-	if (SubSystem)
+	/*if (SubSystem)
 	{
 		ViewExtension = SubSystem->CustomPostProcessViewExtension;
-	}
+		for(FCustomPostProcessSet* CustomPostProcess : &Component->GetCPPVolume()->CustomPostProcessSet)
+		{
+			switch (CustomPostProcess->Feature)
+			{
+			case 0:
+				RenderAdapters.Add(new FTranslucentPostProcess(this,&CustomPostProcess->PostProcessSetMaterial));
+				break;
+			case 1:
+			case 2:
+			case 3:
+			case 4:
+				break;
+			}
+		}
+	}*/
+	ENQUEUE_RENDER_COMMAND(InitPhysicalSolver)(
+		[this](FRHICommandListImmediate& RHICmdList)
+		{
+			for(FRenderAdapterBase* RednerAdapter:RenderAdapters)
+			{
+				RednerAdapter->Initial_RenderThread(RHICmdList);
+			}
+		});
 }
 
 FCPPSceneProxy::~FCPPSceneProxy()
@@ -27,12 +51,12 @@ SIZE_T FCPPSceneProxy::GetTypeHash() const
 	return reinterpret_cast<size_t>(&UniquePointer);
 }
 
-void FCPPSceneProxy::CreateRenderThreadResources(FRHICommandListBase& RHICmdList)
+void FCPPSceneProxy::CreateRenderThreadResources()
 {
-	FPrimitiveSceneProxy::CreateRenderThreadResources(RHICmdList);
+	FPrimitiveSceneProxy::CreateRenderThreadResources();
 	if (ViewExtension)
 	{
-		ViewExtension->AddProxy(this, RHICmdList);
+		ViewExtension->AddProxy(this);
 	}
 }
 

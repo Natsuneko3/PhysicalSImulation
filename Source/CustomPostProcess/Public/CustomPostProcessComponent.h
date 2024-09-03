@@ -7,19 +7,29 @@
 #include "CustomPostProcessComponent.generated.h"
 
 
+class ACustomPostProcessVolume;
+
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
 class CUSTOMPOSTPROCESS_API UCustomPostProcessComponent : public UPrimitiveComponent
 {
 	GENERATED_BODY()
 
 public:
+
 	// Sets default values for this component's properties
 	UCustomPostProcessComponent();
-
+	void SetPostProcessVolume(ACustomPostProcessVolume* InPostProcessVolume)
+	{
+		PostProcessVolume = InPostProcessVolume;
+	}
+	ACustomPostProcessVolume* GetCPPVolume(){return PostProcessVolume;}
 
 protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;
+	virtual FPrimitiveSceneProxy* CreateSceneProxy() override;
+	ACustomPostProcessVolume* PostProcessVolume;
+
 public:
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;

@@ -1,19 +1,17 @@
 #pragma once
-#include "PostProcess/PostProcessInputs.h"
-#include "RenderAdapter.generated.h"
+//#include "RenderAdapter.generated.h"
 
+#include "PostProcess/PostProcessing.h"
 class FCPPSceneProxy;
 
-
-
-UCLASS(BlueprintType)
-class URenderAdapterBase :public UObject
+//UCLASS(BlueprintType)
+class FRenderAdapterBase //:public UObject
 {
-	GENERATED_BODY()
+	//GENERATED_BODY()
 public:
 
-	URenderAdapterBase();
-	URenderAdapterBase(FCPPSceneProxy* InSceneProxy)
+	//RenderAdapterBase();
+	FRenderAdapterBase(FCPPSceneProxy* InSceneProxy)
 	{
 		SceneProxy = InSceneProxy;
 	}
@@ -36,24 +34,4 @@ public:
 	FCPPSceneProxy* SceneProxy;
 };
 
-USTRUCT()
-struct FTestStruct
-{
-	GENERATED_BODY()
-	UPROPERTY(EditAnywhere)
-	int Frame = 0;
 
-	UPROPERTY()
-	URenderAdapterBase* RenderAdapter;
-};
-
-
-UCLASS(BlueprintType)
-class UTestRenderAdapter :public URenderAdapterBase
-{
-	GENERATED_BODY()
-public:
-	UPROPERTY(EditAnywhere)
-	int testFrame = 0;
-	UTestRenderAdapter();
-};
