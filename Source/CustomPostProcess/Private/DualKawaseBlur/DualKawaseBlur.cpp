@@ -29,9 +29,6 @@ class FDualKawaseBlurDCS : public FGlobalShader
 
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters,)
 		SHADER_PARAMETER(FVector4f, ViewSize)
-		/*SHADER_PARAMETER_STRUCT_REF(FViewUniformShaderParameters, View)
-		SHADER_PARAMETER_RDG_UNIFORM_BUFFER(FSceneTextureUniformParameters, SceneTextures)
-		SHADER_PARAMETER(FVector4f, HZBUvFactorAndInvFactor)*/
 		SHADER_PARAMETER_STRUCT_REF(FViewUniformShaderParameters, View)
 		SHADER_PARAMETER_SAMPLER(SamplerState, Sampler)
 		SHADER_PARAMETER_RDG_TEXTURE(Texture2D, Intexture)
@@ -60,9 +57,6 @@ class FDualKawaseBlurUCS : public FGlobalShader
 
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters,)
 		SHADER_PARAMETER(FVector4f, ViewSize)
-		/*SHADER_PARAMETER_STRUCT_REF(FViewUniformShaderParameters, View)
-		SHADER_PARAMETER_RDG_UNIFORM_BUFFER(FSceneTextureUniformParameters, SceneTextures)
-		SHADER_PARAMETER(FVector4f, HZBUvFactorAndInvFactor)*/
 		SHADER_PARAMETER_STRUCT_REF(FViewUniformShaderParameters, View)
 		SHADER_PARAMETER_RDG_TEXTURE(Texture2D, Intexture)
 		SHADER_PARAMETER_SAMPLER(SamplerState, Sampler)
@@ -116,29 +110,27 @@ void UDualKawaseBlur::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder,
 	FRDGTextureDesc TextureDesc = (*Inputs.SceneTextures)->SceneColorTexture->Desc;
 	FRDGTextureRef TempTexture = GraphBuilder.CreateTexture(TextureDesc,TEXT("OutSceneColor"));
 	FRDGTextureRef SceneColor = (*Inputs.SceneTextures)->SceneColorTexture;
-	AddCopyTexturePass(GraphBuilder,TempTexture,SceneColor);
+	AddCopyTexturePass(GraphBuilder,SceneColor,TempTexture);
 
 	TextureDesc.Flags = ETextureCreateFlags::UAV;
 
-	FScreenPassTexture OutPass;
 	if (!bUseGaussianPass)
 	{
 		RDG_EVENT_SCOPE(GraphBuilder, "DualKawaseBlurCompute");
 		for (int i = 0; i < PassNum; ++i)
 		{
-			FScreenPassRenderTarget OutSceneRenderTarget(GraphBuilder.CreateTexture(TextureDesc, TEXT("DluaKawaseDownPass")), ERenderTargetLoadAction::ELoad);
-			AddClearUAVPass(GraphBuilder,GraphBuilder.CreateUAV(OutSceneRenderTarget.Texture),0.f);
-			FRDGTextureUAVRef Outexture = GraphBuilder.CreateUAV(OutSceneRenderTarget.Texture);
+			FRDGTextureRef OutPutTexture =  GraphBuilder.CreateTexture(TextureDesc, TEXT("DluaKawaseDownPass"));
+
 			FDualKawaseBlurDCS::FParameters* PassParameters = GraphBuilder.AllocParameters<FDualKawaseBlurDCS::FParameters>();
 			PassParameters->Intexture = TempTexture;
 			PassParameters->ViewSize = FVector4f(TextureDesc.Extent.X, TextureDesc.Extent.Y, Offset, 0);
 			PassParameters->View = View.ViewUniformBuffer;
 			PassParameters->Sampler = TStaticSamplerState<SF_Point, AM_Clamp, AM_Clamp, AM_Clamp>::GetRHI();
-			PassParameters->OutTexture = Outexture;
+			PassParameters->OutTexture = GraphBuilder.CreateUAV(OutPutTexture);;
 
 			TShaderMapRef<FDualKawaseBlurDCS> ComputeShader(ViewInfo.ShaderMap);
 			FComputeShaderUtils::AddPass(GraphBuilder,
-			                             RDG_EVENT_NAME("DualKawaseBlurDownSample %dx%d (CS)", Outexture->Desc.Texture->Desc.Extent.X, Outexture->Desc.Texture->Desc.Extent.Y),
+			                             RDG_EVENT_NAME("DualKawaseBlurDownSample %dx%d (CS)", TextureDesc.Extent.X, TextureDesc.Extent.Y),
 			                             ComputeShader,
 			                             PassParameters,
 			                             FComputeShaderUtils::GetGroupCount(TextureDesc.Extent, FIntPoint(32, 32)));
@@ -146,7 +138,7 @@ void UDualKawaseBlur::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder,
 			TextureDesc.Extent.X = TextureDesc.Extent.X / 2;
 			TextureDesc.Extent.Y = TextureDesc.Extent.Y / 2;
 
-			TempTexture = Outexture->Desc.Texture;
+			TempTexture = OutPutTexture;
 		}
 
 		for (int i = 0; i < PassNum; ++i)
@@ -154,44 +146,38 @@ void UDualKawaseBlur::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder,
 			TextureDesc.Extent.X = TextureDesc.Extent.X * 2;
 			TextureDesc.Extent.Y = TextureDesc.Extent.Y * 2;
 
-			FScreenPassRenderTarget OutSceneRenderTarget(GraphBuilder.CreateTexture(TextureDesc, TEXT("DluaKawaseUpPass")), ERenderTargetLoadAction::ELoad);
+			FRDGTextureRef OutPutTexture = GraphBuilder.CreateTexture(TextureDesc, TEXT("DluaKawaseDownPass"));;
 
-			FRDGTextureUAVRef Outexture = GraphBuilder.CreateUAV(OutSceneRenderTarget.Texture);
 			FDualKawaseBlurUCS::FParameters* PassParameters = GraphBuilder.AllocParameters<FDualKawaseBlurUCS::FParameters>();
 			PassParameters->Intexture = TempTexture;
 			PassParameters->ViewSize = FVector4f(TextureDesc.Extent.X, TextureDesc.Extent.Y, Offset, 0);
 			PassParameters->View = View.ViewUniformBuffer;
 			PassParameters->Sampler = TStaticSamplerState<SF_Point, AM_Clamp, AM_Clamp, AM_Clamp>::GetRHI();
-			PassParameters->OutTexture = Outexture;
+			PassParameters->OutTexture = GraphBuilder.CreateUAV(OutPutTexture);;
 
 			TShaderMapRef<FDualKawaseBlurUCS> ComputeShader(ViewInfo.ShaderMap);
 			FComputeShaderUtils::AddPass(GraphBuilder,
-			                             RDG_EVENT_NAME("DualKawaseBlurUpSample %dx%d (CS)", Outexture->Desc.Texture->Desc.Extent.X, Outexture->Desc.Texture->Desc.Extent.Y),
+			                             RDG_EVENT_NAME("DualKawaseBlurUpSample %dx%d (CS)", TextureDesc.Extent.X, TextureDesc.Extent.Y),
 			                             ComputeShader,
 			                             PassParameters,
 			                             FComputeShaderUtils::GetGroupCount(TextureDesc.Extent, FIntPoint(32, 32)));
-			TempTexture = Outexture->Desc.Texture;
+			TempTexture = OutPutTexture;
 
-
-			OutPass = OutSceneRenderTarget;
 		}
-
+		AddCopyTexturePass(GraphBuilder,TempTexture,SceneColor);
+		//SceneColor = MoveTemp(TempTexture);
 	}
 	else
 	{
 		RDG_EVENT_SCOPE(GraphBuilder, "GaussainBlur");
-		TextureDesc.Flags = ETextureCreateFlags::UAV;
-		TextureDesc.Extent *= 1/0.77;
-		FScreenPassRenderTarget OutSceneRenderTarget(GraphBuilder.CreateTexture(TextureDesc, TEXT("DluaKawaseUpPass")), ERenderTargetLoadAction::EClear);
-
-		FRDGTextureUAVRef Outexture = GraphBuilder.CreateUAV(OutSceneRenderTarget.Texture);
+		//TextureDesc.Flags = ETextureCreateFlags::UAV;
+		//TextureDesc.Extent *= 1/0.77;
 		FGaussianBlurCS::FParameters* PassParameters = GraphBuilder.AllocParameters<FGaussianBlurCS::FParameters>();
 		PassParameters->Intexture = TempTexture;
 		PassParameters->ViewSize = FVector4f(TextureDesc.Extent.X, TextureDesc.Extent.Y, Offset, 0);
 		PassParameters->View = View.ViewUniformBuffer;
 		PassParameters->Sampler = TStaticSamplerState<SF_Point, AM_Clamp, AM_Clamp, AM_Clamp>::GetRHI();
-		PassParameters->OutTexture = Outexture;
-		TempTexture = Outexture->Desc.Texture;
+		PassParameters->OutTexture = GraphBuilder.CreateUAV(SceneColor);
 		TShaderMapRef<FGaussianBlurCS> ComputeShader(ViewInfo.ShaderMap);
 		FComputeShaderUtils::AddPass(GraphBuilder,
 									 RDG_EVENT_NAME("GaussianBlur %dx%d (CS)", TextureDesc.Extent.X, TextureDesc.Extent.Y),
@@ -199,11 +185,6 @@ void UDualKawaseBlur::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder,
 									 PassParameters,
 									 FComputeShaderUtils::GetGroupCount(TextureDesc.Extent, FIntPoint(32, 32)));
 
-		OutPass = OutSceneRenderTarget;
-	}
-	if(OutPass.IsValid())
-	{
-		AddCopyTexturePass(GraphBuilder,OutPass.Texture,SceneColor);
 	}
 
 }

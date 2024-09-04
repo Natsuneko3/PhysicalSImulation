@@ -4,7 +4,7 @@
 
 #include "BilateralFilter.generated.h"
 
-UCLASS(NotBlueprintable, MinimalAPI)
+UCLASS(NotBlueprintable, MinimalAPI,DisplayName="Blur-BilateralFilter")
 class UBilateralFilter: public URenderAdapterBase
 {
 public:

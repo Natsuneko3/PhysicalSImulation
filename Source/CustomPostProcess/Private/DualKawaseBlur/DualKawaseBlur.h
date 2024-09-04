@@ -7,7 +7,7 @@
 #include "SceneViewExtension.h"
 #include "DualKawaseBlur.generated.h"
 
-UCLASS(NotBlueprintable, MinimalAPI)
+UCLASS(NotBlueprintable, MinimalAPI,DisplayName="Blur-DualKawase")
 
 class  UDualKawaseBlur : public URenderAdapterBase
 {
@@ -17,8 +17,13 @@ public:
 
 	virtual void PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& View, const FPostProcessingInputs& Inputs) override;
 
-	float Offset;
+	UPROPERTY(EditAnywhere,meta=(DisplayName="Blur Size"))
+	float Offset = 1.0;
+
+	UPROPERTY(EditAnywhere)
 	bool bUseGaussianPass;
-	int PassNum = 1;
+
+	UPROPERTY(EditAnywhere)
+	int PassNum = 4;
 
 };
