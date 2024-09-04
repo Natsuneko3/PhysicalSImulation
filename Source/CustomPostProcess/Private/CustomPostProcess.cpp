@@ -1,6 +1,5 @@
 ﻿#include "CustomPostProcess.h"
 
-#include "CustomPostProcessDetalis.h"
 #include "Misc/Paths.h"
 #include "ShaderCore.h"
 #define LOCTEXT_NAMESPACE "FCustomPostProcessModule"
@@ -18,12 +17,6 @@ void FCustomPostProcessModule::StartupModule()
 	}
 
 	AddShaderSourceDirectoryMapping(TEXT("/Plugin/CustomPostProcess"), PluginShaderDir);*/
-	FPropertyEditorModule& PropertyModule = FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor");
-	PropertyModule.RegisterCustomClassLayout(
-		"CustomPostProcessVolume",
-		FOnGetDetailCustomizationInstance::CreateStatic(&FCustomPostProcessDetail::MakeInstance)
-	);
-	PropertyModule.NotifyCustomizationModuleChanged();
 }
 
 void FCustomPostProcessModule::ShutdownModule()

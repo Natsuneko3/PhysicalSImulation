@@ -17,11 +17,11 @@ class CUSTOMPOSTPROCESS_API FCPPSceneProxy : public FPrimitiveSceneProxy
 public:
 	FCPPSceneProxy( UCustomPostProcessComponent* InComponent);
 	~FCPPSceneProxy();
-	TArray<TObjectPtr<URenderAdapterBase>> RenderAdapters;
+	TArray<TObjectPtr<URenderAdapterBase>>* RenderAdapters;
 protected:
 
 	virtual SIZE_T GetTypeHash() const override;
-	virtual void CreateRenderThreadResources(FRHICommandListBase& RHICmdList) override;
+	virtual void CreateRenderThreadResources() override;
 
 	virtual void DestroyRenderThreadResources() override;
 	virtual void GetDynamicMeshElements(const TArray<const FSceneView*>& Views, const FSceneViewFamily& ViewFamily, uint32 VisibilityMap, FMeshElementCollector& Collector) const override;

@@ -6,7 +6,7 @@
 
 UCustomPostProcessComponent::UCustomPostProcessComponent()
 {
-	PrimaryComponentTick.bCanEverTick = true;
+	PrimaryComponentTick.bCanEverTick = false;
 }
 
 // Called when the game starts

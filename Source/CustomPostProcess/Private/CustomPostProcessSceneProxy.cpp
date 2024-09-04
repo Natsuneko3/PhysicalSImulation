@@ -9,13 +9,13 @@ DECLARE_STATS_GROUP(TEXT("Custom PostProcess"), STATGROUP_CPP, STATCAT_Advanced)
 FCPPSceneProxy::FCPPSceneProxy(UCustomPostProcessComponent* InComponent)
 	: FPrimitiveSceneProxy(InComponent), Component(InComponent)
 {
-	/*UCPPWorldSystem* SubSystem = InComponent->GetWorld()->GetSubsystem<UCPPWorldSystem>();
+	UCPPWorldSystem* SubSystem = InComponent->GetWorld()->GetSubsystem<UCPPWorldSystem>();
 	if (SubSystem)
 	{
 		ViewExtension = SubSystem->CustomPostProcessViewExtension;
-		RenderAdapters = Component->GetCPPVolume()->RenderFeatures;
+		RenderAdapters = &Component->RenderFeatures;
 	}
-	if(RenderAdapters.Num() > 0)
+	if(RenderAdapters->Num() > 0)
 	{
 		ENQUEUE_RENDER_COMMAND(InitPhysicalSolver)(
 		[this](FRHICommandListImmediate& RHICmdList)
@@ -28,14 +28,14 @@ FCPPSceneProxy::FCPPSceneProxy(UCustomPostProcessComponent* InComponent)
 				}
 			}
 		});
-	}*/
+	}
 
 }
 
 FCPPSceneProxy::~FCPPSceneProxy()
 {
 	ViewExtension.Reset();
-	RenderAdapters.Empty();
+	RenderAdapters->Empty();
 }
 
 
@@ -45,12 +45,12 @@ SIZE_T FCPPSceneProxy::GetTypeHash() const
 	return reinterpret_cast<size_t>(&UniquePointer);
 }
 
-void FCPPSceneProxy::CreateRenderThreadResources(FRHICommandListBase& RHICmdList)
+void FCPPSceneProxy::CreateRenderThreadResources()
 {
-	FPrimitiveSceneProxy::CreateRenderThreadResources(RHICmdList);
+	FPrimitiveSceneProxy::CreateRenderThreadResources();
 	if (ViewExtension)
 	{
-		//ViewExtension->AddProxy(this);
+		ViewExtension->AddProxy(this);
 	}
 }
 

@@ -4,9 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "CustomPostProcessComponent.h"
-#include "RenderAdapter.h"
+#include "CustomPostProcessViewExtension.h"
 #include "GameFramework/Volume.h"
-#include "TranslucentPP/TranslucentPostprocess.h"
 #include "CustomPostProcessVolume.generated.h"
 
 UENUM(BlueprintType)
@@ -28,9 +27,10 @@ class CUSTOMPOSTPROCESS_API ACustomPostProcessVolume : public AVolume
 public:
 	// Sets default values for this actor's properties
 	ACustomPostProcessVolume(const FObjectInitializer& ObjectInitializer);
+	virtual void Tick(float DeltaTime) override;
 
-	UPROPERTY(Category = CustomPostProcess,EditAnywhere,Instanced)
-	TObjectPtr<URenderAdapterBase> RenderFeatures;
+	UPROPERTY(EditAnywhere, Instanced, BlueprintReadWrite, Category = CustomPostProcess)
+	TArray<TObjectPtr<URenderAdapterBase>> RenderFeatures;
 protected:
 	/** The component that defines the transform (location, rotation, scale) of this Actor in the world, all other components must be attached to this one somehow */
 	UPROPERTY(Category = Collision, VisibleAnywhere, BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
@@ -38,7 +38,6 @@ protected:
 
 	virtual void BeginPlay() override;
 
-public:
-	// Called every frame
-	virtual void Tick(float DeltaTime) override;
+private:
+	TSharedPtr<FCPPViewExtension> ViewExtension;
 };
