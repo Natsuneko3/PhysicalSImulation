@@ -7,14 +7,21 @@ ACustomPostProcessVolume::ACustomPostProcessVolume(const FObjectInitializer& Obj
 {
 	PrimaryActorTick.bCanEverTick = true;
 	CPPComponent = CreateDefaultSubobject<UCustomPostProcessComponent>(TEXT("CustomPostProcessComponent"));
-	SetRootComponent(CPPComponent);
 	CPPComponent->RenderFeatures = RenderFeatures;
+	SetRootComponent(CPPComponent);
 }
 
 // Called when the game starts or when spawned
 void ACustomPostProcessVolume::BeginPlay()
 {
 
+}
+
+
+void ACustomPostProcessVolume::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
+{
+	Super::PostEditChangeProperty(PropertyChangedEvent);
+	CPPComponent->RenderFeatures = RenderFeatures;
 }
 
 // Called every frame

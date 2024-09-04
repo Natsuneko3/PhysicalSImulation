@@ -17,7 +17,8 @@ class CUSTOMPOSTPROCESS_API FCPPSceneProxy : public FPrimitiveSceneProxy
 public:
 	FCPPSceneProxy( UCustomPostProcessComponent* InComponent);
 	~FCPPSceneProxy();
-	TArray<TObjectPtr<URenderAdapterBase>>* RenderAdapters;
+	//TArray<TObjectPtr<URenderAdapterBase>> RenderAdapters;
+	UCustomPostProcessComponent* Component = nullptr;
 protected:
 
 	virtual SIZE_T GetTypeHash() const override;
@@ -31,5 +32,5 @@ protected:
 
 private:
 	TSharedPtr<FCPPViewExtension>  ViewExtension;
-	UCustomPostProcessComponent* Component = nullptr;
+
 };

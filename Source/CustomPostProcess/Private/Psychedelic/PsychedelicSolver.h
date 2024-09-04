@@ -1,7 +1,32 @@
 #pragma once
 #include "RenderAdapter.h"
+#include "Engine/Texture.h"
 #include "PsychedelicSolver.generated.h"
 
+BEGIN_SHADER_PARAMETER_STRUCT(FSolverBaseParameter, CUSTOMPOSTPROCESS_API)
+	SHADER_PARAMETER(FVector3f, GridSize)
+	SHADER_PARAMETER(int, Time)
+	SHADER_PARAMETER(float, dt)
+	SHADER_PARAMETER(float, dx)
+	SHADER_PARAMETER_SAMPLER(SamplerState, WarpSampler)
+	SHADER_PARAMETER_STRUCT_REF(FViewUniformShaderParameters, View)
+END_SHADER_PARAMETER_STRUCT()
+
+BEGIN_SHADER_PARAMETER_STRUCT(FFluidParameter, CUSTOMPOSTPROCESS_API)
+	SHADER_PARAMETER_STRUCT_INCLUDE(FSolverBaseParameter, SolverBaseParameter)
+	SHADER_PARAMETER(float, VorticityMult)
+	SHADER_PARAMETER(float, NoiseFrequency)
+	SHADER_PARAMETER(float, NoiseIntensity)
+	SHADER_PARAMETER(float, VelocityDissipate)
+	SHADER_PARAMETER(float, DensityDissipate)
+	SHADER_PARAMETER(float, GravityScale)
+SHADER_PARAMETER(int, UseFFT)
+SHADER_PARAMETER(FVector3f, WorldPosition)
+SHADER_PARAMETER(FVector3f, WorldVelocity)
+	SHADER_PARAMETER_TEXTURE(Texture2D, InTexture)
+SHADER_PARAMETER_SAMPLER(SamplerState, SimSampler)
+SHADER_PARAMETER_SAMPLER(SamplerState, InTextureSampler)
+END_SHADER_PARAMETER_STRUCT()
 
 
 USTRUCT(BlueprintType)
@@ -41,8 +66,7 @@ public:
 	virtual void Initial_RenderThread(FRHICommandListImmediate& RHICmdList) override;
 	virtual void PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& View, const FPostProcessingInputs& Inputs) override;
 	//void SolverPreesure(FRDGTextureRef InPressure);
-	UPROPERTY(EditAnywhere)
-	FIntPoint GridSize;
+
 
 	UPROPERTY(EditAnywhere)
 	FPlandFluidParameters PlandFluidParameters;

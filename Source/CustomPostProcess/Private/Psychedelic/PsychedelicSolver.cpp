@@ -1,7 +1,9 @@
 #include "PsychedelicSolver.h"
-#include "PostProcess/PostProcessDownsample.h"
 #include "PixelShaderUtils.h"
 #include "RenderTargetPool.h"
+#include "SceneTexturesConfig.h"
+#include "SceneView.h"
+#include "ShaderPrintParameters.h"
 
 
 const FIntVector ThreadNumber = FIntVector(8, 8, 1); //!bUseFFTSolverPressure? FIntVector(256,1,1):
@@ -132,9 +134,7 @@ void UPsychedelicSolver::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuild
 	FRDGTextureRef SimulationTexture = GraphBuilder.RegisterExternalTexture(SimulationTexturePool);
 	FRDGTextureRef FluidColorTexture = GraphBuilder.RegisterExternalTexture(PressureTexturePool);
 	auto ShaderMap = GetGlobalShaderMap(View.FeatureLevel);
-
 	FRDGTextureDesc TempDesc = FRDGTextureDesc::Create2D(TextureSize, PF_FloatRGBA, FClearValueBinding::Black, TexCreate_ShaderResource | TexCreate_UAV | TexCreate_RenderTargetable);
-	FRDGTextureRef TempGrid = GraphBuilder.CreateTexture(TempDesc,TEXT("TempGrid"));
 
 	FRDGTextureUAVRef FluidColorTextureUAV = GraphBuilder.CreateUAV(FluidColorTexture);
 	const FViewInfo& ViewInfo = static_cast<const FViewInfo&>(View);
@@ -220,7 +220,10 @@ void UPsychedelicSolver::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuild
 		                             FComputeShaderUtils::GetGroupCount(FIntVector(TextureSize.X,TextureSize.Y, 1), ThreadNumber));
 	}
 	FRDGTextureRef BlurColorTexture = GraphBuilder.CreateTexture(FRDGTextureDesc::Create2D(TextureSize / 2,PF_FloatR11G11B10,FClearValueBinding::Black,TexCreate_ShaderResource | TexCreate_UAV),TEXT("BlurColorTexture"));
-	AddTextureBlurPass(GraphBuilder,ViewInfo,FluidColorTexture,BlurColorTexture,1.0);
+	FBilateralParameter BilateralParameter;
+	BilateralParameter.BlurSize = 1.0;
+	BilateralParameter.Sigma = 10.0;
+	AddTextureBlurPass(GraphBuilder,ViewInfo,FluidColorTexture,BlurColorTexture,BilateralParameter);
 	//SimulationTexturePool = GraphBuilder.ConvertToExternalTexture(AdvectionDensityTexture);
 
 	TShaderMapRef<FPPPsychedelicPS> PixelShader(ShaderMap);

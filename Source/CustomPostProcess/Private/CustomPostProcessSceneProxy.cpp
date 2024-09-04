@@ -13,29 +13,29 @@ FCPPSceneProxy::FCPPSceneProxy(UCustomPostProcessComponent* InComponent)
 	if (SubSystem)
 	{
 		ViewExtension = SubSystem->CustomPostProcessViewExtension;
-		RenderAdapters = &Component->RenderFeatures;
-	}
-	if(RenderAdapters->Num() > 0)
-	{
-		ENQUEUE_RENDER_COMMAND(InitPhysicalSolver)(
-		[this](FRHICommandListImmediate& RHICmdList)
+		if(Component->RenderFeatures.Num() > 0)
 		{
-			for(URenderAdapterBase* RednerAdapter:RenderAdapters)
+			ENQUEUE_RENDER_COMMAND(InitPhysicalSolver)(
+			[this](FRHICommandListImmediate& RHICmdList)
 			{
-				if(RednerAdapter)
+				for(URenderAdapterBase* RednerAdapter :Component->RenderFeatures)
 				{
-					RednerAdapter->Initial_RenderThread(RHICmdList);
+					if(RednerAdapter)
+					{
+						RednerAdapter->Initial_RenderThread(RHICmdList);
+					}
 				}
-			}
-		});
+			});
+		}
+
 	}
+
 
 }
 
 FCPPSceneProxy::~FCPPSceneProxy()
 {
 	ViewExtension.Reset();
-	RenderAdapters->Empty();
 }
 
 
@@ -56,8 +56,8 @@ void FCPPSceneProxy::CreateRenderThreadResources()
 
 void FCPPSceneProxy::DestroyRenderThreadResources()
 {
-	if (ViewExtension){}
-		//ViewExtension->RemoveProxy(this);
+	if (ViewExtension)
+		ViewExtension->RemoveProxy(this);
 }
 
 // These setups associated volume mesh for built-in Unreal passes.

@@ -37,6 +37,7 @@ protected:
 	TObjectPtr<UCustomPostProcessComponent> CPPComponent;
 
 	virtual void BeginPlay() override;
+	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
 
 private:
 	TSharedPtr<FCPPViewExtension> ViewExtension;

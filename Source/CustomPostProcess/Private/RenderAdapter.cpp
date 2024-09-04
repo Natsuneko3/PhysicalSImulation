@@ -27,6 +27,8 @@ public:
 		SHADER_PARAMETER(FVector2f, BlurDir)
 		SHADER_PARAMETER(FVector2f, TextureSize)
 		SHADER_PARAMETER(float, Coefficient)
+		SHADER_PARAMETER(int, Step)
+		SHADER_PARAMETER(float, Sigma)
 		SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D, OutTexture)
 
 	END_SHADER_PARAMETER_STRUCT()
@@ -35,17 +37,9 @@ IMPLEMENT_GLOBAL_SHADER(FCommonMeshVS, "/Plugin/PhysicalSimulation/SmokePlanePas
 
 IMPLEMENT_GLOBAL_SHADER(FBilateralFilterCS, "/Plugin/PhysicalSimulation/TextureBlur/TextureBlur.usf", "MainCS", SF_Compute);
 
-/*
+
 ///////////////////URenderAdapterBase/////////////////////
-void URenderAdapterBase::SetupSolverBaseParameters(FSolverBaseParameter& Parameter, FSceneView& InView, FPhysicalSimulationSceneProxy* InSceneProxy)
-{
-	Parameter.dt = InSceneProxy->World->GetDeltaSeconds();
-	Parameter.dx = *InSceneProxy->Dx;
-	Parameter.Time = Frame;
-	Parameter.View = InView.ViewUniformBuffer;
-	Parameter.GridSize = FVector3f(InSceneProxy->GridSize.X, InSceneProxy->GridSize.Y, InSceneProxy->GridSize.Z);
-	Parameter.WarpSampler = TStaticSamplerState<SF_Bilinear, AM_Wrap, AM_Wrap, AM_Wrap>::GetRHI();
-}
+
 
 void URenderAdapterBase::InitialPlaneMesh(FRHICommandList& RHICmdList)
 {
@@ -66,14 +60,15 @@ void URenderAdapterBase::InitialPlaneMesh(FRHICommandList& RHICmdList)
 	};
 
 	FRHIResourceCreateInfo CreateInfoVB(TEXT("PSPlaneMeshVertexBuffer"), &Vertices);
-	VertexBufferRHI = RHICmdList.CreateVertexBuffer(Vertices.GetResourceDataSize(), BUF_Static, CreateInfoVB);
+	VertexBufferRHI = RHICmdList.CreateBuffer(Vertices.GetResourceDataSize(), BUF_Static,0, ERHIAccess::VertexOrIndexBuffer, CreateInfoVB);
 	TResourceArray<uint16, INDEXBUFFER_ALIGNMENT> IndexBuffer;
 	const uint32 NumIndices = UE_ARRAY_COUNT(SpriteIndices);
 	IndexBuffer.AddUninitialized(NumIndices);
 	FMemory::Memcpy(IndexBuffer.GetData(), SpriteIndices, NumIndices * sizeof(uint16));
 
 	FRHIResourceCreateInfo CreateInfoIB(TEXT("PSPlaneMeshIndexBuffer"), &IndexBuffer);
-	IndexBufferRHI = RHICmdList.CreateIndexBuffer(sizeof(uint16), IndexBuffer.GetResourceDataSize(), BUF_Static, CreateInfoIB);
+	IndexBufferRHI = RHICmdList.CreateBuffer( IndexBuffer.GetResourceDataSize(), BUF_Static, 0, ERHIAccess::VertexOrIndexBuffer,CreateInfoIB);
+	//IndexBufferRHI = RHICmdList.CreateIndexBuffer(sizeof(uint16), IndexBuffer.GetResourceDataSize(), BUF_Static, CreateInfoIB);
 	//RHICreateIndexBuffer(sizeof(uint16), IndexBuffer.GetResourceDataSize(), static_cast<uint32>(BUF_Static), CreateInfoIB);
 	NumPrimitives = 2;
 	NumVertices = 4;
@@ -107,7 +102,7 @@ void URenderAdapterBase::InitialCubeMesh(FRHICommandList& RHICmdList)
 	Vertices[3].UV = FVector2f(0.f, 0.f);
 
 	FRHIResourceCreateInfo CreateInfoVB(TEXT("PSCubeMeshVertexBuffer"), &Vertices);
-	VertexBufferRHI = RHICmdList.CreateVertexBuffer(Vertices.GetResourceDataSize(), BUF_Static, CreateInfoVB) ;//RHICreateVertexBuffer();
+	VertexBufferRHI = RHICmdList.CreateBuffer(Vertices.GetResourceDataSize(), BUF_Static, 0, ERHIAccess::VertexOrIndexBuffer,CreateInfoVB) ;//RHICreateVertexBuffer();
 
 	// Setup index buffer
 	const uint16 Indices[] = {
@@ -137,12 +132,13 @@ void URenderAdapterBase::InitialCubeMesh(FRHICommandList& RHICmdList)
 	FMemory::Memcpy(IndexBuffer.GetData(), Indices, NumIndices * sizeof(uint16));
 
 	FRHIResourceCreateInfo CreateInfoIB(TEXT("PSCubeMeshIndexBuffer"), &IndexBuffer);
-	IndexBufferRHI = RHICmdList.CreateIndexBuffer(sizeof(uint16), IndexBuffer.GetResourceDataSize(), BUF_Static, CreateInfoIB);
+	IndexBufferRHI = RHICmdList.CreateBuffer( IndexBuffer.GetResourceDataSize(), BUF_Static, 0, ERHIAccess::VertexOrIndexBuffer,CreateInfoIB);
+	//IndexBufferRHI = RHICmdList.CreateIndexBuffer(sizeof(uint16), IndexBuffer.GetResourceDataSize(), BUF_Static, CreateInfoIB);
 	NumPrimitives = 12;
 	NumVertices = 8;
-}*/
+}
 
-void URenderAdapterBase::AddTextureBlurPass(FRDGBuilder& GraphBuilder, const FViewInfo& View, FRDGTextureRef InTexture, FRDGTextureRef& OutTexture, float BlurSize)
+void URenderAdapterBase::AddTextureBlurPass(FRDGBuilder& GraphBuilder, const FViewInfo& View, FRDGTextureRef InTexture, FRDGTextureRef& OutTexture, FBilateralParameter BilateralParameter)
 {
 	FIntPoint ViewSize = OutTexture->Desc.Extent;
 
@@ -159,8 +155,10 @@ void URenderAdapterBase::AddTextureBlurPass(FRDGBuilder& GraphBuilder, const FVi
 	HorizonPassParameters->DownSampleScale = DownSampleScale;
 	HorizonPassParameters->InputTexture = InTexture;
 	HorizonPassParameters->InputTextureSampler = TStaticSamplerState<SF_Point>::GetRHI();
-	HorizonPassParameters->Coefficient = BlurSize;
+	HorizonPassParameters->Coefficient = BilateralParameter.BlurSize;
+	HorizonPassParameters->Sigma = BilateralParameter.Sigma;
 	HorizonPassParameters->BlurDir = BlurDir;
+	HorizonPassParameters->Step = BilateralParameter.Step;
 	HorizonPassParameters->OutTexture = GraphBuilder.CreateUAV(TempTexture);
 	TShaderMapRef<FBilateralFilterCS> ComputeShader(View.ShaderMap);
 
@@ -178,8 +176,10 @@ void URenderAdapterBase::AddTextureBlurPass(FRDGBuilder& GraphBuilder, const FVi
 	VerticalPassParameters->DownSampleScale = DownSampleScale;
 	VerticalPassParameters->InputTexture = TempTexture;
 	VerticalPassParameters->InputTextureSampler = TStaticSamplerState<SF_Point>::GetRHI();
-	VerticalPassParameters->Coefficient = BlurSize;
+	VerticalPassParameters->Coefficient = BilateralParameter.BlurSize;
+	VerticalPassParameters->Sigma = BilateralParameter.Sigma;
 	VerticalPassParameters->BlurDir = BlurDir;
+	VerticalPassParameters->Step = BilateralParameter.Step;
 	VerticalPassParameters->OutTexture = GraphBuilder.CreateUAV(OutTexture);
 
 	FComputeShaderUtils::AddPass(
@@ -190,3 +190,4 @@ void URenderAdapterBase::AddTextureBlurPass(FRDGBuilder& GraphBuilder, const FVi
 		GroupCount);
 	//AddCopyTexturePass(GraphBuilder,PassParameters->OutTexture->GetRHI(),SceneColor)
 }
+

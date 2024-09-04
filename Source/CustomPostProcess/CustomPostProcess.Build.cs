@@ -25,7 +25,6 @@ public class CustomPostProcess : ModuleRules
                 "Engine",
                 "Slate",
                 "SlateCore",
-                "Renderer",
                 "RenderCore",
                 "RHI",
                 "RHICore",
