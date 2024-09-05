@@ -1,0 +1,169 @@
+﻿#include "/Engine/Private/Common.ush"
+Texture2D SceneColor;
+SamplerState SceneColorSampler;
+RWTexture2D<float4> OutStylization;
+float2 Resolution;
+int Step;
+int StylizationType;
+float StylizationIntensity;
+float DownScale;
+// Calculate color distance
+float CalcDistance(in float3 c0, in float3 c1) {
+    float3 sub = c0 - c1;
+    return dot(sub, sub);
+}
+
+// Symmetric Nearest Neighbor
+float3 CalcSNN(in float2 fragCoord) {
+	float2 src_size = Resolution.xy;
+    float2 inv_src_size = 1.0f / src_size;
+    float2 uv = fragCoord * inv_src_size;
+    
+    float3 c0 = SceneColor.SampleLevel(SceneColorSampler, uv,0).rgb;
+    
+    float4 sum = float4(0.0f, 0.0f, 0.0f, 0.0f);
+    
+    for (int i = 0; i <= Step; ++i) {
+        float3 c1 = SceneColor.SampleLevel(SceneColorSampler, uv + float2(+i, 0) * inv_src_size *StylizationIntensity,0).rgb;
+        float3 c2 = SceneColor.SampleLevel(SceneColorSampler, uv + float2(-i, 0) * inv_src_size * StylizationIntensity,0).rgb;
+        
+        float d1 = CalcDistance(c1, c0);
+        float d2 = CalcDistance(c2, c0);
+        if (d1 < d2) {
+            sum.rgb += c1;
+        } else {
+            sum.rgb += c2;
+        }
+        sum.a += 1.0f;
+    }
+ 	for (int j = 1; j <= Step; ++j) {
+    	for (int i = -Step; i <= Step; ++i) {
+            float3 c1 = SceneColor.SampleLevel(SceneColorSampler, uv + float2(+i, +j) * inv_src_size * StylizationIntensity,0).rgb;
+            float3 c2 = SceneColor.SampleLevel(SceneColorSampler, uv + float2(-i, -j) * inv_src_size * StylizationIntensity,0).rgb;
+            
+            float d1 = CalcDistance(c1, c0);
+            float d2 = CalcDistance(c2, c0);
+            if (d1 < d2) {
+            	sum.rgb += c1;
+            } else {
+                sum.rgb += c2;
+            }
+            sum.a += 1.0f;
+		}
+    }
+    return sum.rgb / sum.a;
+}
+
+// Kuwahara
+float3 CalcKuwahara(in float2 fragCoord) {
+    float2 src_size = Resolution.xy;
+    float2 inv_src_size = 1.0f / src_size;
+    float2 uv = fragCoord * inv_src_size;
+    
+    float Num = float((Step + 1) * (Step + 1));
+    float Inv_Num = 1.0f / Num;
+    
+    float3 col = float3(0, 0, 0);
+    
+    float sigma2 = 0.0f;
+    float min_sigma = 100.0f;
+    
+    float3 ColorSum = float3(0, 0, 0);
+    float3 s = float3(0, 0, 0);
+    
+    
+    for (int j = -Step; j <= 0; ++j) {
+        for (int i = -Step; i <= 0; ++i) {
+            float3 c = SceneColor.SampleLevel(SceneColorSampler, uv + float2(i, j) * inv_src_size * StylizationIntensity,0).rgb;
+            ColorSum += c;
+            s += c * c;
+        }
+    }
+    
+    ColorSum *= Inv_Num;
+    s = abs(s * Inv_Num - ColorSum * ColorSum);
+    
+    sigma2 = s.x + s.y + s.z;
+    if (sigma2 < min_sigma) {
+        min_sigma = sigma2;
+        col = ColorSum;
+    }
+    
+    ColorSum = float3(0, 0, 0);
+    s = float3(0, 0, 0);
+    
+    for (int j = -Step; j <= 0; ++j) {
+        for (int i = 0; i <= Step; ++i) {
+            float3 c = SceneColor.SampleLevel(SceneColorSampler, uv + float2(i, j) * inv_src_size * StylizationIntensity,0).rgb;
+            ColorSum += c;
+            s += c * c;
+        }
+    }
+    
+    ColorSum *= Inv_Num;
+    s = abs(s * Inv_Num - ColorSum * ColorSum);
+    
+    sigma2 = s.x + s.y + s.z;
+    if (sigma2 < min_sigma) {
+        min_sigma = sigma2;
+        col = ColorSum;
+    }
+    
+    ColorSum = float3(0, 0, 0);
+    s = float3(0, 0, 0);
+    
+    for (int j = 0; j <= Step; ++j) {
+        for (int i = 0; i <= Step; ++i) {
+            float3 c = SceneColor.SampleLevel(SceneColorSampler, uv + float2(i, j) * inv_src_size * StylizationIntensity,0).rgb;
+            ColorSum += c;
+            s += c * c;
+        }
+    }
+    
+    ColorSum *= Inv_Num;
+    s = abs(s * Inv_Num - ColorSum * ColorSum);
+    
+    sigma2 = s.x + s.y + s.z;
+    if (sigma2 < min_sigma) {
+        min_sigma = sigma2;
+        col = ColorSum;
+    }
+    
+    ColorSum = float3(0, 0, 0);
+    s = float3(0, 0, 0);
+    
+    for (int j = 0; j <= Step; ++j) {
+        for (int i = -Step; i <= 0; ++i) {
+            float3 c = SceneColor.SampleLevel(SceneColorSampler, uv + float2(i, j) * inv_src_size * StylizationIntensity,0).rgb;
+            ColorSum += c;
+            s += c * c;
+        }
+    }
+    
+    ColorSum *= Inv_Num;
+    s = abs(s * Inv_Num - ColorSum * ColorSum);
+    
+    sigma2 = s.x + s.y + s.z;
+    if (sigma2 < min_sigma) {
+        min_sigma = sigma2;
+        col = ColorSum;
+    }
+    
+    return col;
+}
+
+[numthreads(THREADGROUP_SIZEX, THREADGROUP_SIZEY, 1)]
+void MainCS(uint2 DispatchThreadID : SV_DispatchThreadID)
+{
+    float3 OutColor = 1.f;
+    switch (StylizationType)
+    {
+    case SNNFILTER :
+        OutColor = CalcSNN(DispatchThreadID);
+        break;
+    case KUWAHARAFILTER:
+        OutColor = CalcKuwahara(DispatchThreadID);
+        break;
+    }
+	OutStylization[DispatchThreadID * DownScale] = float4(OutColor.xyz,1.f);
+}

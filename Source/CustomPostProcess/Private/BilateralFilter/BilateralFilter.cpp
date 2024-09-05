@@ -5,25 +5,26 @@
 
 class FViewInfo;
 
-UBilateralFilter::UBilateralFilter()
+USceneBlur::USceneBlur()
 {
 }
 
-void UBilateralFilter::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& View, const FPostProcessingInputs& Inputs)
+void USceneBlur::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& View, const FPostProcessingInputs& Inputs)
 {
 	const FViewInfo& ViewInfo = static_cast<const FViewInfo&>(View);
 	FRDGTextureRef SceneColor = (*Inputs.SceneTextures)->SceneColorTexture;
 	FRDGTextureRef CopySceneColor = GraphBuilder.CreateTexture(SceneColor->Desc,TEXT("CopySceneColor"));
-	FBilateralParameter BilateralParameter;
+	FBlurParameter BilateralParameter;
 	BilateralParameter.BlurSize = BlurSize;
 	BilateralParameter.Sigma = Sigma;
 	BilateralParameter.Step = Step;
-
-	AddCopyTexturePass(GraphBuilder,SceneColor,CopySceneColor);
-	AddTextureBlurPass(GraphBuilder,ViewInfo,CopySceneColor,SceneColor,BilateralParameter);
-
+	BilateralParameter.BlurMethod = BlurType;
+	BilateralParameter.ScreenPercent = ScreenPercent;
+	//AddCopyTexturePass(GraphBuilder,SceneColor,CopySceneColor);
+	AddTextureBlurPass(GraphBuilder,ViewInfo,SceneColor,CopySceneColor,BilateralParameter);
+	AddTextureCombinePass(GraphBuilder,ViewInfo,CopySceneColor,SceneColor,false,Weigth);
 }
 
-void UBilateralFilter::Initial_RenderThread(FRHICommandListImmediate& RHICmdList)
+void USceneBlur::Initial_RenderThread(FRHICommandListImmediate& RHICmdList)
 {
 }

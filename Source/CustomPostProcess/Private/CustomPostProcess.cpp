@@ -6,12 +6,8 @@
 
 void FCustomPostProcessModule::StartupModule()
 {
-	FString PluginShaderDir = FPaths::Combine(FPaths::ProjectPluginsDir(), TEXT("OutsidePlugins/PhysicalSImulation/Shaders"));
+	FString PluginShaderDir = FPaths::Combine(FPaths::ProjectPluginsDir(), TEXT("PhysicalSImulation/Shaders"));
 	if(!FPaths::DirectoryExists(PluginShaderDir))
-	{
-		PluginShaderDir = FPaths::Combine(FPaths::ProjectPluginsDir(), TEXT("PhysicalSImulation/Shaders"));
-	}
-	else
 	{
 		PluginShaderDir = FPaths::Combine(FPaths::EnginePluginsDir(), TEXT("PhysicalSImulation/Shaders"));
 	}

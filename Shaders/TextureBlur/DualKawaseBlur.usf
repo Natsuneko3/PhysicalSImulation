@@ -1,0 +1,94 @@
+#pragma once
+#include "/Engine/Private/Common.ush"
+
+
+float Cal_1DGaussian(float x)
+{
+	return exp(-0.5f * pow(3.141 * x, 2));
+}
+Texture2D Intexture;
+SamplerState Sampler;
+float4 ViewSize;
+RWTexture2D<float4> OutTexture;
+[numthreads(NUMTHREADS_X,NUMTHREADS_Y,1)]
+void DownSampleCS(
+uint2 ThreadID : SV_DispatchThreadID
+	)
+{
+	float Offset = ViewSize.z+0.5;
+	float SizeX, SizeY;
+	Intexture.GetDimensions(SizeX,SizeY);
+	float2 Resolution = float2(SizeX, SizeY);
+	float2 Texel = 1 / Resolution;
+	float2 uv = float2(ThreadID) / ViewSize.xy;//ScreenPosToViewportUV(float2(ThreadID)/ViewSize.xy);//
+	float2 uv1 = uv+Texel*Offset;
+	float2 uv2 = uv-Texel*Offset;
+	float2 uv3 = uv+Texel*float2(Offset,-Offset);
+	float2 uv4 = uv+Texel*float2(-Offset,Offset);
+	//float2 uv = ViewportUVToBufferUV(float2(ThreadID));
+	float3 Col = Texture2DSample(Intexture,Sampler,uv);
+	Col +=Texture2DSample(Intexture,Sampler,uv1);
+	Col +=Texture2DSample(Intexture,Sampler,uv2);
+	Col +=Texture2DSample(Intexture,Sampler,uv3);
+	Col +=Texture2DSample(Intexture,Sampler,uv4);
+	//Col= Texture2DSample(Intexture,Sampler,uv);
+	OutTexture[ThreadID.xy] = float4(Col*0.25,1);//= Texture2DSample(Intexture,Sampler,uv)*4;
+}
+
+[numthreads(NUMTHREADS_X,NUMTHREADS_Y,1)]
+void UpSampleCS(
+uint2 ThreadID : SV_DispatchThreadID)
+{
+	float Offset = ViewSize.z+0.5;
+	//float2 ViewportUV = ()
+	float SizeX, SizeY;
+	Intexture.GetDimensions(SizeX,SizeY);
+	float2 Resolution = float2(SizeX, SizeY);
+	float2 Texel = 1 / Resolution;
+	float2 uv = float2(ThreadID) / ViewSize.xy;
+	//uv = BufferUVToViewportUV(uv);
+	float2 uv1 = uv+Texel*float2(Offset,0);
+	float2 uv2 = uv-Texel*float2(Offset,0);
+	float2 uv3 = uv+Texel*float2(0,Offset);
+	float2 uv4 = uv+Texel*float2(0,Offset);
+	float3 Col = 0;
+	Col +=Texture2DSample(Intexture,Sampler,uv1);
+	Col +=Texture2DSample(Intexture,Sampler,uv2);
+	Col +=Texture2DSample(Intexture,Sampler,uv3);
+	Col +=Texture2DSample(Intexture,Sampler,uv4);
+
+	OutTexture[ThreadID.xy] =float4(Col*0.25,1);//float4(PixelSum / WeightSum,1);//float4(uv,0,0);//
+}
+[numthreads(NUMTHREADS_X,NUMTHREADS_Y,1)]
+void GaussianBlur(uint2 ThreadID : SV_DispatchThreadID)
+{
+	
+	float WeightSum = 0;
+	float3 PixelSum = float3(0, 0, 0);
+	float2 Texel = 1 / ViewSize.xy;
+	float2 uv = float2(ThreadID) / ViewSize.xy;
+	for (int x = -ViewSize.z; x <= ViewSize.z; x++)
+	{
+		for (int y = -ViewSize.z; y <= ViewSize.z; y++) 
+		{
+			//计算偏移的UV
+			float2 offsetUV = uv + float2(x, y) * Texel;
+
+			//采样偏移后的贴图颜色
+			float3 PixelColor = Texture2DSample(Intexture,Sampler,offsetUV);
+
+			//计算采样像素的权重，/Raduis的原因是为了限制输入范围为-1到1
+			// float weight = FS.Cal_1DGaussian(x / BlurRadius) * FS.Cal_1DGaussian(y / BlurRadius);
+			float weight = Cal_1DGaussian(x / ViewSize.z) * Cal_1DGaussian(y / ViewSize.z);        
+
+			//累加颜色
+			PixelSum += PixelColor * weight;
+
+			//累加权重值
+			WeightSum += weight;
+		}
+	}
+	OutTexture[ThreadID.xy] = float4(PixelSum / WeightSum,1);
+	
+}
+

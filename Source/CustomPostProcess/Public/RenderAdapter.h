@@ -31,11 +31,22 @@ DEFINE_LOG_CATEGORY_STATIC(LogCustomPostProcess, Log, All);
 
 DECLARE_STATS_GROUP(TEXT("Custom Render Feature"), STATGROUP_CRF, STATCAT_Advanced)
 
-struct FBilateralParameter
+
+UENUM()
+enum class EBlurMethod:uint8
 {
+	BilateralFilter ,
+	DualKawase ,
+	Gaussian
+};
+
+struct FBlurParameter
+{
+	EBlurMethod BlurMethod;
 	float BlurSize = 1.0;
 	float Sigma = 10;
 	int Step = 3;
+	float ScreenPercent = 100.0;
 };
 
 UCLASS(Abstract, Blueprintable, EditInlineNew, CollapseCategories )
@@ -45,7 +56,8 @@ class URenderAdapterBase :public UObject
 public:
 	UPROPERTY(Category = "RenderFeature",EditAnywhere,meta=(ClampMin=10,ClampMax=100,UIMin=10,UIMax=100))
 	float ScreenPercent = 100.0;
-
+	UPROPERTY(Category = CustomPostProcess,EditAnywhere)
+	float Weigth = 1.0;
 	URenderAdapterBase()
 	{}
 
@@ -65,7 +77,7 @@ public:
 	{
 	};
 	int32 Frame;
-	void AddTextureBlurPass(FRDGBuilder& GraphBuilder,const FViewInfo& View,FRDGTextureRef InTexture,FRDGTextureRef& OutTexture,FBilateralParameter BilateralParameter);
+	void AddTextureBlurPass(FRDGBuilder& GraphBuilder,const FViewInfo& View,FRDGTextureRef InTexture,FRDGTextureRef& OutTexture,FBlurParameter BlurParameter);
 	void InitialPlaneMesh(FRHICommandList& RHICmdList);
 	void InitialCubeMesh(FRHICommandList& RHICmdList);
 
@@ -122,5 +134,11 @@ public:
 	}
 	uint32 NumPrimitives;
 	uint32 NumVertices;
+	void AddTextureCombinePass(FRDGBuilder& GraphBuilder,const FViewInfo& View,FRDGTextureRef InTexture,FRDGTextureRef& OutTexture,bool DepthBlend,float Weight);
+private:
+	void DrawDualKawaseBlur(FRDGBuilder& GraphBuilder,const FViewInfo& View,FRDGTextureRef InTexture,FRDGTextureRef& OutTexture,FBlurParameter* BilateralParameter);
+	void DrawBilateralFilter(FRDGBuilder& GraphBuilder,const FViewInfo& View,FRDGTextureRef InTexture,FRDGTextureRef& OutTexture,FBlurParameter* BilateralParameter);
+	void DrawGaussianBlur(FRDGBuilder& GraphBuilder,const FViewInfo& View,FRDGTextureRef InTexture,FRDGTextureRef& OutTexture,FBlurParameter* BilateralParameter);
+
 };
 

@@ -68,7 +68,7 @@ public:
 	//void SolverPreesure(FRDGTextureRef InPressure);
 
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere,Category="Psychedelic")
 	FPlandFluidParameters PlandFluidParameters;
 
 private:

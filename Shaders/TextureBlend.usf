@@ -1,0 +1,22 @@
+﻿#include "/Engine/Private/Common.ush"
+#include "/Engine/Private/SceneTexturesCommon.ush"
+Texture2D InTexture;
+Texture2D SceneTexture;
+SamplerState ClampSampler;
+RWTexture2D<float4> OutTexture;
+float Weight;
+[numthreads(THREADGROUP_SIZEX, THREADGROUP_SIZEY, 1)]
+void MainCS(uint2 DispatchThreadID : SV_DispatchThreadID)
+{
+	float SizeX,SizeY;
+	OutTexture.GetDimensions(SizeX,SizeY);
+	float2 UV = float2(DispatchThreadID) / float2(SizeX,SizeY);
+	float3 SampleColor = InTexture.SampleLevel(ClampSampler,UV,0).xyz;
+	float3 OriginalColor = SceneTexture.SampleLevel(ClampSampler,UV,0).xyz;
+	float Depth = 1.f;
+#if DEPTHBLEND
+	Depth = LookupDeviceZ(UV);
+#endif
+	float3 OutColor = lerp(OriginalColor,SampleColor,Weight * Depth);
+	OutTexture[DispatchThreadID] = float4(OutColor,1.f);
+}
