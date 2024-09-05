@@ -6,7 +6,6 @@ float2 Resolution;
 int Step;
 int StylizationType;
 float StylizationIntensity;
-float DownScale;
 // Calculate color distance
 float CalcDistance(in float3 c0, in float3 c1) {
     float3 sub = c0 - c1;
@@ -159,11 +158,11 @@ void MainCS(uint2 DispatchThreadID : SV_DispatchThreadID)
     switch (StylizationType)
     {
     case SNNFILTER :
-        OutColor = CalcSNN(DispatchThreadID);
+        OutColor = CalcSNN(float2(DispatchThreadID + 0.5));
         break;
     case KUWAHARAFILTER:
-        OutColor = CalcKuwahara(DispatchThreadID);
+        OutColor = CalcKuwahara(float2(DispatchThreadID + 0.5));
         break;
     }
-	OutStylization[DispatchThreadID * DownScale] = float4(OutColor.xyz,1.f);
+	OutStylization[DispatchThreadID ] = float4(OutColor.xyz,1.f);
 }

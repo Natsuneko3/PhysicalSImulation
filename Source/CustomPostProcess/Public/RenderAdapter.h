@@ -39,7 +39,22 @@ enum class EBlurMethod:uint8
 	DualKawase ,
 	Gaussian
 };
+UENUM()
+enum class EBlendMethod:uint8
+{
+	Normal ,
+	DepthCofficient
+};
 
+USTRUCT()
+struct FTextureBlendDesc
+{
+	GENERATED_BODY()
+	UPROPERTY(Category = "BaseParameter",EditAnywhere)
+	float Weight = 1.0;
+	UPROPERTY(Category = "BaseParameter",EditAnywhere)
+	EBlendMethod BlendMethod;
+};
 struct FBlurParameter
 {
 	EBlurMethod BlurMethod;
@@ -54,36 +69,30 @@ class URenderAdapterBase :public UObject
 {
 	GENERATED_BODY()
 public:
-	UPROPERTY(Category = "RenderFeature",EditAnywhere,meta=(ClampMin=10,ClampMax=100,UIMin=10,UIMax=100))
+	UPROPERTY(Category = "BaseParameter",EditAnywhere)
+	bool bEnable = true;
+	UPROPERTY(Category = "BaseParameter",EditAnywhere)
+	bool bTranslucentOnly ;
+	UPROPERTY(Category = "BaseParameter",EditAnywhere,meta=(ClampMin=10,ClampMax=100,UIMin=10,UIMax=100))
 	float ScreenPercent = 100.0;
-	UPROPERTY(Category = CustomPostProcess,EditAnywhere)
-	float Weigth = 1.0;
-	URenderAdapterBase()
-	{}
+	UPROPERTY(Category = "BaseParameter",EditAnywhere,meta=(DisplayName="Texture Blend"))
+	FTextureBlendDesc TextureBlendDesc;
 
-	virtual void Initial_RenderThread(FRHICommandListImmediate& RHICmdList)
-	{
-	}
+	URenderAdapterBase(){}
 
-	virtual void PreRenderView_RenderThread(FRDGBuilder& GraphBuilder, FSceneView& InView)
-	{
-	}
+	virtual void Initial_RenderThread(FRHICommandListImmediate& RHICmdList){}
 
-	virtual void PreRenderViewFamily_RenderThread(FRDGBuilder& GraphBuilder, FSceneViewFamily& InViewFamily)
-	{
-	}
+	virtual void PreRenderView_RenderThread(FRDGBuilder& GraphBuilder, FSceneView& InView){}
 
-	virtual void PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& View, const FPostProcessingInputs& Inputs)
-	{
-	};
+	virtual void PreRenderViewFamily_RenderThread(FRDGBuilder& GraphBuilder, FSceneViewFamily& InViewFamily){}
+
+	virtual void PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& View, const FPostProcessingInputs& Inputs){};
 	int32 Frame;
 	void AddTextureBlurPass(FRDGBuilder& GraphBuilder,const FViewInfo& View,FRDGTextureRef InTexture,FRDGTextureRef& OutTexture,FBlurParameter BlurParameter);
 	void InitialPlaneMesh(FRHICommandList& RHICmdList);
 	void InitialCubeMesh(FRHICommandList& RHICmdList);
-
-	virtual void Release()
-	{
-	}
+	void AddTextureCombinePass(FRDGBuilder& GraphBuilder,const FViewInfo& View, const FPostProcessingInputs& Inputs,FRDGTextureRef InTexture,FRDGTextureRef& OutTexture,FTextureBlendDesc* InTextureBlendDesc);
+	virtual void Release(){}
 
 	FBufferRHIRef VertexBufferRHI;
 	FBufferRHIRef IndexBufferRHI;
@@ -134,7 +143,9 @@ public:
 	}
 	uint32 NumPrimitives;
 	uint32 NumVertices;
-	void AddTextureCombinePass(FRDGBuilder& GraphBuilder,const FViewInfo& View,FRDGTextureRef InTexture,FRDGTextureRef& OutTexture,bool DepthBlend,float Weight);
+	/*This function will blend InTexture into OutTexture*/
+protected:
+	FRDGTextureRef GetSceneTexture(const FPostProcessingInputs& Inputs);
 private:
 	void DrawDualKawaseBlur(FRDGBuilder& GraphBuilder,const FViewInfo& View,FRDGTextureRef InTexture,FRDGTextureRef& OutTexture,FBlurParameter* BilateralParameter);
 	void DrawBilateralFilter(FRDGBuilder& GraphBuilder,const FViewInfo& View,FRDGTextureRef InTexture,FRDGTextureRef& OutTexture,FBlurParameter* BilateralParameter);

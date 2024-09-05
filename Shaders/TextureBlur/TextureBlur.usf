@@ -25,8 +25,7 @@ void MainCS(uint2 DispatchThreadID : SV_DispatchThreadID)
 	float2 TextureSize = float2(0.0, 0.0);
 
 	OutTexture.GetDimensions(TextureSize.x,TextureSize.y);
-	float Inv_DownSampleScale = 1 / DownSampleScale.x;
-	float2 UV = float2(DispatchThreadID + 0.5) * Inv_DownSampleScale / TextureSize;
+	float2 UV = float2(DispatchThreadID + 0.5) / TextureSize;
 	float3 final_colour = float3(0.0, 0.0, 0.0);
 	float Z = 0.0;
 

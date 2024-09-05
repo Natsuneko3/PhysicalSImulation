@@ -1,30 +1,24 @@
-﻿#pragma once
+#pragma once
 #include "RenderAdapter.h"
-#include "StylizationFilter.generated.h"
-
-UENUM()
-enum class EStylizationFilterType:uint8
+#include "SceneSpaceLine.generated.h"
+class SceneSpaceLine
 {
-	SNNFilter = 0,
-	KuwaharaFilter = 1
+public:
+
 };
 UCLASS(NotBlueprintable, MinimalAPI)
-class UStylizationFilter: public URenderAdapterBase
+class USceneSpaceLine: public URenderAdapterBase
 {
 public:
 	GENERATED_BODY()
-	UStylizationFilter();
-
-
-	UPROPERTY(Category = CustomPostProcess,EditAnywhere)
-	EStylizationFilterType StylizationType;
+	USceneSpaceLine();
 
 	UPROPERTY(Category = CustomPostProcess,EditAnywhere)
-	int Step = 5;
-
+	float LineWeight = 1.0;
 	UPROPERTY(Category = CustomPostProcess,EditAnywhere)
-	float StylizationIntensity = 1.f;
-
+	float LineThreshold = 0.0;
+	UPROPERTY(Category = CustomPostProcess,EditAnywhere)
+	FLinearColor LineColor;
 	virtual void PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& View, const FPostProcessingInputs& Inputs) override;
 
 };

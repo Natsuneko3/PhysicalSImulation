@@ -12,17 +12,18 @@ USceneBlur::USceneBlur()
 void USceneBlur::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& View, const FPostProcessingInputs& Inputs)
 {
 	const FViewInfo& ViewInfo = static_cast<const FViewInfo&>(View);
-	FRDGTextureRef SceneColor = (*Inputs.SceneTextures)->SceneColorTexture;
-	FRDGTextureRef CopySceneColor = GraphBuilder.CreateTexture(SceneColor->Desc,TEXT("CopySceneColor"));
+	FRDGTextureRef SceneColor = GetSceneTexture(Inputs);
+	FVector2f ViewSize = FVector2f((*Inputs.SceneTextures)->SceneColorTexture->Desc.Extent) * (ScreenPercent /100.f);
+	FRDGTextureDesc OutTextureDesc(FRDGTextureDesc::Create2D(FIntPoint(ViewSize.X,ViewSize.Y), SceneColor->Desc.Format, FClearValueBinding::None, TexCreate_RenderTargetable | TexCreate_UAV));
+	FRDGTextureRef CopySceneColor = GraphBuilder.CreateTexture(OutTextureDesc,TEXT("CopySceneColor"));
 	FBlurParameter BilateralParameter;
 	BilateralParameter.BlurSize = BlurSize;
 	BilateralParameter.Sigma = Sigma;
 	BilateralParameter.Step = Step;
 	BilateralParameter.BlurMethod = BlurType;
 	BilateralParameter.ScreenPercent = ScreenPercent;
-	//AddCopyTexturePass(GraphBuilder,SceneColor,CopySceneColor);
 	AddTextureBlurPass(GraphBuilder,ViewInfo,SceneColor,CopySceneColor,BilateralParameter);
-	AddTextureCombinePass(GraphBuilder,ViewInfo,CopySceneColor,SceneColor,false,Weigth);
+	AddTextureCombinePass(GraphBuilder,ViewInfo,Inputs,CopySceneColor,SceneColor,&TextureBlendDesc);
 }
 
 void USceneBlur::Initial_RenderThread(FRHICommandListImmediate& RHICmdList)

@@ -12,7 +12,6 @@ public:
 		SHADER_PARAMETER_SAMPLER(SamplerState,SceneColorSampler)
 		SHADER_PARAMETER(int,Step)
 	SHADER_PARAMETER(int,StylizationType)
-	SHADER_PARAMETER(float,DownScale)
 	SHADER_PARAMETER(float,StylizationIntensity)
 	SHADER_PARAMETER(FVector2f,Resolution)
 	    SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D, OutStylization)
@@ -42,14 +41,16 @@ UStylizationFilter::UStylizationFilter()
 
 void UStylizationFilter::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& View, const FPostProcessingInputs& Inputs)
 {
+
 	 const FViewInfo& ViewInfo = static_cast<const FViewInfo&>(View);
 	auto ShaderMap = GetGlobalShaderMap(View.FeatureLevel);
-
-	FRDGTextureRef SceneColor = (*Inputs.SceneTextures)->SceneColorTexture;
+	FRDGTextureRef SceneColor = GetSceneTexture(Inputs);
 	TShaderMapRef<FStylizationCS> ComputeShader(ShaderMap);
 	FStylizationCS::FParameters* Parameters = GraphBuilder.AllocParameters<FStylizationCS::FParameters>();
 	FVector2f ViewSize = FVector2f((*Inputs.SceneTextures)->SceneColorTexture->Desc.Extent) * (ScreenPercent /100.f);
-	FRDGTextureRef OutTexture = GraphBuilder.CreateTexture(SceneColor->Desc,TEXT("StylizationOutTexture"));
+
+	FRDGTextureDesc OutTextureDesc(FRDGTextureDesc::Create2D(FIntPoint(ViewSize.X,ViewSize.Y), SceneColor->Desc.Format, FClearValueBinding::None, TexCreate_RenderTargetable | TexCreate_UAV));
+	FRDGTextureRef OutTexture = GraphBuilder.CreateTexture(OutTextureDesc,TEXT("StylizationOutTexture"));
 	Parameters->Resolution = ViewSize;
 	Parameters->Step =Step;
 	Parameters->StylizationIntensity = StylizationIntensity;
@@ -57,15 +58,15 @@ void UStylizationFilter::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuild
 	Parameters->SceneColor = SceneColor;
 	Parameters->SceneColorSampler = TStaticSamplerState<>::GetRHI();
 	Parameters->OutStylization = GraphBuilder.CreateUAV(OutTexture);
-	Parameters->DownScale = 1/ (ScreenPercent / 100.f);
+
 	FComputeShaderUtils::AddPass(GraphBuilder,
-									 RDG_EVENT_NAME("Stylization %ix%i",ViewSize.X,ViewSize.Y),
+									 RDG_EVENT_NAME("Stylization %ix%i",int(ViewSize.X),int(ViewSize.Y)),
 									 ERDGPassFlags::Compute,
 									 ComputeShader,
 									 Parameters,
 									 FComputeShaderUtils::GetGroupCount(FIntVector(ViewSize.X,ViewSize.Y, 1), 8));
 									
-	AddTextureCombinePass(GraphBuilder,ViewInfo,OutTexture,SceneColor,false,Weigth);
+	AddTextureCombinePass(GraphBuilder,ViewInfo,Inputs,OutTexture,SceneColor,&TextureBlendDesc);
 	//AddCopyTexturePass(GraphBuilder,OutTexture,SceneColor);
 
 }

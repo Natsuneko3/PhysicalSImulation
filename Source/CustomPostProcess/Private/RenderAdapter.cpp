@@ -23,7 +23,7 @@ public:
 		SHADER_PARAMETER_RDG_TEXTURE(Texture2D, InputTexture)
 		SHADER_PARAMETER_SAMPLER(SamplerState, InputTextureSampler)
 
-		SHADER_PARAMETER(FVector2f, DownSampleScale)
+
 		SHADER_PARAMETER(FVector2f, BlurDir)
 		SHADER_PARAMETER(FVector2f, TextureSize)
 		SHADER_PARAMETER(float, Coefficient)
@@ -126,8 +126,9 @@ public:
     
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
 	    SHADER_PARAMETER_STRUCT_REF(FViewUniformShaderParameters, View)
+		SHADER_PARAMETER_RDG_UNIFORM_BUFFER(FSceneTextureUniformParameters, SceneTextures)
 		SHADER_PARAMETER_RDG_TEXTURE(Texture2D,InTexture)
-	SHADER_PARAMETER_RDG_TEXTURE(Texture2D,SceneTexture)
+		SHADER_PARAMETER_RDG_TEXTURE(Texture2D,SceneTexture)
 		SHADER_PARAMETER_SAMPLER(SamplerState, ClampSampler)
 	    SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D, OutTexture)
 	SHADER_PARAMETER(float, Weight)
@@ -146,8 +147,37 @@ public:
 		OutEnvironment.SetDefine(TEXT("THREADGROUP_SIZEY"), 8);
 	}
 };
-IMPLEMENT_GLOBAL_SHADER(FTextureBlendCS, "/Plugin/PhysicalSimulation/TextureBlend.usf", "MainCS", SF_Compute);
+class FTextureBlendPS : public FGlobalShader
+{
+public:
+	DECLARE_GLOBAL_SHADER(FTextureBlendPS);
+	SHADER_USE_PARAMETER_STRUCT(FTextureBlendPS, FGlobalShader);
 
+	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)
+	{
+	}
+
+	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
+	{
+		return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
+	}
+
+	BEGIN_SHADER_PARAMETER_STRUCT(FParameters,)
+		SHADER_PARAMETER_STRUCT_REF(FViewUniformShaderParameters, View)
+		SHADER_PARAMETER_RDG_UNIFORM_BUFFER(FSceneTextureUniformParameters, SceneTextures)
+		SHADER_PARAMETER_RDG_TEXTURE(Texture2D,InTexture)
+		SHADER_PARAMETER_RDG_TEXTURE(Texture2D,SceneTexture)
+		SHADER_PARAMETER_SAMPLER(SamplerState, ClampSampler)
+		SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D, OutTexture)
+		RENDER_TARGET_BINDING_SLOTS()
+	END_SHADER_PARAMETER_STRUCT()
+	class FDepthBlend	  : SHADER_PERMUTATION_BOOL("DEPTHBLEND");
+	//class FKuwaharaFilter	  : SHADER_PERMUTATION_BOOL("KuwaharaFilter");
+	using FPermutationDomain = TShaderPermutationDomain<FDepthBlend>;
+};
+
+IMPLEMENT_GLOBAL_SHADER(FTextureBlendPS, "/Plugin/PhysicalSimulation/TextureBlend.usf", "MainPS", SF_Pixel);
+IMPLEMENT_GLOBAL_SHADER(FTextureBlendCS, "/Plugin/PhysicalSimulation/TextureBlend.usf", "MainCS", SF_Compute);
 IMPLEMENT_GLOBAL_SHADER(FDualKawaseBlurDCS, "/Plugin/PhysicalSimulation/TextureBlur/DualKawaseBlur.usf", "DownSampleCS", SF_Compute);
 IMPLEMENT_GLOBAL_SHADER(FDualKawaseBlurUCS, "/Plugin/PhysicalSimulation/TextureBlur/DualKawaseBlur.usf", "UpSampleCS", SF_Compute);
 IMPLEMENT_GLOBAL_SHADER(FGaussianBlurCS, "/Plugin/PhysicalSimulation/TextureBlur/DualKawaseBlur.usf", "GaussianBlur", SF_Compute);
@@ -254,17 +284,26 @@ void URenderAdapterBase::InitialCubeMesh(FRHICommandList& RHICmdList)
 	NumVertices = 8;
 }
 
+FRDGTextureRef URenderAdapterBase::GetSceneTexture(const FPostProcessingInputs& Inputs)
+{
+	if(bTranslucentOnly)
+	{
+		return Inputs.TranslucencyViewResourcesMap.Get(ETranslucencyPass::TPT_TranslucencyAfterDOF).ColorTexture.Target;
+	}
+	else
+	{
+		return(*Inputs.SceneTextures)->SceneColorTexture;
+	}
+}
+
 void URenderAdapterBase::DrawDualKawaseBlur(FRDGBuilder& GraphBuilder, const FViewInfo& View, FRDGTextureRef InTexture, FRDGTextureRef& OutTexture,FBlurParameter* BilateralParameter)
 {
 	const FViewInfo& ViewInfo = static_cast<const FViewInfo&>(View);
-	FRDGTextureDesc TextureDesc =InTexture->Desc;
+	FRDGTextureDesc TextureDesc =OutTexture->Desc;
 	FRDGTextureRef TempTexture = GraphBuilder.CreateTexture(TextureDesc,TEXT("OutSceneColor"));
 	FRDGTextureRef SceneColor = InTexture;
 	AddCopyTexturePass(GraphBuilder,SceneColor,TempTexture);
 
-	FVector2f DownSampleScale = FVector2f(BilateralParameter->ScreenPercent) / 100.f;
-	TextureDesc.Extent.X = TextureDesc.Extent.X * DownSampleScale.X;
-	TextureDesc.Extent.Y = TextureDesc.Extent.Y * DownSampleScale.Y;
 	TextureDesc.Flags = ETextureCreateFlags::UAV;
 
 	RDG_EVENT_SCOPE(GraphBuilder, "DualKawaseBlurCompute");
@@ -303,7 +342,15 @@ void URenderAdapterBase::DrawDualKawaseBlur(FRDGBuilder& GraphBuilder, const FVi
 		PassParameters->ViewSize = FVector4f(TextureDesc.Extent.X, TextureDesc.Extent.Y, BilateralParameter->BlurSize, 0);
 		PassParameters->View = View.ViewUniformBuffer;
 		PassParameters->Sampler = TStaticSamplerState<SF_Point, AM_Clamp, AM_Clamp, AM_Clamp>::GetRHI();
-		PassParameters->OutTexture = GraphBuilder.CreateUAV(OutPutTexture);;
+		if(i==BilateralParameter->Step - 1)
+		{
+			PassParameters->OutTexture = GraphBuilder.CreateUAV(OutTexture);
+		}
+		else
+		{
+			PassParameters->OutTexture = GraphBuilder.CreateUAV(OutPutTexture);
+		}
+
 
 		TShaderMapRef<FDualKawaseBlurUCS> ComputeShader(ViewInfo.ShaderMap);
 		FComputeShaderUtils::AddPass(GraphBuilder,
@@ -314,7 +361,7 @@ void URenderAdapterBase::DrawDualKawaseBlur(FRDGBuilder& GraphBuilder, const FVi
 		TempTexture = OutPutTexture;
 
 	}
-	AddCopyTexturePass(GraphBuilder,TempTexture,OutTexture);
+	//AddCopyTexturePass(GraphBuilder,TempTexture,OutTexture);
 }
 
 void URenderAdapterBase::DrawBilateralFilter(FRDGBuilder& GraphBuilder, const FViewInfo& View, FRDGTextureRef InTexture, FRDGTextureRef& OutTexture,FBlurParameter* BilateralParameter)
@@ -328,13 +375,11 @@ void URenderAdapterBase::DrawBilateralFilter(FRDGBuilder& GraphBuilder, const FV
 	BlurDir = FVector2f(1.0f, 0.0f);
 
 	FRDGTextureRef TempTexture = GraphBuilder.CreateTexture(OutTexture->Desc,TEXT("BilateralFilterTempTexture"));
-	FVector2f DownSampleScale = FVector2f(BilateralParameter->ScreenPercent) / 100.f;
 
-	FIntPoint ViewSize = FIntPoint(OutTexture->Desc.Extent.X * DownSampleScale.X,
-	OutTexture->Desc.Extent.Y * DownSampleScale.Y);
+	FIntPoint ViewSize = OutTexture->Desc.Extent;
 
 	FBilateralFilterCS::FParameters* HorizonPassParameters = GraphBuilder.AllocParameters<FBilateralFilterCS::FParameters>();
-	HorizonPassParameters->DownSampleScale = DownSampleScale;
+
 	HorizonPassParameters->InputTexture = InTexture;
 	HorizonPassParameters->InputTextureSampler = TStaticSamplerState<SF_Point>::GetRHI();
 	HorizonPassParameters->Coefficient = BilateralParameter->BlurSize;
@@ -355,7 +400,7 @@ void URenderAdapterBase::DrawBilateralFilter(FRDGBuilder& GraphBuilder, const FV
 	IsHorizon = "Vertical";
 	BlurDir = FVector2f(0.0f, 1.0f);
 	FBilateralFilterCS::FParameters* VerticalPassParameters = GraphBuilder.AllocParameters<FBilateralFilterCS::FParameters>();
-	VerticalPassParameters->DownSampleScale = DownSampleScale;
+
 	VerticalPassParameters->InputTexture = TempTexture;
 	VerticalPassParameters->InputTextureSampler = TStaticSamplerState<SF_Point>::GetRHI();
 	VerticalPassParameters->Coefficient = BilateralParameter->BlurSize;
@@ -380,51 +425,50 @@ void URenderAdapterBase::DrawGaussianBlur(FRDGBuilder& GraphBuilder, const FView
 	RDG_EVENT_SCOPE(GraphBuilder, "GaussianBlur");
 	//TextureDesc.Flags = ETextureCreateFlags::UAV;
 	//TextureDesc.Extent *= 1/0.77;
-	FIntPoint DrawExtent = FIntPoint(OutTexture->Desc.Extent.X * (BilateralParameter->ScreenPercent / 100.0),
-		OutTexture->Desc.Extent.Y * (BilateralParameter->ScreenPercent / 100.0));
+
 	FGaussianBlurCS::FParameters* PassParameters = GraphBuilder.AllocParameters<FGaussianBlurCS::FParameters>();
 	PassParameters->Intexture = InTexture;
-	PassParameters->ViewSize = FVector4f(DrawExtent.X, DrawExtent.Y, BilateralParameter->BlurSize, 0);
+	PassParameters->ViewSize = FVector4f(OutTexture->Desc.Extent.X, OutTexture->Desc.Extent.Y, BilateralParameter->BlurSize, 0);
 	PassParameters->View = View.ViewUniformBuffer;
 	PassParameters->Sampler = TStaticSamplerState<SF_Point, AM_Clamp, AM_Clamp, AM_Clamp>::GetRHI();
 	PassParameters->OutTexture = GraphBuilder.CreateUAV(OutTexture);
 	TShaderMapRef<FGaussianBlurCS> ComputeShader(ViewInfo.ShaderMap);
 	FComputeShaderUtils::AddPass(GraphBuilder,
-								 RDG_EVENT_NAME("GaussianBlur %dx%d (CS)", DrawExtent.X, DrawExtent.Y),
+								 RDG_EVENT_NAME("GaussianBlur %dx%d (CS)", OutTexture->Desc.Extent.X, OutTexture->Desc.Extent.Y),
 								 ComputeShader,
 								 PassParameters,
-								 FComputeShaderUtils::GetGroupCount(DrawExtent, FIntPoint(32, 32)));
+								 FComputeShaderUtils::GetGroupCount(OutTexture->Desc.Extent, FIntPoint(32, 32)));
 
 }
 
-void URenderAdapterBase::AddTextureCombinePass(FRDGBuilder& GraphBuilder, const FViewInfo& View, FRDGTextureRef InTexture, FRDGTextureRef& OutTexture,bool DepthBlend,float Weight)
+void URenderAdapterBase::AddTextureCombinePass(FRDGBuilder& GraphBuilder, const FViewInfo& View,  const FPostProcessingInputs& Inputs,FRDGTextureRef InTexture, FRDGTextureRef& OutTexture,FTextureBlendDesc* InTextureBlendDesc)
 {
+
 	if(!OutTexture->Desc.IsValid())
 	{
 		return;
 	}
 
-
-	const FViewInfo& ViewInfo = static_cast<const FViewInfo&>(View);
 	auto ShaderMap = GetGlobalShaderMap(View.FeatureLevel);
 
 	FRDGTextureRef CopyOutTexture =GraphBuilder.CreateTexture(OutTexture->Desc,TEXT("CopyOutTexture"));
 	AddCopyTexturePass(GraphBuilder,OutTexture,CopyOutTexture);
 	FTextureBlendCS::FPermutationDomain PermutationDomain;
-	PermutationDomain.Set<FTextureBlendCS::FDepthBlend>(DepthBlend);
+	PermutationDomain.Set<FTextureBlendCS::FDepthBlend>(InTextureBlendDesc->BlendMethod == EBlendMethod::DepthCofficient);
 
 	TShaderMapRef<FTextureBlendCS> ComputeShader(ShaderMap,PermutationDomain);
 	FTextureBlendCS::FParameters* Parameters = GraphBuilder.AllocParameters<FTextureBlendCS::FParameters>();
 
 	//FRDGTextureRef OutTexture = GraphBuilder.CreateTexture(SceneColor->Desc,TEXT("StylizationOutTexture"));
-	Parameters->View = ViewInfo.ViewUniformBuffer;
+	Parameters->View = View.ViewUniformBuffer;
+	Parameters->SceneTextures =  Inputs.SceneTextures;
 	Parameters->ClampSampler = TStaticSamplerState<>::GetRHI();
 	Parameters->InTexture = InTexture;
 	Parameters->SceneTexture = CopyOutTexture;
 	Parameters->OutTexture = GraphBuilder.CreateUAV(OutTexture);
-	Parameters->Weight = Weight;
+	Parameters->Weight = InTextureBlendDesc->Weight;
 	FComputeShaderUtils::AddPass(GraphBuilder,
-									 RDG_EVENT_NAME("SceneCollCombind"),
+									 RDG_EVENT_NAME("SceneColorCombine"),
 									 ERDGPassFlags::Compute,
 									 ComputeShader,
 									 Parameters,
@@ -434,6 +478,7 @@ void URenderAdapterBase::AddTextureCombinePass(FRDGBuilder& GraphBuilder, const 
 
 void URenderAdapterBase::AddTextureBlurPass(FRDGBuilder& GraphBuilder, const FViewInfo& View, FRDGTextureRef InTexture, FRDGTextureRef& OutTexture, FBlurParameter BlurParameter)
 {
+
 	switch (BlurParameter.BlurMethod)
 	{
 	case EBlurMethod::BilateralFilter:
