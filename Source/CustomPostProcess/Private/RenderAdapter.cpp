@@ -1,5 +1,7 @@
 #include "RenderAdapter.h"
 
+#include "PixelShaderUtils.h"
+
 
 class FBilateralFilterCS : public FGlobalShader
 {
@@ -168,7 +170,7 @@ public:
 		SHADER_PARAMETER_RDG_TEXTURE(Texture2D,InTexture)
 		SHADER_PARAMETER_RDG_TEXTURE(Texture2D,SceneTexture)
 		SHADER_PARAMETER_SAMPLER(SamplerState, ClampSampler)
-		SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D, OutTexture)
+		SHADER_PARAMETER(float, Weight)
 		RENDER_TARGET_BINDING_SLOTS()
 	END_SHADER_PARAMETER_STRUCT()
 	class FDepthBlend	  : SHADER_PERMUTATION_BOOL("DEPTHBLEND");
@@ -286,14 +288,16 @@ void URenderAdapterBase::InitialCubeMesh(FRHICommandList& RHICmdList)
 
 FRDGTextureRef URenderAdapterBase::GetSceneTexture(const FPostProcessingInputs& Inputs)
 {
+	FRDGTextureRef OutTexture = nullptr;
 	if(bTranslucentOnly)
 	{
-		return Inputs.TranslucencyViewResourcesMap.Get(ETranslucencyPass::TPT_TranslucencyAfterDOF).ColorTexture.Target;
+		OutTexture = Inputs.TranslucencyViewResourcesMap.Get(ETranslucencyPass::TPT_TranslucencyAfterDOF).ColorTexture.Target;
 	}
 	else
 	{
-		return(*Inputs.SceneTextures)->SceneColorTexture;
+		OutTexture = (*Inputs.SceneTextures)->SceneColorTexture;
 	}
+	return OutTexture;
 }
 
 void URenderAdapterBase::DrawDualKawaseBlur(FRDGBuilder& GraphBuilder, const FViewInfo& View, FRDGTextureRef InTexture, FRDGTextureRef& OutTexture,FBlurParameter* BilateralParameter)
@@ -451,28 +455,52 @@ void URenderAdapterBase::AddTextureCombinePass(FRDGBuilder& GraphBuilder, const 
 
 	auto ShaderMap = GetGlobalShaderMap(View.FeatureLevel);
 
+
 	FRDGTextureRef CopyOutTexture =GraphBuilder.CreateTexture(OutTexture->Desc,TEXT("CopyOutTexture"));
-	AddCopyTexturePass(GraphBuilder,OutTexture,CopyOutTexture);
-	FTextureBlendCS::FPermutationDomain PermutationDomain;
-	PermutationDomain.Set<FTextureBlendCS::FDepthBlend>(InTextureBlendDesc->BlendMethod == EBlendMethod::DepthCofficient);
+	if(!bTranslucentOnly)
+	{
 
-	TShaderMapRef<FTextureBlendCS> ComputeShader(ShaderMap,PermutationDomain);
-	FTextureBlendCS::FParameters* Parameters = GraphBuilder.AllocParameters<FTextureBlendCS::FParameters>();
+		FTextureBlendCS::FPermutationDomain PermutationDomain;
+		PermutationDomain.Set<FTextureBlendCS::FDepthBlend>(InTextureBlendDesc->BlendMethod == EBlendMethod::DepthCofficient);
+		AddCopyTexturePass(GraphBuilder,OutTexture,CopyOutTexture);
+		TShaderMapRef<FTextureBlendCS> ComputeShader(ShaderMap,PermutationDomain);
+		FTextureBlendCS::FParameters* Parameters = GraphBuilder.AllocParameters<FTextureBlendCS::FParameters>();
+		Parameters->View = View.ViewUniformBuffer;
+		Parameters->SceneTextures =  Inputs.SceneTextures;
+		Parameters->ClampSampler = TStaticSamplerState<>::GetRHI();
+		Parameters->InTexture = InTexture;
+		Parameters->SceneTexture = CopyOutTexture;
+		Parameters->OutTexture = GraphBuilder.CreateUAV(OutTexture);
+		Parameters->Weight = InTextureBlendDesc->Weight;
+		FComputeShaderUtils::AddPass(GraphBuilder,
+										 RDG_EVENT_NAME("SceneColorCombine CS(%s -> %s)", InTexture->Name, CopyOutTexture->Name),
+										 ERDGPassFlags::Compute,
+										 ComputeShader,
+										 Parameters,
+										 FComputeShaderUtils::GetGroupCount(FIntVector(OutTexture->Desc.Extent.X,OutTexture->Desc.Extent.Y, 1), 8));
+	}
+	else
+	{
 
-	//FRDGTextureRef OutTexture = GraphBuilder.CreateTexture(SceneColor->Desc,TEXT("StylizationOutTexture"));
-	Parameters->View = View.ViewUniformBuffer;
-	Parameters->SceneTextures =  Inputs.SceneTextures;
-	Parameters->ClampSampler = TStaticSamplerState<>::GetRHI();
-	Parameters->InTexture = InTexture;
-	Parameters->SceneTexture = CopyOutTexture;
-	Parameters->OutTexture = GraphBuilder.CreateUAV(OutTexture);
-	Parameters->Weight = InTextureBlendDesc->Weight;
-	FComputeShaderUtils::AddPass(GraphBuilder,
-									 RDG_EVENT_NAME("SceneColorCombine"),
-									 ERDGPassFlags::Compute,
-									 ComputeShader,
-									 Parameters,
-									 FComputeShaderUtils::GetGroupCount(FIntVector(OutTexture->Desc.Extent.X,OutTexture->Desc.Extent.Y, 1), 8));
+		AddDrawTexturePass(GraphBuilder,View,OutTexture,CopyOutTexture);
+		FTextureBlendPS::FPermutationDomain PermutationDomain;
+		PermutationDomain.Set<FTextureBlendPS::FDepthBlend>(InTextureBlendDesc->BlendMethod == EBlendMethod::DepthCofficient);
+		TShaderMapRef<FTextureBlendPS> PixelShader(ShaderMap,PermutationDomain);
+		FTextureBlendPS::FParameters* Parameters = GraphBuilder.AllocParameters<FTextureBlendPS::FParameters>();
+		Parameters->View = View.ViewUniformBuffer;
+		Parameters->SceneTextures =  Inputs.SceneTextures;
+		Parameters->ClampSampler = TStaticSamplerState<>::GetRHI();
+		Parameters->InTexture = InTexture;
+		Parameters->SceneTexture = CopyOutTexture;
+		Parameters->Weight = InTextureBlendDesc->Weight;
+		Parameters->RenderTargets[0] = FRenderTargetBinding(OutTexture, ERenderTargetLoadAction::ELoad);
+		FPixelShaderUtils::AddFullscreenPass(GraphBuilder,ShaderMap,
+			RDG_EVENT_NAME("SceneColorCombine PS(%s -> %s)", InTexture->Name, CopyOutTexture->Name),
+		PixelShader,
+		Parameters,
+		FIntRect(0, 0, OutTexture->Desc.Extent.X, OutTexture->Desc.Extent.Y));
+	}
+
 	//AddCopyTexturePass(GraphBuilder,OutTexture,SceneColor);
 }
 

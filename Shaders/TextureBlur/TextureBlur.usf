@@ -2,7 +2,7 @@
 
 Texture2D<float4>InputTexture;
 SamplerState InputTextureSampler;
-RWTexture2D<float3>OutTexture;
+RWTexture2D<float4>OutTexture;
 
 float Sigma;
 float2 BlurDir;
@@ -41,6 +41,6 @@ void MainCS(uint2 DispatchThreadID : SV_DispatchThreadID)
 		Z += factor;
 		final_colour += factor * OtherColor;
 	}
-	OutTexture[DispatchThreadID] = final_colour / Z;//float4(final_colour / Z,1);
+	OutTexture[DispatchThreadID] = float4(final_colour / Z,1.f);
 
 }
