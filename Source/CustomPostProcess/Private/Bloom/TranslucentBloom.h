@@ -18,10 +18,10 @@ public:
 	float Size = 50.f;
 
 	UPROPERTY(Category = "RenderFeature",EditAnywhere)
-	float Intensity = 0.3f;
+	float Intensity = 0.2f;
 
 	UPROPERTY(Category = "RenderFeature",EditAnywhere)
-	float Falloff = 1.0f;
+	float Falloff = 0.1f;
 
 	UPROPERTY(Category = "RenderFeature",EditAnywhere)
 	float BloomThreshold = 1.0f;

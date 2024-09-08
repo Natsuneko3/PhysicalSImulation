@@ -564,7 +564,7 @@ void UTranslucentBloom::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilde
 
 	for (uint32 StageIndex = 0,SourceIndex = BloomQuality - 1; StageIndex < BloomQuality; ++StageIndex, --SourceIndex)
 	{
-		float BloomFalloff = FMathf::Pow(1.0f / (SourceIndex + 1.f),Falloff);
+		float BloomFalloff = FMathf::Exp(StageIndex * Falloff);
 		FGaussianBlurInputs PassInputs;
 		PassInputs.NameX = TEXT("BloomX");
 		PassInputs.NameY = TEXT("BloomY");
