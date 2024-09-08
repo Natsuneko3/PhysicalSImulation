@@ -1,7 +1,19 @@
 #include "RenderAdapter.h"
 
 #include "PixelShaderUtils.h"
+#include "PostProcess/PostProcessDownsample.h"
 
+const int32 GDownsampleTileSizeX = 8;
+const int32 GDownsampleTileSizeY = 8;
+
+BEGIN_SHADER_PARAMETER_STRUCT(FDownsampleParameters, )
+	SHADER_PARAMETER_STRUCT_REF(FViewUniformShaderParameters, ViewUniformBuffer)
+	SHADER_PARAMETER_STRUCT(FScreenPassTextureViewportParameters, Input)
+	SHADER_PARAMETER_STRUCT(FScreenPassTextureViewportParameters, Output)
+	SHADER_PARAMETER_RDG_TEXTURE(Texture2D, InputTexture)
+	SHADER_PARAMETER_SAMPLER(SamplerState, InputSampler)
+
+END_SHADER_PARAMETER_STRUCT()
 
 class FBilateralFilterCS : public FGlobalShader
 {
@@ -35,7 +47,6 @@ public:
 
 	END_SHADER_PARAMETER_STRUCT()
 };
-
 
 class FDualKawaseBlurDCS : public FGlobalShader
 {
@@ -120,6 +131,7 @@ class FGaussianBlurCS : public FGlobalShader
 
 		END_SHADER_PARAMETER_STRUCT()
 };
+
 class FTextureBlendCS : public FGlobalShader
 {
 public:
@@ -135,9 +147,9 @@ public:
 	    SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D, OutTexture)
 	SHADER_PARAMETER(float, Weight)
 	END_SHADER_PARAMETER_STRUCT()
-	class FDepthBlend	  : SHADER_PERMUTATION_BOOL("DEPTHBLEND");
-	//class FKuwaharaFilter	  : SHADER_PERMUTATION_BOOL("KuwaharaFilter");
-	using FPermutationDomain = TShaderPermutationDomain<FDepthBlend>;
+	class FBlendMethod	  : SHADER_PERMUTATION_ENUM_CLASS("COMBINEMETHOD",EBlendMethod);
+
+	using FPermutationDomain = TShaderPermutationDomain<FBlendMethod>;
 	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
 	{
 		return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
@@ -147,8 +159,15 @@ public:
 	{
 		OutEnvironment.SetDefine(TEXT("THREADGROUP_SIZEX"), 8);
 		OutEnvironment.SetDefine(TEXT("THREADGROUP_SIZEY"), 8);
+		OutEnvironment.SetDefine(TEXT("ADDITION"), 0);
+		OutEnvironment.SetDefine(TEXT("MULTIPLY"), 1);
+		OutEnvironment.SetDefine(TEXT("INTERPOLATION"), 2);
+		OutEnvironment.SetDefine(TEXT("DEPTHINTERPOLATION"), 3);
+		OutEnvironment.SetDefine(TEXT("INVDEPTHINTERPOLATION"), 4);
+		//OutEnvironment.SetDefine(TEXT("THREADGROUP_SIZEY"), 8);
 	}
 };
+
 class FTextureBlendPS : public FGlobalShader
 {
 public:
@@ -157,6 +176,11 @@ public:
 
 	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)
 	{
+		OutEnvironment.SetDefine(TEXT("ADDITION"), 0);
+		OutEnvironment.SetDefine(TEXT("MULTIPLY"), 1);
+		OutEnvironment.SetDefine(TEXT("INTERPOLATION"), 2);
+		OutEnvironment.SetDefine(TEXT("DEPTHINTERPOLATION"), 3);
+		OutEnvironment.SetDefine(TEXT("INVDEPTHINTERPOLATION"), 4);
 	}
 
 	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
@@ -173,11 +197,80 @@ public:
 		SHADER_PARAMETER(float, Weight)
 		RENDER_TARGET_BINDING_SLOTS()
 	END_SHADER_PARAMETER_STRUCT()
-	class FDepthBlend	  : SHADER_PERMUTATION_BOOL("DEPTHBLEND");
-	//class FKuwaharaFilter	  : SHADER_PERMUTATION_BOOL("KuwaharaFilter");
-	using FPermutationDomain = TShaderPermutationDomain<FDepthBlend>;
+	class FBlendMethod	  : SHADER_PERMUTATION_ENUM_CLASS("COMBINEMETHOD",EBlendMethod);
+	using FPermutationDomain = TShaderPermutationDomain<FBlendMethod>;
 };
 
+FDownsampleParameters GetDownsampleParameters(const FViewInfo& View, FScreenPassTexture Output, FScreenPassTexture Input, EDownsampleQuality DownsampleMethod)
+{
+	check(Output.IsValid());
+	check(Input.IsValid());
+
+	const FScreenPassTextureViewportParameters InputParameters = GetScreenPassTextureViewportParameters(FScreenPassTextureViewport(Input));
+	const FScreenPassTextureViewportParameters OutputParameters = GetScreenPassTextureViewportParameters(FScreenPassTextureViewport(Output));
+
+	FDownsampleParameters Parameters;
+	Parameters.ViewUniformBuffer = View.ViewUniformBuffer;
+	Parameters.Input = InputParameters;
+	Parameters.Output = OutputParameters;
+	Parameters.InputTexture = Input.Texture;
+	Parameters.InputSampler = TStaticSamplerState<SF_Bilinear, AM_Clamp, AM_Clamp, AM_Clamp>::GetRHI();
+
+	return Parameters;
+}
+
+class FDownsamplePS : public FGlobalShader
+{
+public:
+	DECLARE_GLOBAL_SHADER(FDownsamplePS);
+	SHADER_USE_PARAMETER_STRUCT(FDownsamplePS, FGlobalShader);
+
+
+	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
+		SHADER_PARAMETER_STRUCT_INCLUDE(FDownsampleParameters, Common)
+	SHADER_PARAMETER(float,BloomThreshold)
+		RENDER_TARGET_BINDING_SLOTS()
+	END_SHADER_PARAMETER_STRUCT()
+	class FQuality	  : SHADER_PERMUTATION_ENUM_CLASS("DOWNSAMPLE_QUALITY",EDownsampleQuality);
+	class FNeedClampLuminance	  : SHADER_PERMUTATION_BOOL("NEEDCLAMPLUMINANCE");
+	using FPermutationDomain = TShaderPermutationDomain<FQuality,FNeedClampLuminance>;
+	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
+	{
+		return true;
+	}
+};
+
+class FDownsampleCS : public FGlobalShader
+{
+public:
+	DECLARE_GLOBAL_SHADER(FDownsampleCS);
+	SHADER_USE_PARAMETER_STRUCT(FDownsampleCS, FGlobalShader);
+
+
+	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
+		SHADER_PARAMETER_STRUCT_INCLUDE(FDownsampleParameters, Common)
+		SHADER_PARAMETER(FScreenTransform, DispatchThreadIdToInputUV)
+		SHADER_PARAMETER(float,BloomThreshold)
+		SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D<float4>, OutComputeTexture)
+	END_SHADER_PARAMETER_STRUCT()
+	class FQuality	  : SHADER_PERMUTATION_ENUM_CLASS("DOWNSAMPLE_QUALITY",EDownsampleQuality);
+	class FNeedClampLuminance	  : SHADER_PERMUTATION_BOOL("NEEDCLAMPLUMINANCE");
+	using FPermutationDomain = TShaderPermutationDomain<FQuality,FNeedClampLuminance>;
+	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
+	{
+		return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
+	}
+
+	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)
+	{
+		FGlobalShader::ModifyCompilationEnvironment(Parameters,OutEnvironment);
+		OutEnvironment.SetDefine(TEXT("THREADGROUP_SIZEX"), GDownsampleTileSizeX);
+		OutEnvironment.SetDefine(TEXT("THREADGROUP_SIZEY"), GDownsampleTileSizeY);
+	}
+};
+
+IMPLEMENT_GLOBAL_SHADER(FDownsamplePS, "/Plugin/PhysicalSimulation/DownSample.usf", "MainPS", SF_Pixel);
+IMPLEMENT_GLOBAL_SHADER(FDownsampleCS, "/Plugin/PhysicalSimulation/DownSample.usf", "MainCS", SF_Compute);
 IMPLEMENT_GLOBAL_SHADER(FTextureBlendPS, "/Plugin/PhysicalSimulation/TextureBlend.usf", "MainPS", SF_Pixel);
 IMPLEMENT_GLOBAL_SHADER(FTextureBlendCS, "/Plugin/PhysicalSimulation/TextureBlend.usf", "MainCS", SF_Compute);
 IMPLEMENT_GLOBAL_SHADER(FDualKawaseBlurDCS, "/Plugin/PhysicalSimulation/TextureBlur/DualKawaseBlur.usf", "DownSampleCS", SF_Compute);
@@ -452,16 +545,13 @@ void URenderAdapterBase::AddTextureCombinePass(FRDGBuilder& GraphBuilder, const 
 	{
 		return;
 	}
-
 	auto ShaderMap = GetGlobalShaderMap(View.FeatureLevel);
-
-
 	FRDGTextureRef CopyOutTexture =GraphBuilder.CreateTexture(OutTexture->Desc,TEXT("CopyOutTexture"));
 	if(!bTranslucentOnly)
 	{
 
 		FTextureBlendCS::FPermutationDomain PermutationDomain;
-		PermutationDomain.Set<FTextureBlendCS::FDepthBlend>(InTextureBlendDesc->BlendMethod == EBlendMethod::DepthCofficient);
+		PermutationDomain.Set<FTextureBlendCS::FBlendMethod>(InTextureBlendDesc->BlendMethod == EBlendMethod::MAX?EBlendMethod::Addition: InTextureBlendDesc->BlendMethod);
 		AddCopyTexturePass(GraphBuilder,OutTexture,CopyOutTexture);
 		TShaderMapRef<FTextureBlendCS> ComputeShader(ShaderMap,PermutationDomain);
 		FTextureBlendCS::FParameters* Parameters = GraphBuilder.AllocParameters<FTextureBlendCS::FParameters>();
@@ -484,7 +574,7 @@ void URenderAdapterBase::AddTextureCombinePass(FRDGBuilder& GraphBuilder, const 
 
 		AddDrawTexturePass(GraphBuilder,View,OutTexture,CopyOutTexture);
 		FTextureBlendPS::FPermutationDomain PermutationDomain;
-		PermutationDomain.Set<FTextureBlendPS::FDepthBlend>(InTextureBlendDesc->BlendMethod == EBlendMethod::DepthCofficient);
+		PermutationDomain.Set<FTextureBlendPS::FBlendMethod>(InTextureBlendDesc->BlendMethod == EBlendMethod::MAX?EBlendMethod::Addition: InTextureBlendDesc->BlendMethod);
 		TShaderMapRef<FTextureBlendPS> PixelShader(ShaderMap,PermutationDomain);
 		FTextureBlendPS::FParameters* Parameters = GraphBuilder.AllocParameters<FTextureBlendPS::FParameters>();
 		Parameters->View = View.ViewUniformBuffer;
@@ -502,6 +592,59 @@ void URenderAdapterBase::AddTextureCombinePass(FRDGBuilder& GraphBuilder, const 
 	}
 
 	//AddCopyTexturePass(GraphBuilder,OutTexture,SceneColor);
+}
+
+void URenderAdapterBase::AddDownsamplePass(FRDGBuilder& GraphBuilder, const FViewInfo& View, FScreenPassTexture Input, FScreenPassTexture Output, FDownSampleParameter DownSampleParameter)
+{
+
+	if (DownSampleParameter.bUseComputeShader)
+	{
+		FDownsampleCS::FParameters* PassParameters = GraphBuilder.AllocParameters<FDownsampleCS::FParameters>();
+		PassParameters->Common = GetDownsampleParameters(View, Output, Input, DownSampleParameter.Quality);
+		PassParameters->BloomThreshold = DownSampleParameter.BloomThreshold;
+		PassParameters->DispatchThreadIdToInputUV = ((FScreenTransform::Identity + 0.5f) / Output.ViewRect.Size()) * FScreenTransform::ChangeTextureBasisFromTo(FScreenPassTextureViewport(Input), FScreenTransform::ETextureBasis::ViewportUV, FScreenTransform::ETextureBasis::TextureUV);
+		PassParameters->OutComputeTexture = GraphBuilder.CreateUAV(Output.Texture);
+
+		FDownsampleCS::FPermutationDomain PermutationVector;
+		PermutationVector.Set<FDownsampleCS::FQuality>(DownSampleParameter.Quality);
+		PermutationVector.Set<FDownsampleCS::FNeedClampLuminance>(DownSampleParameter.bNeedClampLuminance);
+
+		TShaderMapRef<FDownsampleCS> ComputeShader(View.ShaderMap, PermutationVector);
+		FComputeShaderUtils::AddPass(
+			GraphBuilder,
+			RDG_EVENT_NAME("Downsample(%s Quality=%s CS) %dx%d -> %dx%d",
+				Output.Texture->Name,
+				DownSampleParameter.Quality == EDownsampleQuality::High ? TEXT("High") : TEXT("Bilinear"),
+				Input.ViewRect.Width(), Input.ViewRect.Height(),
+				Output.ViewRect.Width(), Output.ViewRect.Height()),
+			ERDGPassFlags::Compute,
+			ComputeShader,
+			PassParameters,
+			FComputeShaderUtils::GetGroupCount(Output.ViewRect.Size(), FIntPoint(GDownsampleTileSizeX, GDownsampleTileSizeY)));	}
+	else
+	{
+		FDownsamplePS::FPermutationDomain PermutationVector;
+		PermutationVector.Set<FDownsamplePS::FQuality>(DownSampleParameter.Quality);
+		PermutationVector.Set<FDownsamplePS::FNeedClampLuminance>(DownSampleParameter.bNeedClampLuminance);
+		FDownsamplePS::FParameters* PassParameters = GraphBuilder.AllocParameters<FDownsamplePS::FParameters>();
+		PassParameters->Common = GetDownsampleParameters(View, Output, Input, DownSampleParameter.Quality);
+		PassParameters->BloomThreshold = DownSampleParameter.BloomThreshold;
+		PassParameters->RenderTargets[0] = FRenderTargetBinding(Output.Texture,ERenderTargetLoadAction::ELoad);
+
+		TShaderMapRef<FDownsamplePS> PixelShader(View.ShaderMap, PermutationVector);
+		FPixelShaderUtils::AddFullscreenPass(
+			GraphBuilder,
+			View.ShaderMap,
+			RDG_EVENT_NAME("Downsample(%s Quality=%s PS) %dx%d -> %dx%d",
+				Output.Texture->Name,
+				DownSampleParameter.Quality == EDownsampleQuality::High ? TEXT("High") : TEXT("Bilinear"),
+				Input.ViewRect.Width(), Input.ViewRect.Height(),
+				Output.ViewRect.Width(), Output.ViewRect.Height()),
+			PixelShader,
+			PassParameters,
+			Output.ViewRect);
+	}
+
 }
 
 void URenderAdapterBase::AddTextureBlurPass(FRDGBuilder& GraphBuilder, const FViewInfo& View, FRDGTextureRef InTexture, FRDGTextureRef& OutTexture, FBlurParameter BlurParameter)

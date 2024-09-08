@@ -1,7 +1,7 @@
 #pragma once
 #include "PostProcess/PostProcessing.h"
 #include "RenderGraphBuilder.h"
-#include "Runtime/Renderer/Private/PostProcess/PostProcessing.h"
+#include "PostProcess/PostProcessDownsample.h"
 #include "RenderAdapter.generated.h"
 class FCPPSceneProxy;
 
@@ -31,7 +31,6 @@ DEFINE_LOG_CATEGORY_STATIC(LogCustomPostProcess, Log, All);
 
 DECLARE_STATS_GROUP(TEXT("Custom Render Feature"), STATGROUP_CRF, STATCAT_Advanced)
 
-
 UENUM()
 enum class EBlurMethod:uint8
 {
@@ -39,29 +38,43 @@ enum class EBlurMethod:uint8
 	DualKawase ,
 	Gaussian
 };
+
 UENUM()
 enum class EBlendMethod:uint8
 {
-	Normal ,
-	DepthCofficient
+	Addition,
+	Multiply,
+	Interpolation,
+	DepthInterpolation,
+	InvDepthInterpolation,
+	MAX
 };
 
 USTRUCT()
 struct FTextureBlendDesc
 {
 	GENERATED_BODY()
-	UPROPERTY(Category = "BaseParameter",EditAnywhere)
+	UPROPERTY(Category = "BaseParameter|RenderAdapter",EditAnywhere)
 	float Weight = 1.0;
-	UPROPERTY(Category = "BaseParameter",EditAnywhere)
-	EBlendMethod BlendMethod;
+	UPROPERTY(Category = "BaseParameter|RenderAdapter",EditAnywhere)
+	EBlendMethod BlendMethod = EBlendMethod::Interpolation;
 };
+
 struct FBlurParameter
 {
-	EBlurMethod BlurMethod;
+	EBlurMethod BlurMethod = EBlurMethod::BilateralFilter;
 	float BlurSize = 1.0;
 	float Sigma = 10;
 	int Step = 3;
 	float ScreenPercent = 100.0;
+};
+
+struct FDownSampleParameter
+{
+	EDownsampleQuality Quality;
+	bool bUseComputeShader;
+	bool bNeedClampLuminance;
+	float BloomThreshold;
 };
 
 UCLASS(Abstract, Blueprintable, EditInlineNew, CollapseCategories )
@@ -69,14 +82,18 @@ class URenderAdapterBase :public UObject
 {
 	GENERATED_BODY()
 public:
-	UPROPERTY(Category = "BaseParameter",EditAnywhere)
+	UPROPERTY(Category = "BaseParameter|RenderAdapter",EditAnywhere)
 	bool bEnable = true;
-	UPROPERTY(Category = "BaseParameter",EditAnywhere)
+
+	UPROPERTY(Category = "BaseParameter|RenderAdapter",EditAnywhere)
 	bool bTranslucentOnly ;
-	UPROPERTY(Category = "BaseParameter",EditAnywhere,meta=(ClampMin=10,ClampMax=100,UIMin=10,UIMax=100))
+
+	UPROPERTY(Category = "BaseParameter|RenderAdapter",EditAnywhere,meta=(ClampMin=10,ClampMax=100,UIMin=10,UIMax=100))
 	float ScreenPercent = 100.0;
-	UPROPERTY(Category = "BaseParameter",EditAnywhere,meta=(DisplayName="Texture Blend"))
+
+	UPROPERTY(Category = "BaseParameter|RenderAdapter",EditAnywhere,meta=(DisplayName="Texture Blend"))
 	FTextureBlendDesc TextureBlendDesc;
+
 
 	URenderAdapterBase(){}
 
@@ -87,16 +104,17 @@ public:
 	virtual void PreRenderViewFamily_RenderThread(FRDGBuilder& GraphBuilder, FSceneViewFamily& InViewFamily){}
 
 	virtual void PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& View, const FPostProcessingInputs& Inputs){};
-	int32 Frame;
+
 	void AddTextureBlurPass(FRDGBuilder& GraphBuilder,const FViewInfo& View,FRDGTextureRef InTexture,FRDGTextureRef& OutTexture,FBlurParameter BlurParameter);
 	void InitialPlaneMesh(FRHICommandList& RHICmdList);
 	void InitialCubeMesh(FRHICommandList& RHICmdList);
 	void AddTextureCombinePass(FRDGBuilder& GraphBuilder,const FViewInfo& View, const FPostProcessingInputs& Inputs,FRDGTextureRef InTexture,FRDGTextureRef& OutTexture,FTextureBlendDesc* InTextureBlendDesc);
+	void AddDownsamplePass(FRDGBuilder& GraphBuilder, const FViewInfo& View, FScreenPassTexture Input, FScreenPassTexture Output, FDownSampleParameter DownSampleParameter);
 	virtual void Release(){}
 
 	FBufferRHIRef VertexBufferRHI;
 	FBufferRHIRef IndexBufferRHI;
-
+	int32 Frame;
 	template <typename TShaderClassPS>
 	void DrawMesh(const FViewInfo& View,
 	FMatrix44f Transform,
@@ -147,6 +165,7 @@ public:
 protected:
 	FRDGTextureRef GetSceneTexture(const FPostProcessingInputs& Inputs);
 private:
+
 	void DrawDualKawaseBlur(FRDGBuilder& GraphBuilder,const FViewInfo& View,FRDGTextureRef InTexture,FRDGTextureRef& OutTexture,FBlurParameter* BilateralParameter);
 	void DrawBilateralFilter(FRDGBuilder& GraphBuilder,const FViewInfo& View,FRDGTextureRef InTexture,FRDGTextureRef& OutTexture,FBlurParameter* BilateralParameter);
 	void DrawGaussianBlur(FRDGBuilder& GraphBuilder,const FViewInfo& View,FRDGTextureRef InTexture,FRDGTextureRef& OutTexture,FBlurParameter* BilateralParameter);

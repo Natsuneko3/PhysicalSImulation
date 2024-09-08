@@ -29,7 +29,8 @@ public class CustomPostProcess : ModuleRules
                 "RHI",
                 "RHICore",
                 "UnrealEd",
-                "PropertyEditor"
+                "PropertyEditor",
+
             }
         );
     }

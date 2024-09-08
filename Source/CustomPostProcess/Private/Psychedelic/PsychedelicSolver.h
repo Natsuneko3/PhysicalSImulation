@@ -44,7 +44,7 @@ struct FPlandFluidParameters
 	float NoiseIntensity = 100;
 
 	UPROPERTY(EditAnywhere,Category = "PlandFluidParameters")
-	float DensityDissipate = 0.5;
+	float DensityDissipate = 0.1;
 
 	UPROPERTY(EditAnywhere,Category = "PlandFluidParameters")
 	float VelocityDissipate = 0.05;

@@ -221,7 +221,6 @@ void UPsychedelicSolver::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuild
 	}
 	FRDGTextureRef BlurColorTexture = GraphBuilder.CreateTexture(FRDGTextureDesc::Create2D(TextureSize / 2,PF_FloatR11G11B10,FClearValueBinding::Black,TexCreate_ShaderResource | TexCreate_UAV),TEXT("BlurColorTexture"));
 	FBlurParameter BilateralParameter;
-
 	AddTextureBlurPass(GraphBuilder,ViewInfo,FluidColorTexture,BlurColorTexture,BilateralParameter);
 	//SimulationTexturePool = GraphBuilder.ConvertToExternalTexture(AdvectionDensityTexture);
 
