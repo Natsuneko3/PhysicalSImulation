@@ -75,6 +75,7 @@ struct FDownSampleParameter
 	bool bUseComputeShader;
 	bool bNeedClampLuminance;
 	float BloomThreshold;
+	float UVScale;
 };
 
 UCLASS(Abstract, Blueprintable, EditInlineNew, CollapseCategories )

@@ -228,6 +228,7 @@ public:
 
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
 		SHADER_PARAMETER_STRUCT_INCLUDE(FDownsampleParameters, Common)
+	SHADER_PARAMETER(float,UVScale)
 	SHADER_PARAMETER(float,BloomThreshold)
 		RENDER_TARGET_BINDING_SLOTS()
 	END_SHADER_PARAMETER_STRUCT()
@@ -251,6 +252,7 @@ public:
 		SHADER_PARAMETER_STRUCT_INCLUDE(FDownsampleParameters, Common)
 		SHADER_PARAMETER(FScreenTransform, DispatchThreadIdToInputUV)
 		SHADER_PARAMETER(float,BloomThreshold)
+	SHADER_PARAMETER(float,UVScale)
 		SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D<float4>, OutComputeTexture)
 	END_SHADER_PARAMETER_STRUCT()
 	class FQuality	  : SHADER_PERMUTATION_ENUM_CLASS("DOWNSAMPLE_QUALITY",EDownsampleQuality);
@@ -463,8 +465,6 @@ void URenderAdapterBase::DrawDualKawaseBlur(FRDGBuilder& GraphBuilder, const FVi
 
 void URenderAdapterBase::DrawBilateralFilter(FRDGBuilder& GraphBuilder, const FViewInfo& View, FRDGTextureRef InTexture, FRDGTextureRef& OutTexture,FBlurParameter* BilateralParameter)
 {
-
-
 	FString IsHorizon;
 	FVector2f BlurDir;
 
@@ -602,6 +602,7 @@ void URenderAdapterBase::AddDownsamplePass(FRDGBuilder& GraphBuilder, const FVie
 		FDownsampleCS::FParameters* PassParameters = GraphBuilder.AllocParameters<FDownsampleCS::FParameters>();
 		PassParameters->Common = GetDownsampleParameters(View, Output, Input, DownSampleParameter.Quality);
 		PassParameters->BloomThreshold = DownSampleParameter.BloomThreshold;
+		PassParameters->UVScale = DownSampleParameter.UVScale;
 		PassParameters->DispatchThreadIdToInputUV = ((FScreenTransform::Identity + 0.5f) / Output.ViewRect.Size()) * FScreenTransform::ChangeTextureBasisFromTo(FScreenPassTextureViewport(Input), FScreenTransform::ETextureBasis::ViewportUV, FScreenTransform::ETextureBasis::TextureUV);
 		PassParameters->OutComputeTexture = GraphBuilder.CreateUAV(Output.Texture);
 
@@ -629,6 +630,7 @@ void URenderAdapterBase::AddDownsamplePass(FRDGBuilder& GraphBuilder, const FVie
 		FDownsamplePS::FParameters* PassParameters = GraphBuilder.AllocParameters<FDownsamplePS::FParameters>();
 		PassParameters->Common = GetDownsampleParameters(View, Output, Input, DownSampleParameter.Quality);
 		PassParameters->BloomThreshold = DownSampleParameter.BloomThreshold;
+		PassParameters->UVScale = DownSampleParameter.UVScale;
 		PassParameters->RenderTargets[0] = FRenderTargetBinding(Output.Texture,ERenderTargetLoadAction::ELoad);
 
 		TShaderMapRef<FDownsamplePS> PixelShader(View.ShaderMap, PermutationVector);

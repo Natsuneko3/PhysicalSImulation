@@ -32,7 +32,7 @@ SCREEN_PASS_TEXTURE_VIEWPORT(Filter)
 
 SamplerState Filter_Sampler;
 Texture2D Filter_Texture; 
-
+float BloomLuminance;
 float4 SampleFilterTexture(float2 UV)
 {
 #if USE_MANUAL_UV_BORDER
@@ -102,7 +102,7 @@ void MainPS(
 	Color += SampleAdditiveTexture(InUV);
 #endif
 
-	OutColor = Color;
+	OutColor = Color ;// (Luminance(Color) + 1.f) * BloomLuminance;
 }
 
 #else // !USE_DYNAMIC_LOOP
@@ -145,7 +145,7 @@ void MainPS(
 	Color += SampleAdditiveTexture(InUV);
 #endif
 
-	OutColor = Color;
+	OutColor = Color ;// (Luminance(Color) + 1.f) * BloomLuminance;
 }
 
 #endif

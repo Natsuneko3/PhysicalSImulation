@@ -21,6 +21,7 @@
 Texture2D InputTexture;
 SamplerState InputSampler;
 float BloomThreshold;
+float UVScale;
 SCREEN_PASS_TEXTURE_VIEWPORT(Input)
 SCREEN_PASS_TEXTURE_VIEWPORT(Output)
 
@@ -34,7 +35,7 @@ float4 SampleInput(float2 UV)
 	half TotalLuminance = Luminance(LinearColor) ;//* ExposureScale;
 	half BloomLuminance = TotalLuminance - BloomThreshold;
 	half BloomAmount = saturate(BloomLuminance * 0.5f);
-	SceneColor =float4(BloomAmount * LinearColor, 0) * View.PreExposure;
+	SceneColor =float4(BloomAmount * LinearColor,SceneColor.a) * View.PreExposure;
 #endif
 
 	return SceneColor;
@@ -53,10 +54,10 @@ float4 DownsampleCommon(float2 UV)
 	float2 UVs[4];
 
 	// Blur during downsample (4x4 kernel) to get better quality especially for HDR content.
-	UVs[0] = UV + Input_ExtentInverse * float2(-1, -1);
-	UVs[1] = UV + Input_ExtentInverse * float2( 1, -1);
-	UVs[2] = UV + Input_ExtentInverse * float2(-1,  1);
-	UVs[3] = UV + Input_ExtentInverse * float2( 1,  1);
+	UVs[0] = UV + Input_ExtentInverse * float2(-1, -1)*UVScale;
+	UVs[1] = UV + Input_ExtentInverse * float2( 1, -1)*UVScale;
+	UVs[2] = UV + Input_ExtentInverse * float2(-1,  1)*UVScale;
+	UVs[3] = UV + Input_ExtentInverse * float2( 1,  1)*UVScale;
 
 	float4 Sample[4];
 

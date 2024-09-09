@@ -29,6 +29,7 @@ BEGIN_SHADER_PARAMETER_STRUCT(FFilterParameters, )
 	SHADER_PARAMETER_ARRAY(FVector4f, SampleOffsets, [MAX_PACKED_SAMPLES_OFFSET])
 	SHADER_PARAMETER_ARRAY(FLinearColor, SampleWeights, [MAX_FILTER_SAMPLES])
 	SHADER_PARAMETER(int32, SampleCount)
+	SHADER_PARAMETER(float, BloomLuminance)
 END_SHADER_PARAMETER_STRUCT()
 
 void GetFilterParameters(
@@ -59,6 +60,7 @@ void GetFilterParameters(
 	}
 
 	OutParameters.SampleCount = SampleOffsets.Num();
+
 }
 
 // Evaluates an unnormalized normal distribution PDF around 0 at given X with Variance.
@@ -88,8 +90,8 @@ float NormalDistributionUnscaled(float X, float Sigma, float CrossCenterWeight)
 
 uint32 GetSampleCountMax(ERHIFeatureLevel::Type InFeatureLevel, EShaderPlatform InPlatform)
 {
-	return MAX_FILTER_COMPILE_TIME_SAMPLES;
-	/*if (IsMetalMRTPlatform(InPlatform))
+
+	if (IsMetalMRTPlatform(InPlatform))
 	{
 		return MAX_FILTER_COMPILE_TIME_SAMPLES_IOS;
 	}
@@ -100,7 +102,7 @@ uint32 GetSampleCountMax(ERHIFeatureLevel::Type InFeatureLevel, EShaderPlatform 
 	else
 	{
 		return MAX_FILTER_COMPILE_TIME_SAMPLES;
-	}*/
+	}
 }
 
 float GetClampedKernelRadius(uint32 SampleCountMax, float KernelRadius)
@@ -169,7 +171,7 @@ bool IsFastBlurEnabled(float BlurRadius)
 {
 	//const float FastBlurRadiusThreshold = CVarFastBlurThreshold.GetValueOnRenderThread();
 
-	return BlurRadius >= 15.0f;
+	return false;//BlurRadius >= 15.0f;
 }
 
 uint32 GetStaticSampleCount(uint32 RequiredSampleCount)
@@ -552,7 +554,8 @@ void UTranslucentBloom::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilde
 	DownSampleParameter.BloomThreshold = BloomThreshold;
 	DownSampleParameter.bUseComputeShader = !bTranslucentOnly;
 	DownSampleParameter.bNeedClampLuminance = true;
-	Desc.Extent = FIntPoint(Desc.Extent.X*(ScreenPercent / 100.f),Desc.Extent.Y * (ScreenPercent/ 100.f));
+	DownSampleParameter.UVScale = FMathf::Lerp(1.f,BloomGlow, Size);
+	Desc.Extent = FIntPoint(Desc.Extent.X * (ScreenPercent / 100.f),Desc.Extent.Y * (ScreenPercent/ 100.f));
 
 	for(uint32 i = 0; i < BloomQuality - 1; ++i)
 	{
@@ -571,7 +574,7 @@ void UTranslucentBloom::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilde
 		PassInputs.Filter = FScreenPassTexture(DowmSamplerChain[SourceIndex]);
 		PassInputs.Additive = PassOutputs;
 		PassInputs.CrossCenterWeight = FVector2f(0.f);	// LWC_TODO: Precision loss
-		PassInputs.KernelSizePercent = Size * FMathf::Pow(2,StageIndex);
+		PassInputs.KernelSizePercent = Size  * BloomQuality * FMathf::Pow(2,StageIndex);
 		PassInputs.TintColor = Color * Intensity * BloomFalloff;
 
 		PassOutputs = AddGaussianBloomPass(GraphBuilder, ViewInfo, PassInputs);
