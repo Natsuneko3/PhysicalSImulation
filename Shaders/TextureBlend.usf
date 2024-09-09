@@ -1,0 +1,54 @@
+﻿#include "/Engine/Private/Common.ush"
+#include "/Engine/Private/SceneTexturesCommon.ush"
+Texture2D InTexture;
+Texture2D SceneTexture;
+SamplerState ClampSampler;
+
+
+float Weight;
+float3 Combine(float4 A,float4 B,float2 UV)
+{
+	float3 OutColor = 0.f;
+#if COMBINEMETHOD == ADDITION
+	OutColor = A.xyz + B.xyz * Weight * B.a;
+#elif COMBINEMETHOD == MULTIPLY
+	OutColor = max(A.xyz , B.xyz * Weight * B.a);
+#elif COMBINEMETHOD == INTERPOLATION
+	OutColor =  lerp(A.xyz, B.xyz, Weight * B.a);
+#elif COMBINEMETHOD == DEPTHINTERPOLATION
+	float Depth = saturate(ConvertFromDeviceZ(LookupDeviceZ(UV)) / 5000.f);
+	OutColor = lerp(A.xyz,B.xyz,Weight * Depth * B.a);
+#elif COMBINEMETHOD == INVDEPTHINTERPOLATION
+	float Depth = saturate( ConvertFromDeviceZ(LookupDeviceZ(UV)) / 5000.f);
+	OutColor = lerp(A.xyz,B.xyz,Weight * (1 - Depth)  * B.a);
+#endif
+
+	return OutColor;
+}
+#if PIXELSHADER
+void MainPS(float4 Position:SV_Position,out float4 OutTextureColor:SV_Target0)
+{
+	float SizeX,SizeY;
+	SceneTexture.GetDimensions(SizeX,SizeY);
+	float2 UV = Position.xy / float2(SizeX,SizeY);
+	float4 SampleColor = InTexture.SampleLevel(ClampSampler,UV,0);
+	float4 OriginalColor = SceneTexture.SampleLevel(ClampSampler,UV,0);
+
+	float3 OutColor = Combine(OriginalColor,SampleColor,UV).xyz;
+	OutTextureColor= float4(OutColor,OriginalColor.a);
+}
+#endif
+RWTexture2D<float4> OutTexture;
+#if COMPUTESHADER
+[numthreads(THREADGROUP_SIZEX, THREADGROUP_SIZEY, 1)]
+void MainCS(uint2 DispatchThreadID : SV_DispatchThreadID)
+{
+	float SizeX,SizeY;
+	OutTexture.GetDimensions(SizeX,SizeY);
+	float2 UV = float2(DispatchThreadID + 0.5) / float2(SizeX,SizeY);
+	float4 SampleColor = InTexture.SampleLevel(ClampSampler,UV,0);
+	float4 OriginalColor = SceneTexture.SampleLevel(ClampSampler,UV,0);
+	float3 OutColor = Combine(OriginalColor,SampleColor,UV);
+	OutTexture[DispatchThreadID] = float4(OutColor, OriginalColor.a);
+}
+#endif

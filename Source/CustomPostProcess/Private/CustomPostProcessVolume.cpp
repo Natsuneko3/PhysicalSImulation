@@ -1,12 +1,13 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 #include "CustomPostProcessVolume.h"
 
-// Sets default values
-ACustomPostProcessVolume::ACustomPostProcessVolume()
+#include "CustomPostProcessWorldSystem.h"
+//#include UE_INLINE_GENERATED_CPP_BY_NAME(CustomPostProcess)
+ACustomPostProcessVolume::ACustomPostProcessVolume(const FObjectInitializer& ObjectInitializer): Super(ObjectInitializer)
 {
-	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 	CPPComponent = CreateDefaultSubobject<UCustomPostProcessComponent>(TEXT("CustomPostProcessComponent"));
+	CPPComponent->RenderFeatures = RenderFeatures;
 	SetRootComponent(CPPComponent);
 }
 
@@ -14,6 +15,13 @@ ACustomPostProcessVolume::ACustomPostProcessVolume()
 void ACustomPostProcessVolume::BeginPlay()
 {
 
+}
+
+
+void ACustomPostProcessVolume::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
+{
+	Super::PostEditChangeProperty(PropertyChangedEvent);
+	CPPComponent->RenderFeatures = RenderFeatures;
 }
 
 // Called every frame

@@ -21,14 +21,20 @@ void FCPPViewExtension::BeginRenderViewFamily(FSceneViewFamily& InViewFamily)
 
 void FCPPViewExtension::PreRenderView_RenderThread(FRDGBuilder& GraphBuilder, FSceneView& InView)
 {
+	DECLARE_GPU_STAT(CustomRenderFeature)
+	RDG_EVENT_SCOPE(GraphBuilder, "CustomRenderFeature");
+	RDG_GPU_STAT_SCOPE(GraphBuilder, CustomRenderFeature);
 	for (FCPPSceneProxy* SceneProxy : SceneProxies)
 	{
 		//SceneProxy->PhysicalSolver->SetParameter(SceneProxy);
-		if (SceneProxy)
+		if (SceneProxy && SceneProxy->Component !=nullptr && SceneProxy->Component->RenderFeatures.Num())
 		{
-			for(URenderAdapterBase* RenderAdapter: SceneProxy->RenderAdapters)
+			for(URenderAdapterBase* RenderAdapter : SceneProxy->Component->RenderFeatures)
 			{
-				RenderAdapter->PreRenderView_RenderThread(GraphBuilder, InView);
+				if(RenderAdapter&&RenderAdapter->bEnable&&RenderAdapter->TextureBlendDesc.Weight > 0.f)
+				{
+					RenderAdapter->PreRenderView_RenderThread(GraphBuilder, InView);
+				}
 			}
 		}
 	}
@@ -49,19 +55,26 @@ bool FCPPViewExtension::IsActiveThisFrame_Internal(const FSceneViewExtensionCont
 
 void FCPPViewExtension::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& View, const FPostProcessingInputs& Inputs)
 {
+	DECLARE_GPU_STAT(CustomRenderFeature)
+	RDG_EVENT_SCOPE(GraphBuilder, "CustomRenderFeature");
+	RDG_GPU_STAT_SCOPE(GraphBuilder, CustomRenderFeature);
 	for (FCPPSceneProxy* SceneProxy : SceneProxies)
 	{
-		if (SceneProxy)
+		//SceneProxy->PhysicalSolver->SetParameter(SceneProxy);
+		if (SceneProxy && SceneProxy->Component != nullptr && SceneProxy->Component->RenderFeatures.Num())
 		{
-			for(URenderAdapterBase* RenderAdapter: SceneProxy->RenderAdapters)
+			for(URenderAdapterBase* RenderAdapter : SceneProxy->Component->RenderFeatures)
 			{
-				RenderAdapter->PrePostProcessPass_RenderThread(GraphBuilder, View,Inputs);
+				if(RenderAdapter&&RenderAdapter->bEnable&&RenderAdapter->TextureBlendDesc.Weight > 0.f)
+				{
+					RenderAdapter->PrePostProcessPass_RenderThread(GraphBuilder, View,Inputs);
+				}
 			}
 		}
 	}
 }
 
-void FCPPViewExtension::AddProxy(FCPPSceneProxy* Proxy, FRHICommandListBase& RHICmdList)
+void FCPPViewExtension::AddProxy(FCPPSceneProxy* Proxy)
 {
 	if (SceneProxies.Find(Proxy) == INDEX_NONE)
 	{

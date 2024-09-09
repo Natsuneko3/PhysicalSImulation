@@ -1,21 +1,18 @@
 ﻿#include "CustomPostProcess.h"
+
 #include "Misc/Paths.h"
 #include "ShaderCore.h"
 #define LOCTEXT_NAMESPACE "FCustomPostProcessModule"
 
 void FCustomPostProcessModule::StartupModule()
 {
-	FString PluginShaderDir = FPaths::Combine(FPaths::ProjectPluginsDir(), TEXT("OutsidePlugins/PhysicalSImulation/Shaders"));
+	FString PluginShaderDir = FPaths::Combine(FPaths::ProjectPluginsDir(), TEXT("PhysicalSImulation/Shaders"));
 	if(!FPaths::DirectoryExists(PluginShaderDir))
-	{
-		PluginShaderDir = FPaths::Combine(FPaths::ProjectPluginsDir(), TEXT("PhysicalSImulation/Shaders"));
-	}
-	else
 	{
 		PluginShaderDir = FPaths::Combine(FPaths::EnginePluginsDir(), TEXT("PhysicalSImulation/Shaders"));
 	}
 
-	AddShaderSourceDirectoryMapping(TEXT("/Plugin/CustomPostProcess"), PluginShaderDir);
+	AddShaderSourceDirectoryMapping(TEXT("/Plugin/PhysicalSimulation"), PluginShaderDir);
 }
 
 void FCustomPostProcessModule::ShutdownModule()
