@@ -1,5 +1,7 @@
 #include "SceneSpaceLine.h"
 
+#include <DataDrivenShaderPlatformInfo.h>
+
 class FSceneSpaceLineCS : public FGlobalShader
 {
 public:

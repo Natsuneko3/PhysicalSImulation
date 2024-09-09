@@ -1,7 +1,9 @@
 #pragma once
-#include "PhysicalSolver.h"
+#include "FluidCommon.h"
 #include "RHIGPUReadback.h"
-#include "PhysicalLiquidSolver.generated.h"
+#include "RenderAdapter.h"
+#include "Psychedelic/PsychedelicSolver.h"
+//#include "PhysicalLiquidSolver.generated.h"
 
 BEGIN_SHADER_PARAMETER_STRUCT(FLiuquidParameter, PHYSICALSIMULATION_API)
 	SHADER_PARAMETER_STRUCT_INCLUDE(FSolverBaseParameter, SolverBaseParameter)
@@ -26,13 +28,13 @@ struct FLiquidSolverParameter
 };
 
 //class FPhysicalSimulationSceneProxy;
-class FPhysicalLiquidSolver : public FPhysicalSolverBase
+class FPhysicalLiquidSolver : public URenderAdapterBase
 {
 public:
-	FPhysicalLiquidSolver(FPhysicalSimulationSceneProxy* InSceneProxy);
+	FPhysicalLiquidSolver();
 	~FPhysicalLiquidSolver();
 
-	void SetLiuquidParameter(FLiuquidParameter& Parameter, FSceneView& InView,FPhysicalSimulationSceneProxy* InSceneProxy);
+	void SetLiuquidParameter(FLiuquidParameter& Parameter, FSceneView& InView);
 
 	virtual void PreRenderView_RenderThread(FRDGBuilder& GraphBuilder, FSceneView& InView) override;
 virtual void PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& View, const FPostProcessingInputs& Inputs) override;

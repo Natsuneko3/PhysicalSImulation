@@ -1,15 +1,5 @@
 #pragma once
-#include "PhysicalSolver.h"
-#include "Physical2DFluidSolver.generated.h"
-
-enum EShadertype
-{
-	PreVel,
-	Advection,
-	IteratePressure,
-	ComputeDivergence
-};
-
+#include "RenderAdapter.h"
 
 
 USTRUCT(BlueprintType)
@@ -39,29 +29,26 @@ struct FPlandFluidParameters
 	TObjectPtr<UTexture> InTexture1;
 };
 
-class FPhysical2DFluidSolver : public FPhysicalSolverBase
+class FPhysical2DFluidSolver : public URenderAdapterBase
 {
 public:
-	FPhysical2DFluidSolver(FPhysicalSimulationSceneProxy* InSceneProxy);
+	FPhysical2DFluidSolver();
 	~FPhysical2DFluidSolver();
 
 
 	virtual void PreRenderView_RenderThread(FRDGBuilder& GraphBuilder, FSceneView& InView) override;
 
 	virtual void Initial_RenderThread(FRHICommandListImmediate& RHICmdList) override;
-	virtual void Render_RenderThread(FPostOpaqueRenderParameters& Parameters) override;
+
 	virtual void PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& View, const FPostProcessingInputs& Inputs) override;
 	virtual void Release() override;
 	bool bIsInitial = false;
 
 
 	FIntPoint GridSize;
-	FPhysicalSimulationSceneProxy* SceneProxy;
 
 private:
-	void SetSolverParameter(FFluidParameter& SolverParameter, FSceneView& InView,FPhysicalSimulationSceneProxy* InSceneProxy);
 	TRefCountPtr<IPooledRenderTarget> SimulationTexturePool;
 	TRefCountPtr<IPooledRenderTarget> PressureTexturePool;
-	/*FRDGTextureRef SimulationTexture;
-	FRDGTextureRef PressureTexture;*/
+
 };

@@ -1,11 +1,7 @@
-#include "PhysicalLiquidSolver.h"
 #include "MeshPassProcessor.inl"
-#include "PhysicalSimulationMeshProcessor.h"
-#include "PhysicalSimulationSceneProxy.h"
-#include "PhysicalSimulationSystem.h"
 #include "ShaderParameterStruct.h"
-#include "PhysicalSolver.h"
 #include "PixelShaderUtils.h"
+#include "PhysicalLiquid.h"
 
 DECLARE_CYCLE_STAT(TEXT("Particle To Cell"), STAT_P2G, STATGROUP_PS)
 DECLARE_CYCLE_STAT(TEXT("Cell To Particle"), STAT_G2P, STATGROUP_PS)
@@ -158,16 +154,6 @@ BEGIN_SHADER_PARAMETER_STRUCT(LiquidShaderParamater, )
 	RENDER_TARGET_BINDING_SLOTS()
 END_SHADER_PARAMETER_STRUCT()
 
-FPhysicalLiquidSolver::FPhysicalLiquidSolver(FPhysicalSimulationSceneProxy* InSceneProxy)
-	: FPhysicalSolverBase(InSceneProxy)
-{
-	SceneProxy = InSceneProxy;
-	LastNumParticle = 0;
-	AllocatedInstanceCounts = 0;
-	GridSize = SceneProxy->GridSize;
-	//FPSCubeVertexBuffer VertexBuffer;
-
-}
 
 FPhysicalLiquidSolver::~FPhysicalLiquidSolver()
 {

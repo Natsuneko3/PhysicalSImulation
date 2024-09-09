@@ -1,11 +1,8 @@
-#include "Physical2DFluidSolver.h"
 
 #include "MeshPassProcessor.inl"
-#include "PhysicalSimulationMeshProcessor.h"
-#include "PhysicalSimulationSceneProxy.h"
 #include "ShaderParameterStruct.h"
-#include "PhysicalSolver.h"
 #include "PixelShaderUtils.h"
+#include "Physical2DFluid.h"
 #include "Runtime/Renderer/Private/PostProcess/PostProcessing.h"
 
 
@@ -122,14 +119,6 @@ IMPLEMENT_SHADER_TYPE(template<>, FFFTSolvePoissonCS<512>, TEXT("/Plugin/Physica
 IMPLEMENT_SHADER_TYPE(template<>, FFFTSolvePoissonCS<256>, TEXT("/Plugin/PhysicalSimulation/FFTSolvePoisson.usf"), TEXT("MainCS"), SF_Compute);
 IMPLEMENT_SHADER_TYPE(template<>, FFFTSolvePoissonCS<128>, TEXT("/Plugin/PhysicalSimulation/FFTSolvePoisson.usf"), TEXT("MainCS"), SF_Compute);
 
-
-FPhysical2DFluidSolver::FPhysical2DFluidSolver(FPhysicalSimulationSceneProxy* InSceneProxy)
-	: FPhysicalSolverBase(InSceneProxy)
-{
-	SceneProxy = InSceneProxy;
-	Frame = 0;
-	GridSize = FIntPoint(InSceneProxy->GridSize.X, InSceneProxy->GridSize.Y);
-}
 
 FPhysical2DFluidSolver::~FPhysical2DFluidSolver()
 {

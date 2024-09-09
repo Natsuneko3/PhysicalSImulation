@@ -1,4 +1,6 @@
 #pragma once
+#include <DataDrivenShaderPlatformInfo.h>
+
 #include "PostProcess/PostProcessing.h"
 #include "RenderGraphBuilder.h"
 #include "PostProcess/PostProcessDownsample.h"
