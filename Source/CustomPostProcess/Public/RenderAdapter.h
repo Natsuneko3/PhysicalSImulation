@@ -1,7 +1,8 @@
 #pragma once
-#include "PostProcess/PostProcessing.h"
+#include "CommonRenderResources.h"
+#include "DataDrivenShaderPlatformInfo.h"
 #include "RenderGraphBuilder.h"
-#include "PostProcess/PostProcessDownsample.h"
+#include "ShaderParameterStruct.h"
 #include "RenderAdapter.generated.h"
 class FCPPSceneProxy;
 

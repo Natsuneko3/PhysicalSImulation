@@ -45,9 +45,9 @@ SIZE_T FCPPSceneProxy::GetTypeHash() const
 	return reinterpret_cast<size_t>(&UniquePointer);
 }
 
-void FCPPSceneProxy::CreateRenderThreadResources()
+void FCPPSceneProxy::CreateRenderThreadResources(FRHICommandListBase& RHICmdList)
 {
-	FPrimitiveSceneProxy::CreateRenderThreadResources();
+	FPrimitiveSceneProxy::CreateRenderThreadResources(RHICmdList);
 	if (ViewExtension)
 	{
 		ViewExtension->AddProxy(this);
