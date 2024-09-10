@@ -21,8 +21,8 @@ void UTranslucentPostProcess::PrePostProcessPass_RenderThread(FRDGBuilder& Graph
 	{
 		FScreenPassTexture OutTranslucent(TranslucencyTexture);
 		FPostProcessMaterialInputs PassInputs;
-		PassInputs.SetInput(EPostProcessMaterialInput::SceneColor,FScreenPassTexture((*Inputs.SceneTextures)->SceneColorTexture));
-		PassInputs.SetInput(EPostProcessMaterialInput::SeparateTranslucency,FScreenPassTexture(TranslucencyTexture));
+		PassInputs.SetInput(GraphBuilder,EPostProcessMaterialInput::SceneColor,FScreenPassTexture((*Inputs.SceneTextures)->SceneColorTexture));
+		PassInputs.SetInput(GraphBuilder,EPostProcessMaterialInput::SeparateTranslucency,FScreenPassTexture(TranslucencyTexture));
 		PassInputs.SceneTextures = GetSceneTextureShaderParameters(Inputs.SceneTextures);
 		//OutTranslucent = AddPostProcessMaterialPass(GraphBuilder,ViewInfo,PassInputs,Material);
 		AddCopyTexturePass(GraphBuilder,OutTranslucent.Texture,TranslucencyTexture);
