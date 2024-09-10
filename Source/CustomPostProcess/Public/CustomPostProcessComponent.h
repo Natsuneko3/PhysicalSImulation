@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "RenderAdapter.h"
-#include "Components/ActorComponent.h"
+#include "Components/PrimitiveComponent.h"
 #include "CustomPostProcessComponent.generated.h"
 
 

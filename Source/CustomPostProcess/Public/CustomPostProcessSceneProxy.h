@@ -4,8 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "CustomPostProcessComponent.h"
+#include "PrimitiveSceneProxy.h"
 #include "CustomPostProcessViewExtension.h"
-#include "RenderAdapter.h"
 #include "UObject/Object.h"
 
 /**
