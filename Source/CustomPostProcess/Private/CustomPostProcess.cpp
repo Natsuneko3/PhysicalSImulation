@@ -2,17 +2,16 @@
 
 #include "Misc/Paths.h"
 #include "ShaderCore.h"
+
+#include "Modules/ModuleInterface.h"
 #define LOCTEXT_NAMESPACE "FCustomRenderFeatureModule"
 
 void FCustomRenderFeatureModule::StartupModule()
 {
-	FString PluginShaderDir = FPaths::Combine(FPaths::ProjectPluginsDir(), TEXT("CustomRenderFeature/Shaders"));
-	if(!FPaths::DirectoryExists(PluginShaderDir))
-	{
-		PluginShaderDir = FPaths::Combine(FPaths::EnginePluginsDir(), TEXT("CustomRenderFeature/Shaders"));
-	}
 
+	FString PluginShaderDir = FPaths::Combine(IPluginManager::Get().FindPlugin(TEXT("CustomRenderFeature"))->GetBaseDir(), TEXT("Shaders"));
 	AddShaderSourceDirectoryMapping(TEXT("/Plugin/CustomRenderFeature"), PluginShaderDir);
+
 }
 
 void FCustomRenderFeatureModule::ShutdownModule()
