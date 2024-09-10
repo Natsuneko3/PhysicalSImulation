@@ -58,7 +58,7 @@ struct FTextureBlendDesc
 	UPROPERTY(Category = "BaseParameter|RenderAdapter",EditAnywhere)
 	float Weight = 1.0;
 	UPROPERTY(Category = "BaseParameter|RenderAdapter",EditAnywhere)
-	EBlendMethod BlendMethod = EBlendMethod::Interpolation;
+	EBlendMethod BlendMethod = EBlendMethod::Addition;
 };
 
 struct FBlurParameter
@@ -88,7 +88,7 @@ public:
 	bool bEnable = true;
 
 	UPROPERTY(Category = "BaseParameter|RenderAdapter",EditAnywhere)
-	bool bTranslucentOnly ;
+	bool bTranslucentOnly = true;
 
 	UPROPERTY(Category = "BaseParameter|RenderAdapter",EditAnywhere,meta=(ClampMin=10,ClampMax=100,UIMin=10,UIMax=100))
 	float ScreenPercent = 100.0;

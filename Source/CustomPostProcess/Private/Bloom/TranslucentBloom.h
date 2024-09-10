@@ -25,14 +25,15 @@ public:
 
 	UPROPERTY(Category = "RenderFeature",EditAnywhere)
 	float BloomThreshold = 1.0f;
+
 	UPROPERTY(Category = "RenderFeature",EditAnywhere,meta=(ClampMin=1,ClampMax=10,UIMin=1,UIMax=10))
-	float BloomGlow = 10.0f;
+	float BloomGlow = 2.0f;
 
 	UPROPERTY(Category = "RenderFeature",EditAnywhere)
 	float BloomLuminance = 1.0f;
 
 	UPROPERTY(Category = "RenderFeature",EditAnywhere,meta=(ClampMin=3,ClampMax=6,UIMin=3,UIMax=6))
-	uint32 BloomQuality = 4;
+	uint32 BloomQuality = 6;
 
 	UPROPERTY(Category = "RenderFeature",EditAnywhere)
 	FLinearColor Color = FLinearColor::White;
