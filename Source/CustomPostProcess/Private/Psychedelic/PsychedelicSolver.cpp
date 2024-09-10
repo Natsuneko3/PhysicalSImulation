@@ -3,6 +3,7 @@
 #include "RenderTargetPool.h"
 #include "SceneTexturesConfig.h"
 #include "SceneView.h"
+#include "TextureResource.h"
 #include "ShaderPrintParameters.h"
 
 

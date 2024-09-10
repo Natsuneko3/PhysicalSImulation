@@ -1,5 +1,5 @@
 ﻿#include "CustomPostProcessViewExtension.h"
-
+#include "Modules/ModuleManager.h"
 #include "CustomPostProcessSceneProxy.h"
 #include "RenderAdapter.h"
 

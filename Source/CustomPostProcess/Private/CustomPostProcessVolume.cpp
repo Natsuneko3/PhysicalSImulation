@@ -17,12 +17,13 @@ void ACustomPostProcessVolume::BeginPlay()
 
 }
 
-
+#if WITH_EDITOR
 void ACustomPostProcessVolume::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
 {
 	Super::PostEditChangeProperty(PropertyChangedEvent);
 	CPPComponent->RenderFeatures = RenderFeatures;
 }
+#endif
 
 // Called every frame
 void ACustomPostProcessVolume::Tick(float DeltaTime)
