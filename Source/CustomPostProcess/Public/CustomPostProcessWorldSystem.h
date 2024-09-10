@@ -11,7 +11,7 @@
  *
  */
 UCLASS()
-class CUSTOMPOSTPROCESS_API UCPPWorldSystem : public UWorldSubsystem
+class CUSTOMRENDERFEATURE_API UCPPWorldSystem : public UWorldSubsystem
 {
 	GENERATED_BODY()
 public:

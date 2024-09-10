@@ -33,7 +33,7 @@ public:
 	class FKuwaharaFilter	  : SHADER_PERMUTATION_BOOL("KuwaharaFilter");
   using FPermutationDomain = TShaderPermutationDomain<FSNNFilter, FKuwaharaFilter>;*/
 };
-IMPLEMENT_GLOBAL_SHADER(FStylizationCS, "/Plugin/PhysicalSimulation/TextureBlur/StylizationFilter.usf", "MainCS", SF_Compute);
+IMPLEMENT_GLOBAL_SHADER(FStylizationCS, "/Plugin/CustomRenderFeature/TextureBlur/StylizationFilter.usf", "MainCS", SF_Compute);
 
 UStylizationFilter::UStylizationFilter()
 {

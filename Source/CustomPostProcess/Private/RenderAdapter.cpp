@@ -271,15 +271,15 @@ public:
 	}
 };
 
-IMPLEMENT_GLOBAL_SHADER(FDownsamplePS, "/Plugin/PhysicalSimulation/DownSample.usf", "MainPS", SF_Pixel);
-IMPLEMENT_GLOBAL_SHADER(FDownsampleCS, "/Plugin/PhysicalSimulation/DownSample.usf", "MainCS", SF_Compute);
-IMPLEMENT_GLOBAL_SHADER(FTextureBlendPS, "/Plugin/PhysicalSimulation/TextureBlend.usf", "MainPS", SF_Pixel);
-IMPLEMENT_GLOBAL_SHADER(FTextureBlendCS, "/Plugin/PhysicalSimulation/TextureBlend.usf", "MainCS", SF_Compute);
-IMPLEMENT_GLOBAL_SHADER(FDualKawaseBlurDCS, "/Plugin/PhysicalSimulation/TextureBlur/DualKawaseBlur.usf", "DownSampleCS", SF_Compute);
-IMPLEMENT_GLOBAL_SHADER(FDualKawaseBlurUCS, "/Plugin/PhysicalSimulation/TextureBlur/DualKawaseBlur.usf", "UpSampleCS", SF_Compute);
-IMPLEMENT_GLOBAL_SHADER(FGaussianBlurCS, "/Plugin/PhysicalSimulation/TextureBlur/DualKawaseBlur.usf", "GaussianBlur", SF_Compute);
-IMPLEMENT_GLOBAL_SHADER(FCommonMeshVS, "/Plugin/PhysicalSimulation/SmokePlanePass.usf", "MainVS", SF_Vertex);
-IMPLEMENT_GLOBAL_SHADER(FBilateralFilterCS, "/Plugin/PhysicalSimulation/TextureBlur/TextureBlur.usf", "MainCS", SF_Compute);
+IMPLEMENT_GLOBAL_SHADER(FDownsamplePS, "/Plugin/CustomRenderFeature/DownSample.usf", "MainPS", SF_Pixel);
+IMPLEMENT_GLOBAL_SHADER(FDownsampleCS, "/Plugin/CustomRenderFeature/DownSample.usf", "MainCS", SF_Compute);
+IMPLEMENT_GLOBAL_SHADER(FTextureBlendPS, "/Plugin/CustomRenderFeature/TextureBlend.usf", "MainPS", SF_Pixel);
+IMPLEMENT_GLOBAL_SHADER(FTextureBlendCS, "/Plugin/CustomRenderFeature/TextureBlend.usf", "MainCS", SF_Compute);
+IMPLEMENT_GLOBAL_SHADER(FDualKawaseBlurDCS, "/Plugin/CustomRenderFeature/TextureBlur/DualKawaseBlur.usf", "DownSampleCS", SF_Compute);
+IMPLEMENT_GLOBAL_SHADER(FDualKawaseBlurUCS, "/Plugin/CustomRenderFeature/TextureBlur/DualKawaseBlur.usf", "UpSampleCS", SF_Compute);
+IMPLEMENT_GLOBAL_SHADER(FGaussianBlurCS, "/Plugin/CustomRenderFeature/TextureBlur/DualKawaseBlur.usf", "GaussianBlur", SF_Compute);
+IMPLEMENT_GLOBAL_SHADER(FCommonMeshVS, "/Plugin/CustomRenderFeature/SmokePlanePass.usf", "MainVS", SF_Vertex);
+IMPLEMENT_GLOBAL_SHADER(FBilateralFilterCS, "/Plugin/CustomRenderFeature/TextureBlur/TextureBlur.usf", "MainCS", SF_Compute);
 
 ///////////////////URenderAdapterBase/////////////////////
 

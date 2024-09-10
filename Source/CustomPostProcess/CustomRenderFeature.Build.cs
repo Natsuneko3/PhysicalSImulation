@@ -1,8 +1,8 @@
 ﻿using UnrealBuildTool;
 
-public class CustomPostProcess : ModuleRules
+public class CustomRenderFeature : ModuleRules
 {
-    public CustomPostProcess(ReadOnlyTargetRules Target) : base(Target)
+    public CustomRenderFeature(ReadOnlyTargetRules Target) : base(Target)
     {
         PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
         PublicIncludePaths.AddRange(

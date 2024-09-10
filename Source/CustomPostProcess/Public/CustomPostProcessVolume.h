@@ -20,7 +20,7 @@ enum class ECustomPostProcessType : uint8
 };
 
 UCLASS(autoexpandcategories=ACustomPostProcessVolume, hidecategories=(Advanced, Collision, Volume, Brush, Attachment))
-class CUSTOMPOSTPROCESS_API ACustomPostProcessVolume : public AVolume
+class CUSTOMRENDERFEATURE_API ACustomPostProcessVolume : public AVolume
 {
 	GENERATED_BODY()
 

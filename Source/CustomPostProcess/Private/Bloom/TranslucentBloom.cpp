@@ -302,8 +302,8 @@ public:
 	}
 };
 IMPLEMENT_GLOBAL_SHADER(FTranslucentFilterVS, "/Engine/Private/FilterVertexShader.usf", "MainVS", SF_Vertex);
-IMPLEMENT_GLOBAL_SHADER(FTranslucentFilterPS, "/Plugin/PhysicalSimulation/TextureBlur/Bloom.usf", "MainPS", SF_Pixel);
-IMPLEMENT_GLOBAL_SHADER(FTranslucentFilterCS, "/Plugin/PhysicalSimulation/TextureBlur/Bloom.usf", "MainCS", SF_Compute);
+IMPLEMENT_GLOBAL_SHADER(FTranslucentFilterPS, "/Plugin/CustomRenderFeature/TextureBlur/Bloom.usf", "MainPS", SF_Pixel);
+IMPLEMENT_GLOBAL_SHADER(FTranslucentFilterCS, "/Plugin/CustomRenderFeature/TextureBlur/Bloom.usf", "MainCS", SF_Compute);
 } //! namespace
 
 FScreenPassTexture AddGaussianBloomPass(

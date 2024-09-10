@@ -12,7 +12,7 @@
  * 
  */
 
-class CUSTOMPOSTPROCESS_API FCPPSceneProxy : public FPrimitiveSceneProxy
+class CUSTOMRENDERFEATURE_API FCPPSceneProxy : public FPrimitiveSceneProxy
 {
 public:
 	FCPPSceneProxy( UCustomPostProcessComponent* InComponent);

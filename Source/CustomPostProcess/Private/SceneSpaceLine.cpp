@@ -27,7 +27,7 @@ public:
 		OutEnvironment.SetDefine(TEXT("THREADGROUP_SIZEY"), 8);
 	}
 };
-IMPLEMENT_GLOBAL_SHADER(FSceneSpaceLineCS, "/Plugin/PhysicalSimulation/SceneSpaceLine.usf", "MainCS", SF_Compute);
+IMPLEMENT_GLOBAL_SHADER(FSceneSpaceLineCS, "/Plugin/CustomRenderFeature/SceneSpaceLine.usf", "MainCS", SF_Compute);
 
 USceneSpaceLine::USceneSpaceLine()
 {

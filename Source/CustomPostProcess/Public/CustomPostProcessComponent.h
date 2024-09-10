@@ -12,7 +12,7 @@ class ACustomPostProcessVolume;
 
 UCLASS(ClassGroup=(Custom), meta=(BlueprintSpawnableComponent))
 //UCLASS(Abstract, Blueprintable, EditInlineNew, CollapseCategories, Config = Input, defaultconfig, configdonotcheckdefaults)
-class CUSTOMPOSTPROCESS_API UCustomPostProcessComponent : public UPrimitiveComponent
+class CUSTOMRENDERFEATURE_API UCustomPostProcessComponent : public UPrimitiveComponent
 {
 	GENERATED_BODY()
 

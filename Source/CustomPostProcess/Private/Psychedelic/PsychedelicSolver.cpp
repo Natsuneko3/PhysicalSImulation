@@ -91,8 +91,8 @@ public:
 	}
 };
 
-IMPLEMENT_GLOBAL_SHADER(FPPFluidCS, "/Plugin/PhysicalSimulation/PPFluid/PPFluid.usf", "MainCS", SF_Compute);
-IMPLEMENT_GLOBAL_SHADER(FPPPsychedelicPS, "/Plugin/PhysicalSimulation/PPFluid/PPFluidPixelShader.usf", "MainPS", SF_Pixel);
+IMPLEMENT_GLOBAL_SHADER(FPPFluidCS, "/Plugin/CustomRenderFeature/PPFluid/PPFluid.usf", "MainCS", SF_Compute);
+IMPLEMENT_GLOBAL_SHADER(FPPPsychedelicPS, "/Plugin/CustomRenderFeature/PPFluid/PPFluidPixelShader.usf", "MainPS", SF_Pixel);
 
 UPsychedelicSolver::UPsychedelicSolver()
 {
