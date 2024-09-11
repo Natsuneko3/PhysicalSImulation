@@ -3,9 +3,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "CustomPostProcessSceneProxy.h"
+#include "CustomRenderFeatureSceneProxy.h"
 #include "Subsystems/WorldSubsystem.h"
-#include "CustomPostProcessWorldSystem.generated.h"
+#include "CustomRenderFeatureWorldSystem.generated.h"
 
 /**
  *
@@ -24,6 +24,6 @@ public:
 	/** Called once all UWorldSubsystems have been initialized */
 	virtual void PostInitialize() override;
 	void AddSceneProxyToViewExtension(FCPPSceneProxy* InSceneProxy);
-	TSharedPtr<FCPPViewExtension> CustomPostProcessViewExtension;
+	TSharedPtr<FCPPViewExtension> CustomRenderFeatureViewExtension;
 	TArray<FVector> OutParticle;
 };

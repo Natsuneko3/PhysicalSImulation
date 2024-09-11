@@ -27,7 +27,7 @@ public:
 	END_SHADER_PARAMETER_STRUCT()
 };
 
-DEFINE_LOG_CATEGORY_STATIC(LogCustomPostProcess, Log, All);
+DEFINE_LOG_CATEGORY_STATIC(LogCustomRenderFeature, Log, All);
 
 DECLARE_STATS_GROUP(TEXT("Custom Render Feature"), STATGROUP_CRF, STATCAT_Advanced)
 

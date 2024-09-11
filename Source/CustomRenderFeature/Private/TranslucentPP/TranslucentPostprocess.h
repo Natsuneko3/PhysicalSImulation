@@ -14,7 +14,7 @@ public:
 	UPROPERTY(Category = "RenderFeature",EditAnywhere)
 	bool bOnlyTranslucentPass;
 
-	UPROPERTY(Category = CustomPostProcess,EditAnywhere)
+	UPROPERTY(Category = CustomRenderFeature,EditAnywhere)
 	TArray<UMaterial*> Materials;
 
 	virtual void PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& View, const FPostProcessingInputs& Inputs) override;

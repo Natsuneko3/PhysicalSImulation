@@ -1,6 +1,6 @@
-﻿#include "CustomPostProcessViewExtension.h"
+﻿#include "CustomRenderFeatureViewExtension.h"
 #include "Modules/ModuleManager.h"
-#include "CustomPostProcessSceneProxy.h"
+#include "CustomRenderFeatureSceneProxy.h"
 #include "RenderAdapter.h"
 
 

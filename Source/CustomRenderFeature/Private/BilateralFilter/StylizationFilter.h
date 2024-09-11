@@ -16,13 +16,13 @@ public:
 	UStylizationFilter();
 
 
-	UPROPERTY(Category = CustomPostProcess,EditAnywhere)
+	UPROPERTY(Category = CustomRenderFeature,EditAnywhere)
 	EStylizationFilterType StylizationType;
 
-	UPROPERTY(Category = CustomPostProcess,EditAnywhere)
+	UPROPERTY(Category = CustomRenderFeature,EditAnywhere)
 	int Step = 5;
 
-	UPROPERTY(Category = CustomPostProcess,EditAnywhere)
+	UPROPERTY(Category = CustomRenderFeature,EditAnywhere)
 	float StylizationIntensity = 1.f;
 
 	virtual void PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& View, const FPostProcessingInputs& Inputs) override;

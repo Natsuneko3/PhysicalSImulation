@@ -3,9 +3,9 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "CustomPostProcessComponent.h"
+#include "CustomRenderFeatureComponent.h"
 #include "PrimitiveSceneProxy.h"
-#include "CustomPostProcessViewExtension.h"
+#include "CustomRenderFeatureViewExtension.h"
 #include "UObject/Object.h"
 
 /**
@@ -15,10 +15,10 @@
 class CUSTOMRENDERFEATURE_API FCPPSceneProxy : public FPrimitiveSceneProxy
 {
 public:
-	FCPPSceneProxy( UCustomPostProcessComponent* InComponent);
+	FCPPSceneProxy( UCustomRenderFeatureComponent* InComponent);
 	~FCPPSceneProxy();
 	//TArray<TObjectPtr<URenderAdapterBase>> RenderAdapters;
-	UCustomPostProcessComponent* Component = nullptr;
+	UCustomRenderFeatureComponent* Component = nullptr;
 protected:
 
 	virtual SIZE_T GetTypeHash() const override;

@@ -1,6 +1,6 @@
 #include "TranslucentPostprocess.h"
 
-#include "CustomPostProcessSceneProxy.h"
+#include "CustomRenderFeatureSceneProxy.h"
 #include "PostProcess/PostProcessMaterial.h"
 
 

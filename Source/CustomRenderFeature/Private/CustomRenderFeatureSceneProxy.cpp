@@ -1,18 +1,18 @@
 ﻿// Fill out your copyright notice in the Description page of Project Settings.
-#include "CustomPostProcessSceneProxy.h"
-#include "CustomPostProcessViewExtension.h"
-#include "CustomPostProcessVolume.h"
-#include "CustomPostProcessWorldSystem.h"
+#include "CustomRenderFeatureSceneProxy.h"
+#include "CustomRenderFeatureViewExtension.h"
+#include "CustomRenderFeatureVolume.h"
+#include "CustomRenderFeatureWorldSystem.h"
 #include "TranslucentPP/TranslucentPostprocess.h"
 DECLARE_STATS_GROUP(TEXT("Custom PostProcess"), STATGROUP_CPP, STATCAT_Advanced)
 
-FCPPSceneProxy::FCPPSceneProxy(UCustomPostProcessComponent* InComponent)
+FCPPSceneProxy::FCPPSceneProxy(UCustomRenderFeatureComponent* InComponent)
 	: FPrimitiveSceneProxy(InComponent), Component(InComponent)
 {
 	UCPPWorldSystem* SubSystem = InComponent->GetWorld()->GetSubsystem<UCPPWorldSystem>();
 	if (SubSystem)
 	{
-		ViewExtension = SubSystem->CustomPostProcessViewExtension;
+		ViewExtension = SubSystem->CustomRenderFeatureViewExtension;
 		if(Component->RenderFeatures.Num() > 0)
 		{
 			ENQUEUE_RENDER_COMMAND(InitPhysicalSolver)(

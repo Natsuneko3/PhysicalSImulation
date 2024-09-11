@@ -12,16 +12,16 @@ public:
 	USceneBlur();
 
 
-	UPROPERTY(Category = CustomPostProcess,EditAnywhere,meta=(DisplayName="BlurMethod"))
+	UPROPERTY(Category = CustomRenderFeature,EditAnywhere,meta=(DisplayName="BlurMethod"))
 	EBlurMethod BlurType;
 
-	UPROPERTY(Category = CustomPostProcess,EditAnywhere,meta=(ClampMin=0.0001,DisplayName="Blur Intensity"))
+	UPROPERTY(Category = CustomRenderFeature,EditAnywhere,meta=(ClampMin=0.0001,DisplayName="Blur Intensity"))
 	float BlurSize = 1.0;
 
-	UPROPERTY(Category = CustomPostProcess,EditAnywhere,meta=(EditCondition="BlurType==EBlurMethod::BilateralFilter",EditConditionHides))
+	UPROPERTY(Category = CustomRenderFeature,EditAnywhere,meta=(EditCondition="BlurType==EBlurMethod::BilateralFilter",EditConditionHides))
 	float Sigma = 10.0;
 
-	UPROPERTY(Category = CustomPostProcess,EditAnywhere,meta=(EditCondition="BlurType!=EBlurMethod::Gaussian",EditConditionHides))
+	UPROPERTY(Category = CustomRenderFeature,EditAnywhere,meta=(EditCondition="BlurType!=EBlurMethod::Gaussian",EditConditionHides))
 	int Step = 3;
 
 	virtual void PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& View, const FPostProcessingInputs& Inputs) override;

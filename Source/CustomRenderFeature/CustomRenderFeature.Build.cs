@@ -28,6 +28,7 @@ public class CustomRenderFeature : ModuleRules
                 "RenderCore",
                 "RHI",
                 "RHICore",
+                "Projects"
             }
         );
     }

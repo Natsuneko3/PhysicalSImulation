@@ -1,8 +1,7 @@
-﻿#include "CustomPostProcess.h"
-
+﻿#include "CustomRenderFeature.h"
 #include "Misc/Paths.h"
 #include "ShaderCore.h"
-
+#include "Interfaces/IPluginManager.h"
 #include "Modules/ModuleInterface.h"
 #define LOCTEXT_NAMESPACE "FCustomRenderFeatureModule"
 

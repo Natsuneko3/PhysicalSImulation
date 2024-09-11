@@ -1,7 +1,7 @@
 // Copyright Natsu Neko, Inc. All Rights Reserved.
 
 
-#include "CustomPostProcessWorldSystem.h"
+#include "CustomRenderFeatureWorldSystem.h"
 
 #include "SceneViewExtension.h"
 
@@ -9,13 +9,13 @@
 void UCPPWorldSystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
-	CustomPostProcessViewExtension = FSceneViewExtensions::NewExtension<FCPPViewExtension>();
+	CustomRenderFeatureViewExtension = FSceneViewExtensions::NewExtension<FCPPViewExtension>();
 }
 
 void UCPPWorldSystem::Deinitialize()
 {
 	Super::Deinitialize();
-	CustomPostProcessViewExtension = nullptr;
+	CustomRenderFeatureViewExtension = nullptr;
 }
 
 bool UCPPWorldSystem::ShouldCreateSubsystem(UObject* Outer) const
