@@ -1,8 +1,9 @@
-#pragma once
-#if COMPILEFLUID
 
-#include "CustomRenderFeatureSceneProxy.h"
+#pragma once
+
 #include "FluidCommon.h"
+#if COMPILEFLUID
+#include "CustomRenderFeatureSceneProxy.h"
 #include "RHIGPUReadback.h"
 #include "RenderAdapter.h"
 #include "Psychedelic/PsychedelicSolver.h"
@@ -15,20 +16,6 @@ BEGIN_SHADER_PARAMETER_STRUCT(FLiuquidParameter, PHYSICALSIMULATION_API)
 END_SHADER_PARAMETER_STRUCT()
 
 
-USTRUCT(BlueprintType)
-struct FLiquidSolverParameter
-{
-	GENERATED_BODY()
-
-	UPROPERTY(EditAnywhere, Category = "LiquidSolverParameter")
-	float SpawnRate = 60;
-
-	UPROPERTY(EditAnywhere, Category = "LiquidSolverParameter")
-	float LifeTime = 2;
-
-	UPROPERTY(EditAnywhere, Category = "LiquidSolverParameter")
-	float GravityScale = 20;
-};
 
 //class FPhysicalSimulationSceneProxy;
 class FPhysicalLiquidSolver : public URenderAdapterBase

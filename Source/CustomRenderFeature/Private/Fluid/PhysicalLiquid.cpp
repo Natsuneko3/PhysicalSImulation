@@ -1,8 +1,9 @@
+#include "PhysicalLiquid.h"
 #if COMPILEFLUID
 #include "MeshPassProcessor.inl"
 #include "ShaderParameterStruct.h"
 #include "PixelShaderUtils.h"
-#include "PhysicalLiquid.h"
+
 
 DECLARE_CYCLE_STAT(TEXT("Particle To Cell"), STAT_P2G, STATGROUP_CustomRenderFeature)
 DECLARE_CYCLE_STAT(TEXT("Cell To Particle"), STAT_G2P, STATGROUP_CustomRenderFeature)

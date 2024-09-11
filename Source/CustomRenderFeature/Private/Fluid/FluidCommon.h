@@ -1,4 +1,5 @@
 ﻿#pragma once
+#include "FluidCommon.generated.h"
 #define COMPILEFLUID 0
 DECLARE_STATS_GROUP(TEXT("CustomRenderFeature"), STATGROUP_CustomRenderFeature, STATCAT_Advanced);
 
@@ -66,4 +67,19 @@ struct FPlandFluidParameters
 
 	UPROPERTY(EditAnywhere,Category = "PlandFluidParameters")
 	TObjectPtr<UTexture> InTexture1;
+};
+
+USTRUCT(BlueprintType)
+struct FLiquidSolverParameter
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, Category = "LiquidSolverParameter")
+	float SpawnRate = 60;
+
+	UPROPERTY(EditAnywhere, Category = "LiquidSolverParameter")
+	float LifeTime = 2;
+
+	UPROPERTY(EditAnywhere, Category = "LiquidSolverParameter")
+	float GravityScale = 20;
 };

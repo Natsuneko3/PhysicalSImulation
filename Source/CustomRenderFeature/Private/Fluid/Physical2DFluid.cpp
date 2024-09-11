@@ -1,8 +1,9 @@
+#include "Physical2DFluid.h"
 #if COMPILEFLUID
 #include "MeshPassProcessor.inl"
 #include "ShaderParameterStruct.h"
 #include "PixelShaderUtils.h"
-#include "Physical2DFluid.h"
+
 
 DECLARE_CYCLE_STAT(TEXT("PreVelocitySolver"), STAT_PreVelocitySolver, STATGROUP_CustomRenderFeature)
 DECLARE_CYCLE_STAT(TEXT("AdvectionVelocity"), STAT_AdvectionVelocity, STATGROUP_CustomRenderFeature)

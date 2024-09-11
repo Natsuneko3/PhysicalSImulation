@@ -15,14 +15,6 @@ TAutoConsoleVariable<bool> CVarUseFFT(
 	TEXT("Enables namespace filtering features in the Blueprint editor (experimental).")
 );
 
-enum EShadertype
-{
-	PreVel,
-	Advection,
-	IteratePressure,
-	ComputeDivergence
-};
-
 class FPPPsychedelicPS : public FGlobalShader
 {
 public:
