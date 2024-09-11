@@ -5,6 +5,7 @@
 #include "SceneView.h"
 #include "TextureResource.h"
 #include "ShaderPrintParameters.h"
+#include "Fluid/FluidCommon.h"
 
 
 const FIntVector ThreadNumber = FIntVector(8, 8, 1); //!bUseFFTSolverPressure? FIntVector(256,1,1):
