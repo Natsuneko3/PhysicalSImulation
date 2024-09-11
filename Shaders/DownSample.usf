@@ -22,6 +22,7 @@ Texture2D InputTexture;
 SamplerState InputSampler;
 float BloomThreshold;
 float UVScale;
+int Index;
 SCREEN_PASS_TEXTURE_VIEWPORT(Input)
 SCREEN_PASS_TEXTURE_VIEWPORT(Output)
 
@@ -54,10 +55,14 @@ float4 DownsampleCommon(float2 UV)
 	float2 UVs[4];
 
 	// Blur during downsample (4x4 kernel) to get better quality especially for HDR content.
-	UVs[0] = UV + Input_ExtentInverse * float2(-1, -1)*UVScale;
-	UVs[1] = UV + Input_ExtentInverse * float2( 1, -1)*UVScale;
-	UVs[2] = UV + Input_ExtentInverse * float2(-1,  1)*UVScale;
-	UVs[3] = UV + Input_ExtentInverse * float2( 1,  1)*UVScale;
+
+
+		UVs[0] = UV + Input_ExtentInverse * float2(Index % 2 * -1, -1)*UVScale;
+		UVs[1] = UV + Input_ExtentInverse * float2(Index % 2 , 1)*UVScale;
+		UVs[2] = UV + Input_ExtentInverse * float2(1, Index % 2 * -1)*UVScale;
+		UVs[3] = UV + Input_ExtentInverse * float2(-1, Index % 2 )*UVScale;
+
+
 
 	float4 Sample[4];
 
