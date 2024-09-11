@@ -229,6 +229,7 @@ public:
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
 		SHADER_PARAMETER_STRUCT_INCLUDE(FDownsampleParameters, Common)
 	SHADER_PARAMETER(float,UVScale)
+	SHADER_PARAMETER(int,Index)
 	SHADER_PARAMETER(float,BloomThreshold)
 		RENDER_TARGET_BINDING_SLOTS()
 	END_SHADER_PARAMETER_STRUCT()
@@ -252,6 +253,7 @@ public:
 		SHADER_PARAMETER_STRUCT_INCLUDE(FDownsampleParameters, Common)
 		SHADER_PARAMETER(FScreenTransform, DispatchThreadIdToInputUV)
 		SHADER_PARAMETER(float,BloomThreshold)
+	SHADER_PARAMETER(int,Index)
 	SHADER_PARAMETER(float,UVScale)
 		SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D<float4>, OutComputeTexture)
 	END_SHADER_PARAMETER_STRUCT()
@@ -605,7 +607,7 @@ void URenderAdapterBase::AddDownsamplePass(FRDGBuilder& GraphBuilder, const FVie
 		PassParameters->UVScale = DownSampleParameter.UVScale;
 		PassParameters->DispatchThreadIdToInputUV = ((FScreenTransform::Identity + 0.5f) / Output.ViewRect.Size()) * FScreenTransform::ChangeTextureBasisFromTo(FScreenPassTextureViewport(Input), FScreenTransform::ETextureBasis::ViewportUV, FScreenTransform::ETextureBasis::TextureUV);
 		PassParameters->OutComputeTexture = GraphBuilder.CreateUAV(Output.Texture);
-
+		PassParameters->Index = DownSampleParameter.Index;
 		FDownsampleCS::FPermutationDomain PermutationVector;
 		PermutationVector.Set<FDownsampleCS::FQuality>(DownSampleParameter.Quality);
 		PermutationVector.Set<FDownsampleCS::FNeedClampLuminance>(DownSampleParameter.bNeedClampLuminance);
@@ -631,6 +633,7 @@ void URenderAdapterBase::AddDownsamplePass(FRDGBuilder& GraphBuilder, const FVie
 		PassParameters->Common = GetDownsampleParameters(View, Output, Input, DownSampleParameter.Quality);
 		PassParameters->BloomThreshold = DownSampleParameter.BloomThreshold;
 		PassParameters->UVScale = DownSampleParameter.UVScale;
+		PassParameters->Index = DownSampleParameter.Index;
 		PassParameters->RenderTargets[0] = FRenderTargetBinding(Output.Texture,ERenderTargetLoadAction::ELoad);
 
 		TShaderMapRef<FDownsamplePS> PixelShader(View.ShaderMap, PermutationVector);

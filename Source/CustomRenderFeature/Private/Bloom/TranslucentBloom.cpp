@@ -435,7 +435,7 @@ FScreenPassTexture AddGaussianBloomPass(
 FScreenPassTexture AddGaussianBloomPass(
 	FRDGBuilder& GraphBuilder,
 	const FViewInfo& View,
-	const FGaussianBlurInputs& Inputs)
+	const FGaussianBlurInputs& Inputs,int Index)
 {
 	check(Inputs.Filter.IsValid());
 
@@ -478,8 +478,10 @@ FScreenPassTexture AddGaussianBloomPass(
 		{
 			const float Offset = OffsetAndWeight[i].X;
 
-			SampleOffsets[i] = FVector2f(InverseFilterTextureExtent.X * Offset, 0.0f);
+			SampleOffsets[i] = FVector2f(InverseFilterTextureExtent.X * Offset,0.0f);
 		}
+
+
 
 		// Horizontal pass doesn't use additive combine.
 		FScreenPassTexture Additive;
@@ -510,13 +512,14 @@ FScreenPassTexture AddGaussianBloomPass(
 			const float Weight = OffsetAndWeight[i].Y;
 			SampleWeights[i] = Inputs.TintColor * Weight;
 		}
-
 		for (uint32 i = 0; i < SampleCount; ++i)
 		{
 			const float Offset = OffsetAndWeight[i].X;
 
-			SampleOffsets[i] = FVector2f(0, InverseFilterTextureExtent.Y * Offset);
+			SampleOffsets[i] = FVector2f(0.0f, InverseFilterTextureExtent.Y * Offset);
 		}
+
+
 
 		return AddGaussianBloomPass(
 			GraphBuilder,
@@ -533,6 +536,7 @@ FScreenPassTexture AddGaussianBloomPass(
 
 UTranslucentBloom::UTranslucentBloom()
 {
+
 }
 
 void UTranslucentBloom::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& View, const FPostProcessingInputs& Inputs)
@@ -561,6 +565,7 @@ void UTranslucentBloom::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilde
 	{
 		Desc.Extent /= 2;
 		FRDGTextureRef  FilterTexture = GraphBuilder.CreateTexture(Desc,TEXT("DowmSamplerChain"));
+		DownSampleParameter.Index = i;
 		AddDownsamplePass(GraphBuilder,ViewInfo,FScreenPassTexture(DowmSamplerChain[i]),FScreenPassTexture(FilterTexture),DownSampleParameter);
 		DowmSamplerChain.Add(FilterTexture);
 	}
@@ -574,10 +579,10 @@ void UTranslucentBloom::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilde
 		PassInputs.Filter = FScreenPassTexture(DowmSamplerChain[SourceIndex]);
 		PassInputs.Additive = PassOutputs;
 		PassInputs.CrossCenterWeight = FVector2f(0.f);	// LWC_TODO: Precision loss
-		PassInputs.KernelSizePercent = Size  * BloomQuality * FMathf::Pow(2,StageIndex);
+		PassInputs.KernelSizePercent = Size * BloomQuality * FMathf::Pow(2,StageIndex);
 		PassInputs.TintColor = Color * Intensity * BloomFalloff;
 
-		PassOutputs = AddGaussianBloomPass(GraphBuilder, ViewInfo, PassInputs);
+		PassOutputs = AddGaussianBloomPass(GraphBuilder, ViewInfo, PassInputs,StageIndex);
 	}
 	AddTextureCombinePass(GraphBuilder,ViewInfo,Inputs,PassOutputs.Texture,SceneColorTexture,&TextureBlendDesc);
 

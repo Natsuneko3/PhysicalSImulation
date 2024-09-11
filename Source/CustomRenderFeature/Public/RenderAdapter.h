@@ -76,6 +76,7 @@ struct FDownSampleParameter
 	bool bNeedClampLuminance;
 	float BloomThreshold;
 	float UVScale;
+	int Index;
 };
 
 UCLASS(Abstract, Blueprintable, EditInlineNew, CollapseCategories )
