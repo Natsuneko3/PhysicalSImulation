@@ -1,4 +1,4 @@
-#include "Fluid/FluidCommon.h"
+#include "FluidCommon.h"
 #if COMPILEFLUID
 #pragma once
 #include "RenderAdapter.h"
