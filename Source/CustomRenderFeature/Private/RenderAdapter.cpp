@@ -201,24 +201,6 @@ public:
 	using FPermutationDomain = TShaderPermutationDomain<FBlendMethod>;
 };
 
-FDownsampleParameters GetDownsampleParameters(const FViewInfo& View, FScreenPassTexture Output, FScreenPassTexture Input, EDownsampleQuality DownsampleMethod)
-{
-	check(Output.IsValid());
-	check(Input.IsValid());
-
-	const FScreenPassTextureViewportParameters InputParameters = GetScreenPassTextureViewportParameters(FScreenPassTextureViewport(Input));
-	const FScreenPassTextureViewportParameters OutputParameters = GetScreenPassTextureViewportParameters(FScreenPassTextureViewport(Output));
-
-	FDownsampleParameters Parameters;
-	Parameters.ViewUniformBuffer = View.ViewUniformBuffer;
-	Parameters.Input = InputParameters;
-	Parameters.Output = OutputParameters;
-	Parameters.InputTexture = Input.Texture;
-	Parameters.InputSampler = TStaticSamplerState<SF_Bilinear, AM_Clamp, AM_Clamp, AM_Clamp>::GetRHI();
-
-	return Parameters;
-}
-
 class FDownsamplePS : public FGlobalShader
 {
 public:
@@ -285,6 +267,23 @@ IMPLEMENT_GLOBAL_SHADER(FBilateralFilterCS, "/Plugin/CustomRenderFeature/Texture
 
 ///////////////////URenderAdapterBase/////////////////////
 
+FDownsampleParameters GetDownsampleParameters(const FViewInfo& View, FScreenPassTexture Output, FScreenPassTexture Input, EDownsampleQuality DownsampleMethod)
+{
+	check(Output.IsValid());
+	check(Input.IsValid());
+
+	const FScreenPassTextureViewportParameters InputParameters = GetScreenPassTextureViewportParameters(FScreenPassTextureViewport(Input));
+	const FScreenPassTextureViewportParameters OutputParameters = GetScreenPassTextureViewportParameters(FScreenPassTextureViewport(Output));
+
+	FDownsampleParameters Parameters;
+	Parameters.ViewUniformBuffer = View.ViewUniformBuffer;
+	Parameters.Input = InputParameters;
+	Parameters.Output = OutputParameters;
+	Parameters.InputTexture = Input.Texture;
+	Parameters.InputSampler = TStaticSamplerState<SF_Bilinear, AM_Clamp, AM_Clamp, AM_Clamp>::GetRHI();
+
+	return Parameters;
+}
 
 void URenderAdapterBase::InitialPlaneMesh(FRHICommandList& RHICmdList)
 {
@@ -554,15 +553,15 @@ void URenderAdapterBase::AddTextureCombinePass(FRDGBuilder& GraphBuilder, const 
 
 		FTextureBlendCS::FPermutationDomain PermutationDomain;
 		PermutationDomain.Set<FTextureBlendCS::FBlendMethod>(InTextureBlendDesc->BlendMethod == EBlendMethod::MAX?EBlendMethod::Addition: InTextureBlendDesc->BlendMethod);
-		AddCopyTexturePass(GraphBuilder,OutTexture,CopyOutTexture);
+		//AddCopyTexturePass(GraphBuilder,OutTexture,CopyOutTexture);
 		TShaderMapRef<FTextureBlendCS> ComputeShader(ShaderMap,PermutationDomain);
 		FTextureBlendCS::FParameters* Parameters = GraphBuilder.AllocParameters<FTextureBlendCS::FParameters>();
 		Parameters->View = View.ViewUniformBuffer;
 		Parameters->SceneTextures =  Inputs.SceneTextures;
 		Parameters->ClampSampler = TStaticSamplerState<>::GetRHI();
 		Parameters->InTexture = InTexture;
-		Parameters->SceneTexture = CopyOutTexture;
-		Parameters->OutTexture = GraphBuilder.CreateUAV(OutTexture);
+		Parameters->SceneTexture = OutTexture;
+		Parameters->OutTexture = GraphBuilder.CreateUAV(CopyOutTexture);
 		Parameters->Weight = InTextureBlendDesc->Weight;
 		FComputeShaderUtils::AddPass(GraphBuilder,
 										 RDG_EVENT_NAME("SceneColorCombine CS(%s -> %s)", InTexture->Name, CopyOutTexture->Name),
@@ -570,11 +569,12 @@ void URenderAdapterBase::AddTextureCombinePass(FRDGBuilder& GraphBuilder, const 
 										 ComputeShader,
 										 Parameters,
 										 FComputeShaderUtils::GetGroupCount(FIntVector(OutTexture->Desc.Extent.X,OutTexture->Desc.Extent.Y, 1), 8));
+		OutTexture = MoveTemp(CopyOutTexture);
 	}
 	else
 	{
 
-		AddDrawTexturePass(GraphBuilder,View,OutTexture,CopyOutTexture);
+		//AddDrawTexturePass(GraphBuilder,View,OutTexture,CopyOutTexture);
 		FTextureBlendPS::FPermutationDomain PermutationDomain;
 		PermutationDomain.Set<FTextureBlendPS::FBlendMethod>(InTextureBlendDesc->BlendMethod == EBlendMethod::MAX?EBlendMethod::Addition: InTextureBlendDesc->BlendMethod);
 		TShaderMapRef<FTextureBlendPS> PixelShader(ShaderMap,PermutationDomain);
@@ -585,12 +585,13 @@ void URenderAdapterBase::AddTextureCombinePass(FRDGBuilder& GraphBuilder, const 
 		Parameters->InTexture = InTexture;
 		Parameters->SceneTexture = CopyOutTexture;
 		Parameters->Weight = InTextureBlendDesc->Weight;
-		Parameters->RenderTargets[0] = FRenderTargetBinding(OutTexture, ERenderTargetLoadAction::ELoad);
+		Parameters->RenderTargets[0] = FRenderTargetBinding(CopyOutTexture, ERenderTargetLoadAction::ELoad);
 		FPixelShaderUtils::AddFullscreenPass(GraphBuilder,ShaderMap,
 			RDG_EVENT_NAME("SceneColorCombine PS(%s -> %s)", InTexture->Name, CopyOutTexture->Name),
 		PixelShader,
 		Parameters,
 		FIntRect(0, 0, OutTexture->Desc.Extent.X, OutTexture->Desc.Extent.Y));
+		OutTexture = MoveTemp(CopyOutTexture);
 	}
 
 	//AddCopyTexturePass(GraphBuilder,OutTexture,SceneColor);
