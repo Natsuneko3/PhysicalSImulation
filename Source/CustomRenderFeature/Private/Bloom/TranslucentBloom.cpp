@@ -361,6 +361,30 @@ struct FMobileBloomUpInputs
 	FVector4f TintB;
 };
 
+struct FTranslucentBloomInputs
+{
+	// Friendly names of the blur passes along the X and Y axis. Used for logging and profiling.
+	const TCHAR* NameX = nullptr;
+	const TCHAR* NameY = nullptr;
+
+	// The input texture to be filtered.
+	FScreenPassTexture Filter;
+
+	// The input texture to be added after filtering.
+	FScreenPassTexture Additive;
+
+	// The color to tint when filtering.
+	FLinearColor TintColor;
+
+	// Controls the cross shape of the blur, in both X / Y directions. See r.Bloom.Cross.
+	FVector2f CrossCenterWeight = FVector2f::ZeroVector;
+
+	// The filter kernel size in percentage of the screen.
+	float KernelSizePercent = 0.0f;
+
+	bool UseMirrorAddressMode = false;
+};
+
 FScreenPassTexture AddGaussianBloomPass(
 	FRDGBuilder& GraphBuilder,
 	const FViewInfo& View,
@@ -490,7 +514,7 @@ FScreenPassTexture AddGaussianBloomPass(
 FScreenPassTexture AddGaussianBloomPass(
 	FRDGBuilder& GraphBuilder,
 	const FViewInfo& View,
-	const FGaussianBlurInputs& Inputs,int Index)
+	const FTranslucentBloomInputs& Inputs,int Index)
 {
 	check(Inputs.Filter.IsValid());
 
@@ -764,9 +788,10 @@ void UTranslucentBloom::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilde
 	{
 		for (uint32 StageIndex = 0,SourceIndex = BloomQuality ; StageIndex < BloomQuality; ++StageIndex, --SourceIndex)
 		{
+
 			float Increase = BloomQuality == 6? 1.0f : 4.f;
 			float BloomFalloff = FMathf::Exp(StageIndex * Falloff) * 0.1;
-			FGaussianBlurInputs PassInputs;
+			FTranslucentBloomInputs PassInputs;
 			PassInputs.NameX = TEXT("BloomX");
 			PassInputs.NameY = TEXT("BloomY");
 			PassInputs.Filter = FScreenPassTexture(DowmSamplerChain[SourceIndex]);
