@@ -25,7 +25,11 @@ float UVScale;
 int Index;
 SCREEN_PASS_TEXTURE_VIEWPORT(Input)
 SCREEN_PASS_TEXTURE_VIEWPORT(Output)
-
+float2 Circle(float Start, float Points, float Point)
+{
+	float Rad = (3.141592 * 2.0 * (1.0 / Points)) * (Point + Start);
+	return float2(sin(Rad), cos(Rad));
+}
 float4 SampleInput(float2 UV)
 {
 	UV = clamp(UV, Input_UVViewportBilinearMin, Input_UVViewportBilinearMax);
@@ -49,20 +53,16 @@ float4 DownsampleCommon(float2 UV)
 
 #if DOWNSAMPLE_QUALITY == DOWNSAMPLE_QUALITY_LOW
 	// Output: low quality, 1 filtered sample
-	OutColor = SampleInput(UV);
-#elif DOWNSAMPLE_QUALITY == DOWNSAMPLE_QUALITY_HIGH
+	//OutColor = SampleInput(UV);
+
 	// Output: float4(RGBA), 4 filtered samples
 	float2 UVs[4];
 
 	// Blur during downsample (4x4 kernel) to get better quality especially for HDR content.
-
-
-		UVs[0] = UV + Input_ExtentInverse * float2(Index % 2 * -1, -1)*UVScale;
-		UVs[1] = UV + Input_ExtentInverse * float2(Index % 2 , 1)*UVScale;
-		UVs[2] = UV + Input_ExtentInverse * float2(1, Index % 2 * -1)*UVScale;
-		UVs[3] = UV + Input_ExtentInverse * float2(-1, Index % 2 )*UVScale;
-
-
+	UVs[0] = UV + Input_ExtentInverse * float2(Index % 2 * -1, -1)*UVScale;
+	UVs[1] = UV + Input_ExtentInverse * float2(Index % 2 , 1)*UVScale;
+	UVs[2] = UV + Input_ExtentInverse * float2(1, Index % 2 * -1)*UVScale;
+	UVs[3] = UV + Input_ExtentInverse * float2(-1, Index % 2 )*UVScale;
 
 	float4 Sample[4];
 
@@ -76,8 +76,58 @@ float4 DownsampleCommon(float2 UV)
 
 	// Fixed rarely occurring yellow color tint of the whole viewport (certain viewport size, need to investigate more)
 	OutColor.rgb = max(float3(0,0,0), OutColor.rgb);
-#else
-#error Invalid quality level specified.
+#elif DOWNSAMPLE_QUALITY ==DOWNSAMPLE_QUALITY_HIGH
+	float4 UVs[8];
+	UVs[0].xy = UV;
+	UVs[0].zw = UV + Circle(Start, 14.0, 0.0) * UVScale * Input_ExtentInverse;
+	UVs[1].xy = UV + Circle(Start, 14.0, 1.0) * UVScale * Input_ExtentInverse;
+	UVs[1].zw = UV + Circle(Start, 14.0, 2.0) * UVScale * Input_ExtentInverse;
+	UVs[2].xy = UV + Circle(Start, 14.0, 3.0) * UVScale * Input_ExtentInverse;
+	UVs[2].zw = UV + Circle(Start, 14.0, 4.0) * UVScale * Input_ExtentInverse;
+	UVs[3].xy = UV + Circle(Start, 14.0, 5.0) * UVScale * Input_ExtentInverse;
+	UVs[3].zw = UV + Circle(Start, 14.0, 6.0) * UVScale * Input_ExtentInverse;
+	UVs[4].xy = UV + Circle(Start, 14.0, 7.0) * UVScale * Input_ExtentInverse;
+	UVs[4].zw = UV + Circle(Start, 14.0, 8.0) * UVScale * Input_ExtentInverse;
+	UVs[5].xy = UV + Circle(Start, 14.0, 9.0) * UVScale * Input_ExtentInverse;
+	UVs[5].zw = UV + Circle(Start, 14.0, 10.0) * UVScale * Input_ExtentInverse;
+	UVs[6].xy = UV + Circle(Start, 14.0, 11.0) * UVScale * Input_ExtentInverse;
+	UVs[6].zw = UV + Circle(Start, 14.0, 12.0) * UVScale * Input_ExtentInverse;
+	UVs[7].xy = UV + Circle(Start, 14.0, 13.0) * UVScale * Input_ExtentInverse;
+	UVs[7].zw = float2(0.0, 0.0);
+
+	half4 N0 = SampleInput(InUVs[0].xy);
+	half4 N1 = SampleInput(InUVs[0].zw);
+	half4 N2 = SampleInput(InUVs[1].xy);
+	half4 N3 = SampleInput(InUVs[1].zw);
+	half4 N4 = SampleInput(InUVs[2].xy);
+	half4 N5 = SampleInput(InUVs[2].zw);
+	half4 N6 = SampleInput(InUVs[3].xy);
+	half4 N7 = SampleInput(InUVs[3].zw);
+	half4 N8 = SampleInput(InUVs[4].xy);
+	half4 N9 = SampleInput(InUVs[4].zw);
+	half4 N10 = SampleInput(InUVs[5].xy);
+	half4 N11 = SampleInput(InUVs[5].zw);
+	half4 N12 = SampleInput(InUVs[6].xy);
+	half4 N13 = SampleInput(InUVs[6].zw);
+	half4 N14 = SampleInput(InUVs[7].xy);
+	float W = 1.0/15.0;
+	OutColor.rgb =
+		(N0 * W) +
+		(N1 * W) +
+		(N2 * W) +
+		(N3 * W) +
+		(N4 * W) +
+		(N5 * W) +
+		(N6 * W) +
+		(N7 * W) +
+		(N8 * W) +
+		(N9 * W) +
+		(N10 * W) +
+		(N11 * W) +
+		(N12 * W) +
+		(N13 * W) +
+		(N14 * W);
+	OutColor.a = 0;
 #endif
 
 	return OutColor;

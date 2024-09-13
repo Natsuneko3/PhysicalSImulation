@@ -301,10 +301,65 @@ public:
 		return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
 	}
 };
+
+class FMobileBloomUpPS : public FGlobalShader
+{
+public:
+	DECLARE_GLOBAL_SHADER(FMobileBloomUpPS);
+	SHADER_USE_PARAMETER_STRUCT(FMobileBloomUpPS, FGlobalShader);
+
+	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
+		SHADER_PARAMETER(FVector4f, BloomTintA)
+		SHADER_PARAMETER(FVector4f, BloomTintB)
+		SHADER_PARAMETER_STRUCT_REF(FViewUniformShaderParameters, View)
+		SHADER_PARAMETER_RDG_TEXTURE(Texture2D, BloomUpSourceATexture)
+		SHADER_PARAMETER_SAMPLER(SamplerState, BloomUpSourceASampler)
+		SHADER_PARAMETER_RDG_TEXTURE(Texture2D, BloomUpSourceBTexture)
+		SHADER_PARAMETER_SAMPLER(SamplerState, BloomUpSourceBSampler)
+		RENDER_TARGET_BINDING_SLOTS()
+	END_SHADER_PARAMETER_STRUCT()
+
+	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
+	{
+		return IsMobilePlatform(Parameters.Platform);
+	}
+};
+
+class FMobileBloomUpVS : public FGlobalShader
+{
+public:
+	DECLARE_GLOBAL_SHADER(FMobileBloomUpVS);
+	SHADER_USE_PARAMETER_STRUCT_WITH_LEGACY_BASE(FMobileBloomUpVS, FGlobalShader);
+
+	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
+		SHADER_PARAMETER_STRUCT_REF(FViewUniformShaderParameters, View)
+		SHADER_PARAMETER(FVector4f, BufferASizeAndInvSize)
+		SHADER_PARAMETER(FVector4f, BufferBSizeAndInvSize)
+		SHADER_PARAMETER(FVector2f, BloomUpScales)
+	END_SHADER_PARAMETER_STRUCT()
+
+	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
+	{
+		return IsMobilePlatform(Parameters.Platform);
+	}
+};
+
+IMPLEMENT_GLOBAL_SHADER(FMobileBloomUpVS, "/Plugin/CustomRenderFeature/TextureBlur/Bloom.usf", "BloomUpVS_Mobile", SF_Vertex);
+IMPLEMENT_GLOBAL_SHADER(FMobileBloomUpPS, "/Plugin/CustomRenderFeature/TextureBlur/Bloom.usf", "BloomUpPS_Mobile", SF_Pixel);
 IMPLEMENT_GLOBAL_SHADER(FTranslucentFilterVS, "/Engine/Private/FilterVertexShader.usf", "MainVS", SF_Vertex);
 IMPLEMENT_GLOBAL_SHADER(FTranslucentFilterPS, "/Plugin/CustomRenderFeature/TextureBlur/Bloom.usf", "MainPS", SF_Pixel);
 IMPLEMENT_GLOBAL_SHADER(FTranslucentFilterCS, "/Plugin/CustomRenderFeature/TextureBlur/Bloom.usf", "MainCS", SF_Compute);
 } //! namespace
+
+struct FMobileBloomUpInputs
+{
+	FScreenPassTexture BloomUpSourceA;
+	FScreenPassTexture BloomUpSourceB;
+
+	FVector2D ScaleAB;
+	FVector4f TintA;
+	FVector4f TintB;
+};
 
 FScreenPassTexture AddGaussianBloomPass(
 	FRDGBuilder& GraphBuilder,
@@ -491,7 +546,7 @@ FScreenPassTexture AddGaussianBloomPass(
 			View,
 			Inputs.NameX,
 			HorizontalOutputViewport,
-			FScreenPassTexture(Inputs.Filter),
+			Inputs.Filter,
 			Additive,
 			TArrayView<const FVector2f>(SampleOffsets, SampleCount),
 			TArrayView<const FLinearColor>(SampleWeights, SampleCount),
@@ -534,6 +589,83 @@ FScreenPassTexture AddGaussianBloomPass(
 	}
 }
 
+FScreenPassTexture AddMobileBloomUpPass(FRDGBuilder& GraphBuilder, const FViewInfo& View, const FMobileBloomUpInputs& Inputs)
+{
+	FIntPoint OutputSize = Inputs.BloomUpSourceA.ViewRect.Size();
+
+	const FIntPoint& BufferSizeA = Inputs.BloomUpSourceA.Texture->Desc.Extent;
+
+	const FIntPoint& BufferSizeB = Inputs.BloomUpSourceB.Texture->Desc.Extent;
+
+	FRDGTextureDesc BloomUpDesc = FRDGTextureDesc::Create2D(OutputSize, PF_FloatR11G11B10, FClearValueBinding::Black, TexCreate_RenderTargetable | TexCreate_ShaderResource);
+
+	FScreenPassRenderTarget BloomUpOutput = FScreenPassRenderTarget(GraphBuilder.CreateTexture(BloomUpDesc, TEXT("BloomUp")), ERenderTargetLoadAction::ENoAction);
+
+	TShaderMapRef<FMobileBloomUpVS> VertexShader(View.ShaderMap);
+
+	FMobileBloomUpVS::FParameters VSShaderParameters;
+
+	VSShaderParameters.View = View.ViewUniformBuffer;
+	VSShaderParameters.BufferASizeAndInvSize = FVector4f(BufferSizeA.X, BufferSizeA.Y, 1.0f / BufferSizeA.X, 1.0f / BufferSizeA.Y);
+	VSShaderParameters.BufferBSizeAndInvSize = FVector4f(BufferSizeB.X, BufferSizeB.Y, 1.0f / BufferSizeB.X, 1.0f / BufferSizeB.Y);
+	VSShaderParameters.BloomUpScales = FVector2f(Inputs.ScaleAB);	// LWC_TODO: Precision loss
+
+	TShaderMapRef<FMobileBloomUpPS> PixelShader(View.ShaderMap);
+
+	FMobileBloomUpPS::FParameters* PSShaderParameters = GraphBuilder.AllocParameters<FMobileBloomUpPS::FParameters>();
+	PSShaderParameters->RenderTargets[0] = BloomUpOutput.GetRenderTargetBinding();
+	PSShaderParameters->View = View.ViewUniformBuffer;
+
+	PSShaderParameters->BloomUpSourceATexture = Inputs.BloomUpSourceA.Texture;
+	PSShaderParameters->BloomUpSourceASampler = TStaticSamplerState<SF_Bilinear, AM_Clamp, AM_Clamp, AM_Clamp>::GetRHI();
+	PSShaderParameters->BloomUpSourceBTexture = Inputs.BloomUpSourceB.Texture;
+	PSShaderParameters->BloomUpSourceBSampler = TStaticSamplerState<SF_Bilinear, AM_Clamp, AM_Clamp, AM_Clamp>::GetRHI();
+
+	PSShaderParameters->BloomTintA = Inputs.TintA * (1.0f / 8.0f);
+	PSShaderParameters->BloomTintB = Inputs.TintB * (1.0f / 8.0f);
+
+	const FScreenPassTextureViewport InputViewport(Inputs.BloomUpSourceA);
+	const FScreenPassTextureViewport OutputViewport(BloomUpOutput);
+
+	GraphBuilder.AddPass(
+		RDG_EVENT_NAME("BloomUp %dx%d (PS)", OutputViewport.Extent.X, OutputViewport.Extent.Y),
+		PSShaderParameters,
+		ERDGPassFlags::Raster,
+		[VertexShader, VSShaderParameters, PixelShader, PSShaderParameters, InputViewport, OutputViewport](FRHICommandList& RHICmdList)
+	{
+		RHICmdList.SetViewport(OutputViewport.Rect.Min.X, OutputViewport.Rect.Min.Y, 0.0f, OutputViewport.Rect.Max.X, OutputViewport.Rect.Max.Y, 1.0f);
+
+		FGraphicsPipelineStateInitializer GraphicsPSOInit;
+		RHICmdList.ApplyCachedRenderTargets(GraphicsPSOInit);
+
+		GraphicsPSOInit.BlendState = TStaticBlendState<>::GetRHI();
+		GraphicsPSOInit.RasterizerState = TStaticRasterizerState<>::GetRHI();
+		GraphicsPSOInit.DepthStencilState = TStaticDepthStencilState<false, CF_Always>::GetRHI();
+
+		GraphicsPSOInit.BoundShaderState.VertexDeclarationRHI = GFilterVertexDeclaration.VertexDeclarationRHI;
+		GraphicsPSOInit.BoundShaderState.VertexShaderRHI = VertexShader.GetVertexShader();
+		GraphicsPSOInit.BoundShaderState.PixelShaderRHI = PixelShader.GetPixelShader();
+		GraphicsPSOInit.PrimitiveType = PT_TriangleList;
+
+		SetGraphicsPipelineState(RHICmdList, GraphicsPSOInit, 0);
+
+		SetShaderParameters(RHICmdList, VertexShader, VertexShader.GetVertexShader(), VSShaderParameters);
+		SetShaderParameters(RHICmdList, PixelShader, PixelShader.GetPixelShader(), *PSShaderParameters);
+
+		DrawRectangle(
+			RHICmdList,
+			0, 0,
+			OutputViewport.Extent.X, OutputViewport.Extent.Y,
+			0, 0,
+			InputViewport.Rect.Width(), InputViewport.Rect.Height(),
+			OutputViewport.Extent,
+			InputViewport.Extent,
+			VertexShader,
+			EDRF_UseTriangleOptimization);
+	});
+
+	return MoveTemp(BloomUpOutput);
+}
 UTranslucentBloom::UTranslucentBloom()
 {
 
@@ -541,13 +673,12 @@ UTranslucentBloom::UTranslucentBloom()
 
 void UTranslucentBloom::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& View, const FPostProcessingInputs& Inputs)
 {
-	const FViewInfo& ViewInfo = static_cast<const FViewInfo&>(View);
-	FRDGTextureRef SceneColorTexture = GetSceneTexture(Inputs);
-	if(Size <= 0.f || Intensity <= 0.0f || !SceneColorTexture )
+	if(Size <= 0.f || Intensity <= 0.0f)
 	{
 		return;
 	}
-	
+	const FViewInfo& ViewInfo = static_cast<const FViewInfo&>(View);
+	FRDGTextureRef SceneColorTexture = GetSceneTexture(Inputs);
 	FScreenPassTexture PassOutputs;
 	FRDGTextureDesc Desc(SceneColorTexture->Desc);
 
@@ -555,13 +686,14 @@ void UTranslucentBloom::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilde
 
 	DowmSamplerChain.Add(SceneColorTexture);
 	FDownSampleParameter DownSampleParameter;
-	DownSampleParameter.Quality = BloomQuality>3? EDownsampleQuality::High : EDownsampleQuality::Low;
+	DownSampleParameter.Quality = BloomQualityLevel == EBloomQuailtyLevel::Low? EDownsampleQuality::High : EDownsampleQuality::Low;
 	DownSampleParameter.BloomThreshold = BloomThreshold;
 	DownSampleParameter.bUseComputeShader = !bTranslucentOnly;
 	DownSampleParameter.bNeedClampLuminance = true;
 	DownSampleParameter.UVScale = FMathf::Lerp(1.f,BloomGlow, Size);
 	Desc.Extent = FIntPoint(Desc.Extent.X * (ScreenPercent / 100.f),Desc.Extent.Y * (ScreenPercent/ 100.f));
 
+	float BloomQuality = BloomQualityLevel == EBloomQuailtyLevel::High? 6:4;
 	for(uint32 i = 0; i < BloomQuality - 1; ++i)
 	{
 		Desc.Extent /= 2;
@@ -570,25 +702,74 @@ void UTranslucentBloom::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilde
 		AddDownsamplePass(GraphBuilder,ViewInfo,FScreenPassTexture(DowmSamplerChain[i]),FScreenPassTexture(FilterTexture),DownSampleParameter);
 		DowmSamplerChain.Add(FilterTexture);
 	}
-
-	for (uint32 StageIndex = 0,SourceIndex = BloomQuality - 1; StageIndex < BloomQuality; ++StageIndex, --SourceIndex)
+	
+	if(BloomQualityLevel == EBloomQuailtyLevel::Low)
 	{
+		float Falloffs[4];
+		for(int i =0;i<4;i++)
+		{
+			Falloffs[i] = FMathf::Exp(Falloff * (i + 1));
+		}
+		auto AddBloomUpPass = [&GraphBuilder, &ViewInfo](FRDGTextureRef& BloomUpSourceA, FRDGTextureRef& BloomUpSourceB, float BloomSourceScale, const FVector4f& TintA, const FVector4f& TintB)
+		{
+			FMobileBloomUpInputs BloomUpInputs;
+			BloomUpInputs.BloomUpSourceA = FScreenPassTexture(BloomUpSourceA);
+			BloomUpInputs.BloomUpSourceB = FScreenPassTexture(BloomUpSourceB);
+			BloomUpInputs.ScaleAB = FVector2D(BloomSourceScale, BloomSourceScale);
+			BloomUpInputs.TintA = TintA;
+			BloomUpInputs.TintB = TintB;
 
-		FRDGTextureSRVRef ScreenPass =  GraphBuilder.CreateSRV(DowmSamplerChain[SourceIndex]);
-		FScreenPassTextureSlice ScreenPassTextureSlice(ScreenPass,FIntRect(FIntPoint(0.0),DowmSamplerChain[SourceIndex]->Desc.Extent));
+			return AddMobileBloomUpPass(GraphBuilder, ViewInfo, BloomUpInputs);
+		};
 
-		float BloomFalloff = FMathf::Exp(StageIndex * Falloff);
-		FGaussianBlurInputs PassInputs;
-		PassInputs.NameX = TEXT("BloomX");
-		PassInputs.NameY = TEXT("BloomY");
-		PassInputs.Filter = ScreenPassTextureSlice;
-		PassInputs.Additive = PassOutputs;
-		PassInputs.CrossCenterWeight = FVector2f(0.f);	// LWC_TODO: Precision loss
-		PassInputs.KernelSizePercent = Size * BloomQuality * FMathf::Pow(2,StageIndex);
-		PassInputs.TintColor = Color * Intensity * BloomFalloff;
+		FScreenPassTexture BloomUpOutputs;
+		{
+			FVector4f TintA = FVector4f(Color.R, Color.G, Color.B, 0.0f);
+			FVector4f TintB = TintA;
+			TintA *=  Falloffs[3];//Settings.MobileBloom3Scale;
+			TintB *=  Falloffs[2];//Settings.MobileBloom4Scale;
 
-		PassOutputs = AddGaussianBloomPass(GraphBuilder, ViewInfo, PassInputs,StageIndex);
+			BloomUpOutputs = AddBloomUpPass(DowmSamplerChain[2], DowmSamplerChain[3], 4.0f* Size , TintA, TintB);
+		}
+
+		// Upsample by 2
+		{
+			FVector4f TintA = FVector4f(Color.R, Color.G, Color.B, 0.0f);
+			TintA *=  Falloffs[1];//Settings.MobileBloom2Scale;
+			FVector4f TintB = FVector4f(1.0f, 1.0f, 1.0f, 0.0f);
+
+			BloomUpOutputs = AddBloomUpPass(DowmSamplerChain[1], BloomUpOutputs.Texture, 2.0f* Size, TintA, TintB);
+		}
+
+		// Upsample by 2
+		{
+			FVector4f TintA = FVector4f(Color.R, Color.G, Color.B, 0.0f);
+			TintA *=  Falloffs[0];////Settings.MobileBloom1Scale;
+			// Scaling Bloom2 by extra factor to match filter area difference between PC default and mobile.
+			TintA *= 0.5;
+			FVector4f TintB = FVector4f(1.0f, 1.0f, 1.0f, 0.0f);
+
+			BloomUpOutputs = AddBloomUpPass(DowmSamplerChain[0], BloomUpOutputs.Texture, Size, TintA, TintB);
+		}
+		SceneColorTexture = MoveTemp(BloomUpOutputs.Texture);
+	}else
+	{
+		for (uint32 StageIndex = 0,SourceIndex = BloomQuality - 1; StageIndex < BloomQuality; ++StageIndex, --SourceIndex)
+		{
+			float BloomFalloff = FMathf::Exp(StageIndex * Falloff);
+			FGaussianBlurInputs PassInputs;
+			PassInputs.NameX = TEXT("BloomX");
+			PassInputs.NameY = TEXT("BloomY");
+			PassInputs.Filter = FScreenPassTexture(DowmSamplerChain[SourceIndex]);
+			PassInputs.Additive = PassOutputs;
+			PassInputs.CrossCenterWeight = FVector2f(0.f);	// LWC_TODO: Precision loss
+			PassInputs.KernelSizePercent = Size * BloomQuality * FMathf::Pow(2,StageIndex);
+			PassInputs.TintColor = Color * Intensity * BloomFalloff;
+
+			PassOutputs = AddGaussianBloomPass(GraphBuilder, ViewInfo, PassInputs,StageIndex);
+		}
+		AddTextureCombinePass(GraphBuilder,ViewInfo,Inputs,PassOutputs.Texture,SceneColorTexture,&TextureBlendDesc);
 	}
-	AddTextureCombinePass(GraphBuilder,ViewInfo,Inputs,PassOutputs.Texture,SceneColorTexture,&TextureBlendDesc);
+
 
 }

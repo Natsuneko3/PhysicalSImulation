@@ -30,8 +30,115 @@
 
 SCREEN_PASS_TEXTURE_VIEWPORT(Filter)
 
+
+float2 Circle(float Start, float Points, float Point)
+{
+	float Rad = (3.141592 * 2.0 * (1.0 / Points)) * (Point + Start);
+	return float2(sin(Rad), cos(Rad));
+}
+
+Texture2D BloomUpSourceATexture;
+SamplerState BloomUpSourceASampler;
+
+Texture2D BloomUpSourceBTexture;
+SamplerState BloomUpSourceBSampler;
+
+float4 BufferASizeAndInvSize;
+float4 BufferBSizeAndInvSize;
+float2 BloomUpScales;
+
+void BloomUpVS_Mobile(
+	in float4 InPosition : ATTRIBUTE0,
+	in float2 InTexCoord : ATTRIBUTE1,
+	out float4 OutTexCoords[8] : TEXCOORD0,
+	out float4 OutPosition : SV_POSITION
+	)
+{
+	DrawRectangle(InPosition, InTexCoord, OutPosition, InTexCoord);
+
+	float Start;
+	float Scale;
+
+	Start = 2.0/7.0;
+	Scale = BloomUpScales.x;
+
+
+	OutTexCoords[0].xy = InTexCoord.xy + Circle(Start, 7.0, 0.0) * Scale * BufferASizeAndInvSize.zw;
+	OutTexCoords[0].zw = InTexCoord.xy + Circle(Start, 7.0, 1.0) * Scale * BufferASizeAndInvSize.zw;
+	OutTexCoords[1].xy = InTexCoord.xy + Circle(Start, 7.0, 2.0) * Scale * BufferASizeAndInvSize.zw;
+	OutTexCoords[1].zw = InTexCoord.xy + Circle(Start, 7.0, 3.0) * Scale * BufferASizeAndInvSize.zw;
+	OutTexCoords[2].xy = InTexCoord.xy + Circle(Start, 7.0, 4.0) * Scale * BufferASizeAndInvSize.zw;
+	OutTexCoords[2].zw = InTexCoord.xy + Circle(Start, 7.0, 5.0) * Scale * BufferASizeAndInvSize.zw;
+	OutTexCoords[3].xy = InTexCoord.xy + Circle(Start, 7.0, 6.0) * Scale * BufferASizeAndInvSize.zw;
+
+	OutTexCoords[3].zw = InTexCoord.xy;
+
+	Start = 2.0/7.0;
+	Scale = BloomUpScales.y;
+
+	OutTexCoords[4].xy = InTexCoord.xy + Circle(Start, 7.0, 0.0) * Scale * BufferBSizeAndInvSize.zw;
+	OutTexCoords[4].zw = InTexCoord.xy + Circle(Start, 7.0, 1.0) * Scale * BufferBSizeAndInvSize.zw;
+	OutTexCoords[5].xy = InTexCoord.xy + Circle(Start, 7.0, 2.0) * Scale * BufferBSizeAndInvSize.zw;
+	OutTexCoords[5].zw = InTexCoord.xy + Circle(Start, 7.0, 3.0) * Scale * BufferBSizeAndInvSize.zw;
+	OutTexCoords[6].xy = InTexCoord.xy + Circle(Start, 7.0, 4.0) * Scale * BufferBSizeAndInvSize.zw;
+	OutTexCoords[6].zw = InTexCoord.xy + Circle(Start, 7.0, 5.0) * Scale * BufferBSizeAndInvSize.zw;
+	OutTexCoords[7].xy = InTexCoord.xy + Circle(Start, 7.0, 6.0) * Scale * BufferBSizeAndInvSize.zw;
+	OutTexCoords[7].zw = float2(0.0, 0.0);
+}
+
+float4 BloomTintA;
+float4 BloomTintB;
+
+void BloomUpPS_Mobile(
+	float4 InUVs[8] : TEXCOORD0,
+	out HALF4_TYPE OutColor : SV_Target0
+	)
+{
+	half3 A0 = BloomUpSourceATexture.Sample(BloomUpSourceASampler, InUVs[0].xy).rgb;
+	half3 A1 = BloomUpSourceATexture.Sample(BloomUpSourceASampler, InUVs[0].zw).rgb;
+	half3 A2 = BloomUpSourceATexture.Sample(BloomUpSourceASampler, InUVs[1].xy).rgb;
+	half3 A3 = BloomUpSourceATexture.Sample(BloomUpSourceASampler, InUVs[1].zw).rgb;
+	half3 A4 = BloomUpSourceATexture.Sample(BloomUpSourceASampler, InUVs[2].xy).rgb;
+	half3 A5 = BloomUpSourceATexture.Sample(BloomUpSourceASampler, InUVs[2].zw).rgb;
+	half3 A6 = BloomUpSourceATexture.Sample(BloomUpSourceASampler, InUVs[3].xy).rgb;
+	half3 A7 = BloomUpSourceATexture.Sample(BloomUpSourceASampler, InUVs[3].zw).rgb;
+
+	half3 B0 = BloomUpSourceBTexture.Sample(BloomUpSourceBSampler, InUVs[3].zw).rgb;
+	half3 B1 = BloomUpSourceBTexture.Sample(BloomUpSourceBSampler, InUVs[4].xy).rgb;
+	half3 B2 = BloomUpSourceBTexture.Sample(BloomUpSourceBSampler, InUVs[4].zw).rgb;
+	half3 B3 = BloomUpSourceBTexture.Sample(BloomUpSourceBSampler, InUVs[5].xy).rgb;
+	half3 B4 = BloomUpSourceBTexture.Sample(BloomUpSourceBSampler, InUVs[5].zw).rgb;
+	half3 B5 = BloomUpSourceBTexture.Sample(BloomUpSourceBSampler, InUVs[6].xy).rgb;
+	half3 B6 = BloomUpSourceBTexture.Sample(BloomUpSourceBSampler, InUVs[6].zw).rgb;
+	half3 B7 = BloomUpSourceBTexture.Sample(BloomUpSourceBSampler, InUVs[7].xy).rgb;
+
+	// A is the same size source.
+	half3 WA = BloomTintA.rgb;
+	// B is the upsampled source.
+	half3 WB = BloomTintB.rgb;
+
+	OutColor.rgb =
+		A0 * WA +
+		A1 * WA +
+		A2 * WA +
+		A3 * WA +
+		A4 * WA +
+		A5 * WA +
+		A6 * WA +
+		A7 * WA +
+		B0 * WB +
+		B1 * WB +
+		B2 * WB +
+		B3 * WB +
+		B4 * WB +
+		B5 * WB +
+		B6 * WB +
+		B7 * WB;
+	OutColor.a = 0;
+}
+
 SamplerState Filter_Sampler;
-Texture2D Filter_Texture; 
+Texture2D Filter_Texture;
 float BloomLuminance;
 float4 SampleFilterTexture(float2 UV)
 {
@@ -104,6 +211,7 @@ void MainPS(
 
 	OutColor = Color ;// (Luminance(Color) + 1.f) * BloomLuminance;
 }
+
 
 #else // !USE_DYNAMIC_LOOP
 

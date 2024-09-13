@@ -7,6 +7,14 @@ public:
 
 };
 
+UENUM()
+enum class EBloomQuailtyLevel : uint8
+{
+	Low = 0,
+	Medium = 1,
+	High = 2
+
+};
 UCLASS(NotBlueprintable, MinimalAPI,DisplayName="Bloom")
 class UTranslucentBloom: public URenderAdapterBase
 {
@@ -31,8 +39,8 @@ public:
 	UPROPERTY(Category = "RenderFeature",EditAnywhere,meta=(ClampMin=1,ClampMax=10,UIMin=1,UIMax=10))
 	float BloomGlow = 2.0f;
 
-	UPROPERTY(Category = "RenderFeature",EditAnywhere,meta=(ClampMin=3,ClampMax=6,UIMin=3,UIMax=6))
-	uint32 BloomQuality = 6;
+	UPROPERTY(Category = "RenderFeature",EditAnywhere)
+	EBloomQuailtyLevel BloomQualityLevel = EBloomQuailtyLevel::High;
 
 	UPROPERTY(Category = "RenderFeature",EditAnywhere)
 	FLinearColor Color = FLinearColor::White;
