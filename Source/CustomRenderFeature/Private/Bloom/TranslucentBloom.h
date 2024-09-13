@@ -24,20 +24,20 @@ public:
 	UPROPERTY(Category = "RenderFeature",EditAnywhere,meta=(ClampMax=1))
 	bool bDisableOriginBloom = true;
 
-	UPROPERTY(Category = "RenderFeature",EditAnywhere,meta=(ClampMax=1))
-	float Size = 1.0f;
+	UPROPERTY(Category = "RenderFeature",EditAnywhere)
+	float Size = 5.0f;
 
 	UPROPERTY(Category = "RenderFeature",EditAnywhere)
-	float Intensity = 0.03f;
+	float Intensity = 0.04f;
 
 	UPROPERTY(Category = "RenderFeature",EditAnywhere)
-	float Falloff = 0.1f;
+	float Falloff = 0.5f;
 
 	UPROPERTY(Category = "RenderFeature",EditAnywhere)
 	float BloomThreshold = 1.0f;
 
 	UPROPERTY(Category = "RenderFeature",EditAnywhere,meta=(ClampMin=1,ClampMax=10,UIMin=1,UIMax=10))
-	float BloomGlow = 10.0f;
+	float BloomGlow = 2.0f;
 
 	UPROPERTY(Category = "RenderFeature",EditAnywhere)
 	EBloomQuailtyLevel BloomQualityLevel = EBloomQuailtyLevel::High;
@@ -48,9 +48,3 @@ public:
 	virtual void PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& View, const FPostProcessingInputs& Inputs) override;
 
 };
-/*BloomFalloff:1.000000
-Wed Sep 11 21:52:23 CST 2024  Log          LogTemp                   BloomFalloff:1.105171
-Wed Sep 11 21:52:23 CST 2024  Log          LogTemp                   BloomFalloff:1.221403
-Wed Sep 11 21:52:23 CST 2024  Log          LogTemp                   BloomFalloff:1.349859
-Wed Sep 11 21:52:23 CST 2024  Log          LogTemp                   BloomFalloff:1.491825
-Wed Sep 11 21:52:23 CST 2024  Log          LogTemp                   BloomFalloff:1.648721*/

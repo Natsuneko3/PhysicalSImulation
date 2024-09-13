@@ -574,7 +574,7 @@ void URenderAdapterBase::AddTextureCombinePass(FRDGBuilder& GraphBuilder, const 
 	else
 	{
 
-		//AddDrawTexturePass(GraphBuilder,View,OutTexture,CopyOutTexture);
+
 		FTextureBlendPS::FPermutationDomain PermutationDomain;
 		PermutationDomain.Set<FTextureBlendPS::FBlendMethod>(InTextureBlendDesc->BlendMethod == EBlendMethod::MAX?EBlendMethod::Addition: InTextureBlendDesc->BlendMethod);
 		TShaderMapRef<FTextureBlendPS> PixelShader(ShaderMap,PermutationDomain);
@@ -583,7 +583,7 @@ void URenderAdapterBase::AddTextureCombinePass(FRDGBuilder& GraphBuilder, const 
 		Parameters->SceneTextures =  Inputs.SceneTextures;
 		Parameters->ClampSampler = TStaticSamplerState<>::GetRHI();
 		Parameters->InTexture = InTexture;
-		Parameters->SceneTexture = CopyOutTexture;
+		Parameters->SceneTexture = OutTexture;
 		Parameters->Weight = InTextureBlendDesc->Weight;
 		Parameters->RenderTargets[0] = FRenderTargetBinding(CopyOutTexture, ERenderTargetLoadAction::ELoad);
 		FPixelShaderUtils::AddFullscreenPass(GraphBuilder,ShaderMap,
@@ -591,7 +591,8 @@ void URenderAdapterBase::AddTextureCombinePass(FRDGBuilder& GraphBuilder, const 
 		PixelShader,
 		Parameters,
 		FIntRect(0, 0, OutTexture->Desc.Extent.X, OutTexture->Desc.Extent.Y));
-		OutTexture = MoveTemp(CopyOutTexture);
+		AddDrawTexturePass(GraphBuilder,View,CopyOutTexture,OutTexture);
+		//OutTexture = MoveTemp(CopyOutTexture);
 	}
 
 	//AddCopyTexturePass(GraphBuilder,OutTexture,SceneColor);

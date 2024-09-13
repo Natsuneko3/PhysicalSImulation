@@ -321,7 +321,7 @@ public:
 
 	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
 	{
-		return IsMobilePlatform(Parameters.Platform);
+		return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
 	}
 };
 
@@ -340,7 +340,7 @@ public:
 
 	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
 	{
-		return IsMobilePlatform(Parameters.Platform);
+		return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
 	}
 };
 
@@ -666,6 +666,7 @@ FScreenPassTexture AddMobileBloomUpPass(FRDGBuilder& GraphBuilder, const FViewIn
 
 	return MoveTemp(BloomUpOutput);
 }
+
 UTranslucentBloom::UTranslucentBloom()
 {
 
@@ -694,7 +695,13 @@ void UTranslucentBloom::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilde
 	Desc.Extent = FIntPoint(Desc.Extent.X * (ScreenPercent / 100.f),Desc.Extent.Y * (ScreenPercent/ 100.f));
 
 	float BloomQuality = BloomQualityLevel == EBloomQuailtyLevel::High? 6:4;
-	for(uint32 i = 0; i < BloomQuality - 1; ++i)
+
+	if(BloomQualityLevel == EBloomQuailtyLevel::Low)
+	{
+		Desc.Extent /= 2;
+	}
+
+	for(uint32 i = 0; i < BloomQuality ; ++i)
 	{
 		Desc.Extent /= 2;
 		FRDGTextureRef  FilterTexture = GraphBuilder.CreateTexture(Desc,TEXT("DowmSamplerChain"));
@@ -726,45 +733,47 @@ void UTranslucentBloom::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilde
 		{
 			FVector4f TintA = FVector4f(Color.R, Color.G, Color.B, 0.0f);
 			FVector4f TintB = TintA;
-			TintA *=  Falloffs[3];//Settings.MobileBloom3Scale;
-			TintB *=  Falloffs[2];//Settings.MobileBloom4Scale;
+			TintA *=  Falloffs[3] * Intensity*0.5;//Settings.MobileBloom3Scale;
+			TintB *=  Falloffs[2]* Intensity*0.5;//Settings.MobileBloom4Scale;
 
-			BloomUpOutputs = AddBloomUpPass(DowmSamplerChain[2], DowmSamplerChain[3], 4.0f* Size , TintA, TintB);
+			BloomUpOutputs = AddBloomUpPass(DowmSamplerChain[3], DowmSamplerChain[4], 0.4f* Size , TintA, TintB);
 		}
 
 		// Upsample by 2
 		{
 			FVector4f TintA = FVector4f(Color.R, Color.G, Color.B, 0.0f);
-			TintA *=  Falloffs[1];//Settings.MobileBloom2Scale;
+			TintA *=  Falloffs[1]* Intensity*0.5;//Settings.MobileBloom2Scale;
 			FVector4f TintB = FVector4f(1.0f, 1.0f, 1.0f, 0.0f);
 
-			BloomUpOutputs = AddBloomUpPass(DowmSamplerChain[1], BloomUpOutputs.Texture, 2.0f* Size, TintA, TintB);
+			BloomUpOutputs = AddBloomUpPass(DowmSamplerChain[2], BloomUpOutputs.Texture, 0.2f* Size, TintA, TintB);
 		}
 
 		// Upsample by 2
 		{
 			FVector4f TintA = FVector4f(Color.R, Color.G, Color.B, 0.0f);
-			TintA *=  Falloffs[0];////Settings.MobileBloom1Scale;
+			TintA *=  Falloffs[0]* Intensity*0.5;////Settings.MobileBloom1Scale;
 			// Scaling Bloom2 by extra factor to match filter area difference between PC default and mobile.
 			TintA *= 0.5;
 			FVector4f TintB = FVector4f(1.0f, 1.0f, 1.0f, 0.0f);
 
-			BloomUpOutputs = AddBloomUpPass(DowmSamplerChain[0], BloomUpOutputs.Texture, Size, TintA, TintB);
+			BloomUpOutputs = AddBloomUpPass(DowmSamplerChain[1], BloomUpOutputs.Texture, Size*0.1f, TintA, TintB);
 		}
-		SceneColorTexture = MoveTemp(BloomUpOutputs.Texture);
+		//SceneColorTexture = MoveTemp(BloomUpOutputs.Texture);
+		AddTextureCombinePass(GraphBuilder,ViewInfo,Inputs,BloomUpOutputs.Texture,SceneColorTexture,&TextureBlendDesc);
 	}else
 	{
-		for (uint32 StageIndex = 0,SourceIndex = BloomQuality - 1; StageIndex < BloomQuality; ++StageIndex, --SourceIndex)
+		for (uint32 StageIndex = 0,SourceIndex = BloomQuality ; StageIndex < BloomQuality; ++StageIndex, --SourceIndex)
 		{
-			float BloomFalloff = FMathf::Exp(StageIndex * Falloff);
+			float Increase = BloomQuality == 6? 1.0f : 4.f;
+			float BloomFalloff = FMathf::Exp(StageIndex * Falloff) * 0.1;
 			FGaussianBlurInputs PassInputs;
 			PassInputs.NameX = TEXT("BloomX");
 			PassInputs.NameY = TEXT("BloomY");
 			PassInputs.Filter = FScreenPassTexture(DowmSamplerChain[SourceIndex]);
 			PassInputs.Additive = PassOutputs;
 			PassInputs.CrossCenterWeight = FVector2f(0.f);	// LWC_TODO: Precision loss
-			PassInputs.KernelSizePercent = Size * BloomQuality * FMathf::Pow(2,StageIndex);
-			PassInputs.TintColor = Color * Intensity * BloomFalloff;
+			PassInputs.KernelSizePercent = Size * FMathf::Pow(2,StageIndex);
+			PassInputs.TintColor = Color * Intensity * BloomFalloff *Increase;
 
 			PassOutputs = AddGaussianBloomPass(GraphBuilder, ViewInfo, PassInputs,StageIndex);
 		}

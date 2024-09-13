@@ -78,6 +78,8 @@ float4 DownsampleCommon(float2 UV)
 	OutColor.rgb = max(float3(0,0,0), OutColor.rgb);
 #elif DOWNSAMPLE_QUALITY ==DOWNSAMPLE_QUALITY_HIGH
 	float4 UVs[8];
+	float Start;
+	Start = 1.0/14.0;
 	UVs[0].xy = UV;
 	UVs[0].zw = UV + Circle(Start, 14.0, 0.0) * UVScale * Input_ExtentInverse;
 	UVs[1].xy = UV + Circle(Start, 14.0, 1.0) * UVScale * Input_ExtentInverse;
@@ -95,21 +97,21 @@ float4 DownsampleCommon(float2 UV)
 	UVs[7].xy = UV + Circle(Start, 14.0, 13.0) * UVScale * Input_ExtentInverse;
 	UVs[7].zw = float2(0.0, 0.0);
 
-	half4 N0 = SampleInput(InUVs[0].xy);
-	half4 N1 = SampleInput(InUVs[0].zw);
-	half4 N2 = SampleInput(InUVs[1].xy);
-	half4 N3 = SampleInput(InUVs[1].zw);
-	half4 N4 = SampleInput(InUVs[2].xy);
-	half4 N5 = SampleInput(InUVs[2].zw);
-	half4 N6 = SampleInput(InUVs[3].xy);
-	half4 N7 = SampleInput(InUVs[3].zw);
-	half4 N8 = SampleInput(InUVs[4].xy);
-	half4 N9 = SampleInput(InUVs[4].zw);
-	half4 N10 = SampleInput(InUVs[5].xy);
-	half4 N11 = SampleInput(InUVs[5].zw);
-	half4 N12 = SampleInput(InUVs[6].xy);
-	half4 N13 = SampleInput(InUVs[6].zw);
-	half4 N14 = SampleInput(InUVs[7].xy);
+	half4 N0 = SampleInput(UVs[0].xy);
+	half4 N1 = SampleInput(UVs[0].zw);
+	half4 N2 = SampleInput(UVs[1].xy);
+	half4 N3 = SampleInput(UVs[1].zw);
+	half4 N4 = SampleInput(UVs[2].xy);
+	half4 N5 = SampleInput(UVs[2].zw);
+	half4 N6 = SampleInput(UVs[3].xy);
+	half4 N7 = SampleInput(UVs[3].zw);
+	half4 N8 = SampleInput(UVs[4].xy);
+	half4 N9 = SampleInput(UVs[4].zw);
+	half4 N10 = SampleInput(UVs[5].xy);
+	half4 N11 = SampleInput(UVs[5].zw);
+	half4 N12 = SampleInput(UVs[6].xy);
+	half4 N13 = SampleInput(UVs[6].zw);
+	half4 N14 = SampleInput(UVs[7].xy);
 	float W = 1.0/15.0;
 	OutColor.rgb =
 		(N0 * W) +

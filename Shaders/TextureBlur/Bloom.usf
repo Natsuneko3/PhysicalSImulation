@@ -11,11 +11,11 @@
 #include "/Engine/Private/PostProcessCommon.ush"
 
 #ifndef STATIC_SAMPLE_COUNT
-	#error STATIC_SAMPLE_COUNT is undefined
+	#define STATIC_SAMPLE_COUNT 33
 #endif
 
 #ifndef SAMPLE_COUNT_MAX
-	#error SAMPLE_COUNT_MAX is undefined
+	#define SAMPLE_COUNT_MAX 128
 #endif
 
 #if STATIC_SAMPLE_COUNT > SAMPLE_COUNT_MAX
