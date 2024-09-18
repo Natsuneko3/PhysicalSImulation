@@ -7,6 +7,7 @@
 #include "PostProcess/PostProcessWeightedSampleSum.h"
 #include "PixelShaderUtils.h"
 #include "PostProcess/PostProcessDownsample.h"
+#include "PostProcess/SceneFilterRendering.h"
 
 // maximum number of sample using the shader that has the dynamic loop
 #define MAX_FILTER_SAMPLES	128
@@ -676,7 +677,7 @@ FScreenPassTexture AddMobileBloomUpPass(FRDGBuilder& GraphBuilder, const FViewIn
 		SetShaderParameters(RHICmdList, VertexShader, VertexShader.GetVertexShader(), VSShaderParameters);
 		SetShaderParameters(RHICmdList, PixelShader, PixelShader.GetPixelShader(), *PSShaderParameters);
 
-		/*DrawRectangle(
+		DrawRectangle(
 			RHICmdList,
 			0, 0,
 			OutputViewport.Extent.X, OutputViewport.Extent.Y,
@@ -685,7 +686,8 @@ FScreenPassTexture AddMobileBloomUpPass(FRDGBuilder& GraphBuilder, const FViewIn
 			OutputViewport.Extent,
 			InputViewport.Extent,
 			VertexShader,
-			EDRF_UseTriangleOptimization);*/
+			EDRF_UseTriangleOptimization);
+
 	});
 
 	return MoveTemp(BloomUpOutput);
