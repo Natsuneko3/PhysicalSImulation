@@ -700,12 +700,13 @@ UTranslucentBloom::UTranslucentBloom()
 
 void UTranslucentBloom::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuilder, const FSceneView& View, const FPostProcessingInputs& Inputs)
 {
-	if(Size <= 0.f || Intensity <= 0.0f)
+
+	const FViewInfo& ViewInfo = static_cast<const FViewInfo&>(View);
+	FRDGTextureRef SceneColorTexture = GetSceneTexture(Inputs);
+	if(Size <= 0.f || Intensity <= 0.0f || !SceneColorTexture)
 	{
 		return;
 	}
-	const FViewInfo& ViewInfo = static_cast<const FViewInfo&>(View);
-	FRDGTextureRef SceneColorTexture = GetSceneTexture(Inputs);
 	FScreenPassTexture PassOutputs;
 	FRDGTextureDesc Desc(SceneColorTexture->Desc);
 
