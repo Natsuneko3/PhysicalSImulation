@@ -1,6 +1,5 @@
 #pragma once
 #include "RenderAdapter.h"
-#include "PostProcess/PostProcessMaterial.h"
 #include "TranslucentPostprocess.generated.h"
 
 
