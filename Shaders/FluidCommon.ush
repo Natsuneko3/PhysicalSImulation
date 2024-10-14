@@ -24,7 +24,6 @@ SamplerState SimSampler;
 // common FFT functions
 // complex conjugate
 
-
 float2 ComplexCon(float2 Z)
 {
 	return float2(Z.x, -Z.y);
@@ -55,7 +54,6 @@ float GetDivergence(Texture2D<float4> InTexture,int2 DispatchThreadId,float dx)
 
 	return  (RightUpVelocity - LeftVelocity + UpVelocity - DownVelocity) /(2.0 *dx);
 }
-
 
 float GetDivergence(Texture2D<float> InTexture,int2 DispatchThreadId,float dx)
 {
@@ -132,8 +130,6 @@ float3 random3(float3 c) {
 	return r-0.5;
 }
 
-
-
 float4 simplex3d(float3 p) {
 	/* 1. find current tetrahedron T and it's four vertices */
 	/* s, s+i1, s+i2, s+1.0 - absolute skewed (integer) coordinates of T vertices */
@@ -181,12 +177,14 @@ float4 simplex3d(float3 p) {
 	/* 3. return the sum of the four surflets */
 	return dot(d, 52.0);
 }
+
 uint PackHalf2x16(float2 v)
 {
 	uint lo = f32tof16(v.x); // 将第一个 float 转为 half-float
 	uint hi = f32tof16(v.y); // 将第二个 float 转为 half-float
 	return (hi << 16) | lo;  // 将高位放入前16位，低位放入后16位
 }
+
 float2 UnpackHalf2x16(uint packed)
 {
 	float x = f16tof32(packed & 0xFFFF);      // 取低16位并转换为float
@@ -194,12 +192,17 @@ float2 UnpackHalf2x16(uint packed)
 	return float2(x, y);                      // 返回解包后的 float2
 }
 
-float pack2(float2 a)
+float Pack2(float2 a)
 {
 	return asfloat(PackHalf2x16(a));
 }
 
-float2 unpack2(float packed)
+float2 Unpack2(float packed)
 {
 	return UnpackHalf2x16(asuint(packed));
+}
+
+float2 Wrap(float2 p, float2 res)
+{
+	return (p + res)%res;
 }

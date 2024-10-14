@@ -3,12 +3,15 @@
 #include "FluidCommon.ush"
 
 #define G 98
+#define OUTPUTTEXTURE SimGridUAV
+
 int FluidShaderType;
 float3 WorldVelocity;
 float3 WorldPosition;
 int bIsXDirector;
 RWTexture2D<float> PressureGridUAV;
-Texture2D<float4>PoissonFilterSRV;
+Texture2D<float4> PoissonFilterSRV;
+
 [numthreads(THREADGROUP_SIZEX, THREADGROUP_SIZEY, 1)]
 void PoissonFilterCS(uint2 DispatchThreadId : SV_DispatchThreadID)
 {
@@ -24,19 +27,21 @@ void PoissonFilterCS(uint2 DispatchThreadId : SV_DispatchThreadID)
 	//convolution size
 	int N = 129;
 	float Pressure = 0.0;
-	int MaxGridX,MaxGridY;
-	PressureGridUAV.GetDimensions(MaxGridX,MaxGridY);
+	int MaxCellX,MaxCellY;
+	PressureGridUAV.GetDimensions(MaxCellX,MaxCellY);
+	float2 Resolve = float2(MaxCellX,MaxCellY);
 	float V[1032] = {-6.1416E-03, -1.5629E-02, -2.7467E-02, -4.0930E-02, -5.5891E-02, -7.2172E-02, -8.9315E-02, -1.0730E-01, -1.2606E-01, -1.4533E-01, -1.6540E-01, -1.8598E-01, -2.0729E-01, -2.2908E-01, -2.5140E-01, -2.7426E-01, -2.9781E-01, -3.2185E-01, -3.4639E-01, -3.7145E-01, -3.9703E-01, -4.2312E-01, -4.4967E-01, -4.7682E-01, -5.0455E-01, -5.3286E-01, -5.6175E-01, -5.9117E-01, -6.2125E-01, -6.5195E-01, -6.8326E-01, -7.1527E-01, -7.4796E-01, -7.8132E-01, -8.1544E-01, -8.5028E-01, -8.8592E-01, -9.2236E-01, -9.5965E-01, -9.9781E-01, -1.0369E+00, -1.0769E+00, -1.1179E+00, -1.1600E+00, -1.2031E+00, -1.2474E+00, -1.2929E+00, -1.3396E+00, -1.3876E+00, -1.4371E+00, -1.4880E+00, -1.5404E+00, -1.5945E+00, -1.6504E+00, -1.7081E+00, -1.7679E+00, -1.8298E+00, -1.8941E+00, -1.9609E+00, -2.0305E+00, -2.1032E+00, -2.1794E+00, -2.2597E+00, -2.3450E+00, -2.4366E+00, -2.3450E+00, -2.2597E+00, -2.1794E+00, -2.1032E+00, -2.0305E+00, -1.9609E+00, -1.8941E+00, -1.8298E+00, -1.7679E+00, -1.7081E+00, -1.6504E+00, -1.5945E+00, -1.5404E+00, -1.4880E+00, -1.4371E+00, -1.3876E+00, -1.3396E+00, -1.2929E+00, -1.2474E+00, -1.2031E+00, -1.1600E+00, -1.1179E+00, -1.0769E+00, -1.0369E+00, -9.9781E-01, -9.5965E-01, -9.2236E-01, -8.8592E-01, -8.5028E-01, -8.1544E-01, -7.8132E-01, -7.4796E-01, -7.1527E-01, -6.8326E-01, -6.5195E-01, -6.2125E-01, -5.9117E-01, -5.6175E-01, -5.3286E-01, -5.0455E-01, -4.7682E-01, -4.4967E-01, -4.2312E-01, -3.9703E-01, -3.7145E-01, -3.4639E-01, -3.2185E-01, -2.9781E-01, -2.7426E-01, -2.5140E-01, -2.2908E-01, -2.0729E-01, -1.8598E-01, -1.6540E-01, -1.4533E-01, -1.2606E-01, -1.0730E-01, -8.9315E-02, -7.2172E-02, -5.5891E-02, -4.0930E-02, -2.7467E-02, -1.5629E-02, -6.1416E-03, 5.6056E-03, 1.0267E-02, 1.3407E-02, 1.5251E-02, 1.5763E-02, 1.5040E-02, 1.3592E-02, 1.1442E-02, 8.6706E-03, 5.6215E-03, 1.9644E-03, -1.9350E-03, -6.3340E-03, -1.0903E-02, -1.5665E-02, -2.0627E-02, -2.5927E-02, -3.1310E-02, -3.6774E-02, -4.2304E-02, -4.7880E-02, -5.3472E-02, -5.9018E-02, -6.4606E-02, -7.0191E-02, -7.5743E-02, -8.1236E-02, -8.6642E-02, -9.1962E-02, -9.7169E-02, -1.0225E-01, -1.0716E-01, -1.1190E-01, -1.1644E-01, -1.2074E-01, -1.2479E-01, -1.2851E-01, -1.3192E-01, -1.3493E-01, -1.3753E-01, -1.3964E-01, -1.4117E-01, -1.4210E-01, -1.4233E-01, -1.4171E-01, -1.4020E-01, -1.3766E-01, -1.3389E-01, -1.2879E-01, -1.2213E-01, -1.1368E-01, -1.0313E-01, -9.0193E-02, -7.4466E-02, -5.5464E-02, -3.2591E-02, -5.1015E-03, 2.7904E-02, 6.7624E-02, 1.1565E-01, 1.7415E-01, 2.4630E-01, 3.3704E-01, 4.5509E-01, 6.1910E-01, 4.5509E-01, 3.3704E-01, 2.4630E-01, 1.7415E-01, 1.1565E-01, 6.7624E-02, 2.7904E-02, -5.1015E-03, -3.2591E-02, -5.5464E-02, -7.4466E-02, -9.0193E-02, -1.0313E-01, -1.1368E-01, -1.2213E-01, -1.2879E-01, -1.3389E-01, -1.3766E-01, -1.4020E-01, -1.4171E-01, -1.4233E-01, -1.4210E-01, -1.4117E-01, -1.3964E-01, -1.3753E-01, -1.3493E-01, -1.3192E-01, -1.2851E-01, -1.2479E-01, -1.2074E-01, -1.1644E-01, -1.1190E-01, -1.0716E-01, -1.0225E-01, -9.7169E-02, -9.1962E-02, -8.6642E-02, -8.1236E-02, -7.5743E-02, -7.0191E-02, -6.4606E-02, -5.9018E-02, -5.3472E-02, -4.7880E-02, -4.2304E-02, -3.6774E-02, -3.1310E-02, -2.5927E-02, -2.0627E-02, -1.5665E-02, -1.0903E-02, -6.3340E-03, -1.9350E-03, 1.9644E-03, 5.6215E-03, 8.6706E-03, 1.1442E-02, 1.3592E-02, 1.5040E-02, 1.5763E-02, 1.5251E-02, 1.3407E-02, 1.0267E-02, 5.6056E-03, 1.4468E-03, 4.9706E-03, 8.6735E-03, 1.1924E-02, 1.4393E-02, 1.5937E-02, 1.6870E-02, 1.7166E-02, 1.6873E-02, 1.6319E-02, 1.5168E-02, 1.3792E-02, 1.1936E-02, 9.9384E-03, 7.7839E-03, 5.4736E-03, 2.9194E-03, 3.4391E-04, -2.2372E-03, -4.8000E-03, -7.3168E-03, -9.7660E-03, -1.2169E-02, -1.4455E-02, -1.6612E-02, -1.8623E-02, -2.0486E-02, -2.2299E-02, -2.3862E-02, -2.5227E-02, -2.6526E-02, -2.7519E-02, -2.8281E-02, -2.8960E-02, -2.9324E-02, -2.9571E-02, -2.9470E-02, -2.9219E-02, -2.8604E-02, -2.7808E-02, -2.6747E-02, -2.5231E-02, -2.3448E-02, -2.1317E-02, -1.8666E-02, -1.5655E-02, -1.2207E-02, -8.1926E-03, -3.7252E-03, 1.2431E-03, 6.7467E-03, 1.2839E-02, 1.9404E-02, 2.6391E-02, 3.3699E-02, 4.1137E-02, 4.8400E-02, 5.4911E-02, 5.9798E-02, 6.1612E-02, 5.7865E-02, 4.4025E-02, 1.1070E-02, -6.1534E-02, -2.2957E-01, -6.1534E-02, 1.1070E-02, 4.4025E-02, 5.7865E-02, 6.1612E-02, 5.9798E-02, 5.4911E-02, 4.8400E-02, 4.1137E-02, 3.3699E-02, 2.6391E-02, 1.9404E-02, 1.2839E-02, 6.7467E-03, 1.2431E-03, -3.7252E-03, -8.1926E-03, -1.2207E-02, -1.5655E-02, -1.8666E-02, -2.1317E-02, -2.3448E-02, -2.5231E-02, -2.6747E-02, -2.7808E-02, -2.8604E-02, -2.9219E-02, -2.9470E-02, -2.9571E-02, -2.9324E-02, -2.8960E-02, -2.8281E-02, -2.7519E-02, -2.6526E-02, -2.5227E-02, -2.3862E-02, -2.2299E-02, -2.0486E-02, -1.8623E-02, -1.6612E-02, -1.4455E-02, -1.2169E-02, -9.7660E-03, -7.3168E-03, -4.8000E-03, -2.2372E-03, 3.4391E-04, 2.9194E-03, 5.4736E-03, 7.7839E-03, 9.9384E-03, 1.1936E-02, 1.3792E-02, 1.5168E-02, 1.6319E-02, 1.6873E-02, 1.7166E-02, 1.6870E-02, 1.5937E-02, 1.4393E-02, 1.1924E-02, 8.6735E-03, 4.9706E-03, 1.4468E-03, 9.9157E-05, -5.8497E-04, -2.4052E-03, -5.1791E-03, -8.8292E-03, -1.3103E-02, -1.7604E-02, -2.2168E-02, -2.6608E-02, -3.0933E-02, -3.4795E-02, -3.8404E-02, -4.1249E-02, -4.3766E-02, -4.5840E-02, -4.7373E-02, -4.7716E-02, -4.7681E-02, -4.7190E-02, -4.6230E-02, -4.4830E-02, -4.3093E-02, -4.1574E-02, -3.9273E-02, -3.6467E-02, -3.3294E-02, -2.9918E-02, -2.6839E-02, -2.3277E-02, -1.9569E-02, -1.6176E-02, -1.2469E-02, -8.7631E-03, -5.4116E-03, -2.0156E-03, 1.0332E-03, 4.0533E-03, 6.7159E-03, 9.2485E-03, 1.1405E-02, 1.3246E-02, 1.4919E-02, 1.6223E-02, 1.7199E-02, 1.7937E-02, 1.8312E-02, 1.8348E-02, 1.8096E-02, 1.7499E-02, 1.6578E-02, 1.5364E-02, 1.3897E-02, 1.2185E-02, 1.0272E-02, 8.2171E-03, 6.0908E-03, 3.9768E-03, 1.9668E-03, 1.7111E-04, -1.2828E-03, -2.2581E-03, -2.6244E-03, -2.2964E-03, -1.3296E-03, -1.9113E-04, -1.3296E-03, -2.2964E-03, -2.6244E-03, -2.2581E-03, -1.2828E-03, 1.7111E-04, 1.9668E-03, 3.9768E-03, 6.0908E-03, 8.2171E-03, 1.0272E-02, 1.2185E-02, 1.3897E-02, 1.5364E-02, 1.6578E-02, 1.7499E-02, 1.8096E-02, 1.8348E-02, 1.8312E-02, 1.7937E-02, 1.7199E-02, 1.6223E-02, 1.4919E-02, 1.3246E-02, 1.1405E-02, 9.2485E-03, 6.7159E-03, 4.0533E-03, 1.0332E-03, -2.0156E-03, -5.4116E-03, -8.7631E-03, -1.2469E-02, -1.6176E-02, -1.9569E-02, -2.3277E-02, -2.6839E-02, -2.9918E-02, -3.3294E-02, -3.6467E-02, -3.9273E-02, -4.1574E-02, -4.3093E-02, -4.4830E-02, -4.6230E-02, -4.7190E-02, -4.7681E-02, -4.7716E-02, -4.7373E-02, -4.5840E-02, -4.3766E-02, -4.1249E-02, -3.8404E-02, -3.4795E-02, -3.0933E-02, -2.6608E-02, -2.2168E-02, -1.7604E-02, -1.3103E-02, -8.8292E-03, -5.1791E-03, -2.4052E-03, -5.8497E-04, 9.9157E-05, -1.5555E-03, -7.3785E-04, 1.5995E-03, 4.4910E-03, 7.4330E-03, 9.9918E-03, 1.2113E-02, 1.3662E-02, 1.4581E-02, 1.5176E-02, 1.5002E-02, 1.4507E-02, 1.3315E-02, 1.1902E-02, 1.0239E-02, 8.3315E-03, 6.0741E-03, 3.7984E-03, 1.5382E-03, -6.5664E-04, -2.7391E-03, -4.6782E-03, -6.6133E-03, -8.2471E-03, -9.6033E-03, -1.0676E-02, -1.1501E-02, -1.2378E-02, -1.2774E-02, -1.2871E-02, -1.3040E-02, -1.2706E-02, -1.2111E-02, -1.1605E-02, -1.0728E-02, -9.9166E-03, -8.7581E-03, -7.6578E-03, -6.2841E-03, -4.9716E-03, -3.6230E-03, -1.9997E-03, -4.0923E-04, 1.2187E-03, 3.0284E-03, 4.8059E-03, 6.5721E-03, 8.3727E-03, 1.0078E-02, 1.1656E-02, 1.3056E-02, 1.4201E-02, 1.4981E-02, 1.5258E-02, 1.4861E-02, 1.3589E-02, 1.1158E-02, 7.3243E-03, 1.7669E-03, -5.7451E-03, -1.5129E-02, -2.5263E-02, -3.1753E-02, -1.9063E-02, 6.9999E-02, -1.9063E-02, -3.1753E-02, -2.5263E-02, -1.5129E-02, -5.7451E-03, 1.7669E-03, 7.3243E-03, 1.1158E-02, 1.3589E-02, 1.4861E-02, 1.5258E-02, 1.4981E-02, 1.4201E-02, 1.3056E-02, 1.1656E-02, 1.0078E-02, 8.3727E-03, 6.5721E-03, 4.8059E-03, 3.0284E-03, 1.2187E-03, -4.0923E-04, -1.9997E-03, -3.6230E-03, -4.9716E-03, -6.2841E-03, -7.6578E-03, -8.7581E-03, -9.9166E-03, -1.0728E-02, -1.1605E-02, -1.2111E-02, -1.2706E-02, -1.3040E-02, -1.2871E-02, -1.2774E-02, -1.2378E-02, -1.1501E-02, -1.0676E-02, -9.6033E-03, -8.2471E-03, -6.6133E-03, -4.6782E-03, -2.7391E-03, -6.5664E-04, 1.5382E-03, 3.7984E-03, 6.0741E-03, 8.3315E-03, 1.0239E-02, 1.1902E-02, 1.3315E-02, 1.4507E-02, 1.5002E-02, 1.5176E-02, 1.4581E-02, 1.3662E-02, 1.2113E-02, 9.9918E-03, 7.4330E-03, 4.4910E-03, 1.5995E-03, -7.3785E-04, -1.5555E-03, -7.8570E-04, -2.8087E-03, -3.9543E-03, -3.9750E-03, -2.8622E-03, -9.4219E-04, 1.2274E-03, 3.4112E-03, 5.3580E-03, 7.0877E-03, 8.1747E-03, 8.9175E-03, 8.8287E-03, 8.4249E-03, 7.6468E-03, 6.4793E-03, 4.7340E-03, 2.9318E-03, 1.1243E-03, -6.1249E-04, -2.1992E-03, -3.5911E-03, -5.0216E-03, -6.0056E-03, -6.6005E-03, -6.8294E-03, -6.7713E-03, -6.8613E-03, -6.3757E-03, -5.6183E-03, -5.0231E-03, -3.9845E-03, -2.8215E-03, -1.8234E-03, -6.8922E-04, 3.2084E-04, 1.3558E-03, 2.2928E-03, 3.1285E-03, 3.8913E-03, 4.5682E-03, 5.0235E-03, 5.4432E-03, 5.7582E-03, 5.7469E-03, 5.6927E-03, 5.5019E-03, 4.9312E-03, 4.2829E-03, 3.4672E-03, 2.4329E-03, 1.0103E-03, -5.3070E-04, -2.2142E-03, -4.0092E-03, -5.8396E-03, -7.5892E-03, -8.8696E-03, -9.2575E-03, -8.1346E-03, -4.6503E-03, 2.0708E-03, 1.1745E-02, 1.7244E-02, -2.1483E-02, 1.7244E-02, 1.1745E-02, 2.0708E-03, -4.6503E-03, -8.1346E-03, -9.2575E-03, -8.8696E-03, -7.5892E-03, -5.8396E-03, -4.0092E-03, -2.2142E-03, -5.3070E-04, 1.0103E-03, 2.4329E-03, 3.4672E-03, 4.2829E-03, 4.9312E-03, 5.5019E-03, 5.6927E-03, 5.7469E-03, 5.7582E-03, 5.4432E-03, 5.0235E-03, 4.5682E-03, 3.8913E-03, 3.1285E-03, 2.2928E-03, 1.3558E-03, 3.2084E-04, -6.8922E-04, -1.8234E-03, -2.8215E-03, -3.9845E-03, -5.0231E-03, -5.6183E-03, -6.3757E-03, -6.8613E-03, -6.7713E-03, -6.8294E-03, -6.6005E-03, -6.0056E-03, -5.0216E-03, -3.5911E-03, -2.1992E-03, -6.1249E-04, 1.1243E-03, 2.9318E-03, 4.7340E-03, 6.4793E-03, 7.6468E-03, 8.4249E-03, 8.8287E-03, 8.9175E-03, 8.1747E-03, 7.0877E-03, 5.3580E-03, 3.4112E-03, 1.2274E-03, -9.4219E-04, -2.8622E-03, -3.9750E-03, -3.9543E-03, -2.8087E-03, -7.8570E-04, 2.4269E-04, -2.6514E-05, -1.3243E-03, -3.3024E-03, -5.5470E-03, -7.4937E-03, -8.9087E-03, -9.5292E-03, -9.2554E-03, -8.5275E-03, -6.8351E-03, -4.8321E-03, -2.3854E-03, 4.0083E-05, 2.3408E-03, 4.3764E-03, 5.5948E-03, 6.4352E-03, 6.8024E-03, 6.6834E-03, 6.1306E-03, 5.2743E-03, 4.5024E-03, 3.1887E-03, 1.6520E-03, 1.0377E-04, -1.2999E-03, -2.7391E-03, -3.7806E-03, -4.4738E-03, -5.3431E-03, -5.4786E-03, -5.2170E-03, -5.2591E-03, -4.6542E-03, -4.3620E-03, -3.4640E-03, -2.9022E-03, -1.9125E-03, -1.2915E-03, -8.1451E-04, 6.4859E-05, 6.3491E-04, 1.0635E-03, 1.7091E-03, 2.1010E-03, 2.3390E-03, 2.5960E-03, 2.6527E-03, 2.5509E-03, 2.3405E-03, 2.0733E-03, 1.7100E-03, 1.2692E-03, 7.9129E-04, 3.2485E-04, -9.7573E-05, -4.2774E-04, -6.3713E-04, -6.9320E-04, -5.7947E-04, -3.2110E-04, -1.5484E-05, 1.4854E-04, -1.7959E-06, 1.4854E-04, -1.5484E-05, -3.2110E-04, -5.7947E-04, -6.9320E-04, -6.3713E-04, -4.2774E-04, -9.7573E-05, 3.2485E-04, 7.9129E-04, 1.2692E-03, 1.7100E-03, 2.0733E-03, 2.3405E-03, 2.5509E-03, 2.6527E-03, 2.5960E-03, 2.3390E-03, 2.1010E-03, 1.7091E-03, 1.0635E-03, 6.3491E-04, 6.4859E-05, -8.1451E-04, -1.2915E-03, -1.9125E-03, -2.9022E-03, -3.4640E-03, -4.3620E-03, -4.6542E-03, -5.2591E-03, -5.2170E-03, -5.4786E-03, -5.3431E-03, -4.4738E-03, -3.7806E-03, -2.7391E-03, -1.2999E-03, 1.0377E-04, 1.6520E-03, 3.1887E-03, 4.5024E-03, 5.2743E-03, 6.1306E-03, 6.6834E-03, 6.8024E-03, 6.4352E-03, 5.5948E-03, 4.3764E-03, 2.3408E-03, 4.0083E-05, -2.3854E-03, -4.8321E-03, -6.8351E-03, -8.5275E-03, -9.2554E-03, -9.5292E-03, -8.9087E-03, -7.4937E-03, -5.5470E-03, -3.3024E-03, -1.3243E-03, -2.6514E-05, 2.4269E-04, -1.3155E-03, -1.2522E-03, 3.0919E-04, 2.2891E-03, 3.9235E-03, 4.6384E-03, 4.5866E-03, 3.7419E-03, 2.3080E-03, 7.0413E-04, -1.0109E-03, -2.5946E-03, -3.6113E-03, -4.2949E-03, -4.5236E-03, -4.2269E-03, -3.0489E-03, -1.7534E-03, -4.0073E-04, 8.9239E-04, 2.0058E-03, 2.8645E-03, 3.7819E-03, 4.1118E-03, 3.9835E-03, 3.4885E-03, 2.7857E-03, 2.2307E-03, 1.3144E-03, 3.5880E-04, -5.1833E-04, -1.3306E-03, -1.9421E-03, -2.5879E-03, -2.8347E-03, -3.1827E-03, -3.0410E-03, -3.0562E-03, -2.6173E-03, -2.3880E-03, -2.1805E-03, -1.4951E-03, -1.0049E-03, -5.5042E-04, 2.1008E-04, 8.1625E-04, 1.3602E-03, 1.9416E-03, 2.4127E-03, 2.7647E-03, 3.0044E-03, 3.0161E-03, 2.9011E-03, 2.5692E-03, 1.9788E-03, 1.0991E-03, -1.9364E-04, -1.6511E-03, -3.1698E-03, -4.4296E-03, -4.7742E-03, -3.1144E-03, 1.7709E-03, 8.1848E-03, -6.1073E-03, 8.1848E-03, 1.7709E-03, -3.1144E-03, -4.7742E-03, -4.4296E-03, -3.1698E-03, -1.6511E-03, -1.9364E-04, 1.0991E-03, 1.9788E-03, 2.5692E-03, 2.9011E-03, 3.0161E-03, 3.0044E-03, 2.7647E-03, 2.4127E-03, 1.9416E-03, 1.3602E-03, 8.1625E-04, 2.1008E-04, -5.5042E-04, -1.0049E-03, -1.4951E-03, -2.1805E-03, -2.3880E-03, -2.6173E-03, -3.0562E-03, -3.0410E-03, -3.1827E-03, -2.8347E-03, -2.5879E-03, -1.9421E-03, -1.3306E-03, -5.1833E-04, 3.5880E-04, 1.3144E-03, 2.2307E-03, 2.7857E-03, 3.4885E-03, 3.9835E-03, 4.1118E-03, 3.7819E-03, 2.8645E-03, 2.0058E-03, 8.9239E-04, -4.0073E-04, -1.7534E-03, -3.0489E-03, -4.2269E-03, -4.5236E-03, -4.2949E-03, -3.6113E-03, -2.5946E-03, -1.0109E-03, 7.0413E-04, 2.3080E-03, 3.7419E-03, 4.5866E-03, 4.6384E-03, 3.9235E-03, 2.2891E-03, 3.0919E-04, -1.2522E-03, -1.3155E-03};
 	for (int i = -Nc; i <= Nc; i++)
 	{
+		float2 Pos = Wrap(DispatchThreadId + float2(0, i), Resolve);
+		Pos.x = (Pos.x + Resolve.x) % Resolve.x;
+		Pos.y = (Pos.y + Resolve.y) % Resolve.y;
 
-		float2 pos = DispatchThreadId;//max(DispatchThreadId + Dir * float2(i,i),0);
-		pos.y = (pos.y + i) % MaxGridY;
-		float4 data = PoissonFilterSRV[pos];
+		float4 data = PoissonFilterSRV[Pos];
 		//loop over pairs of ranks
 		for(int j = 0; j < 4; j++)
 		{
-			float2 val = unpack2(data[j]);
+			float2 val = Unpack2(data[j]);
 			Pressure += val.x * V[i + Nc + 2 * j * N];
 			Pressure += val.y * V[i + Nc + (2*j + 1) * N];
 		}
@@ -54,6 +59,11 @@ void PoissonFilter(uint2 DispatchThreadId : SV_DispatchThreadID)
 	float4 sum0 = 0.0;
 	float4 sum1 = 0.0;
 	float2 Dir = float2(1,0);
+	int MaxCellX,MaxCellY;
+	PressureGridUAV.GetDimensions(MaxCellX,MaxCellY);
+	float2 Resolve = float2(MaxCellX,MaxCellY);
+	float2 inverseResolution = 1.0 / Resolve;
+	float2 UV = (DispatchThreadId + 0.5) * inverseResolution;
 	int Nc = 64;
 	//number of ranks
 	int Nr = 8;
@@ -66,27 +76,25 @@ void PoissonFilter(uint2 DispatchThreadId : SV_DispatchThreadID)
 
 	for (int i = -Nc; i <= Nc; i++)
 	{
-		float2 pos = DispatchThreadId;//max(DispatchThreadId + Dir * float2(i,i),0);
-		pos.x = (pos.x + i) % MaxGridX;
+		float2 Pos = Wrap(DispatchThreadId + float2(i, 0), Resolve);
 
-
-		float density = PressureGridUAV[pos] + SimGridSRV.Load(int3(pos,0))*0.99;
+		float Density = PressureGridUAV[Pos] + SimGridSRV.Load(int3(Pos,0)).z*0.99;
 
 		int id = (i + Nc);
 		//loop over ranks
 		for(int j = 0; j < 4; j++)
 		{
-			sum0[j] += density * U[id + 2 * j * N];
-			sum1[j] += density * U[id + (2 * j + 1) * N];
+			sum0[j] += Density * U[id + 2 * j * N];
+			sum1[j] += Density * U[id + (2 * j + 1) * N];
 		}
 	}
 
 	//loop over pairs of ranks
 	for(int j = 0; j < 4; j++)
 	{
-		PoissonFilterValue[j] = pack2(float2(sum0[j], sum1[j]));
+		PoissonFilterValue[j] = Pack2(float2(sum0[j], sum1[j]));
 	}
-	SimGridUAV[DispatchThreadId] = PoissonFilterValue;
+	OUTPUTTEXTURE[DispatchThreadId] = PoissonFilterValue;
 
 	/*else
 	{
@@ -111,6 +119,7 @@ void PoissonFilter(uint2 DispatchThreadId : SV_DispatchThreadID)
 		PressureGridUAV[DispatchThreadId] = Pressure;
 	}*/
 }
+
 void ComputeDivergence(uint2 DispatchThreadId : SV_DispatchThreadID)
 {
 	float Divergence = GetDivergence(SimGridSRV, int2(DispatchThreadId), dx);
@@ -179,108 +188,24 @@ void IteratePressure(uint2 DispatchThreadId : SV_DispatchThreadID)
 	PressureGridUAV[DispatchThreadId] = (1.f - Weight) * P_center + Weight * JacobiPressure; //lerp(P_center,JacobiPressure ,Weight);
 }
 
-void Advection(uint2 DispatchThreadId : SV_DispatchThreadID, uint2 GroupThreadId)
+void Advection(uint2 DispatchThreadId : SV_DispatchThreadID)
 {
-	float4 SimValue = SimGridSRV.Load(int3(DispatchThreadId, 0));
-	if (AdvectionDensity)
-	{
-		float2 GradPressure = GetGradient(PressureGridUAV, int2(DispatchThreadId), dx);
-		float2 Velocity = SimValue.xy - GradPressure * dt;
+	int MaxCellX,MaxCellY;
+	PressureGridUAV.GetDimensions(MaxCellX,MaxCellY);
 
-		/*
-		int2 UVs[4] = {
-			DispatchThreadId + 0.5 + int2(0, 1),
-			DispatchThreadId + 0.5 + int2(0, -1),
-			DispatchThreadId + 0.5 + int2(-1, 0),
-			DispatchThreadId + 0.5 + int2(1, 0)
-		};
-		float4 Usim = SimGridSRV.SampleLevel(SimSampler, float3(UVs[0] / GridSize.xy, 0), 0); ////SimGridUAV.Load(UVs[0]);
-		float4 Dsim = SimGridSRV.SampleLevel(SimSampler, float3(UVs[1] / GridSize.xy, 0), 0); //SimGridUAV.Load(UVs[1]);
-		float4 Rsim = SimGridSRV.SampleLevel(SimSampler, float3(UVs[2] / GridSize.xy, 0), 0); //SimGridUAV.Load(UVs[2]);
-		float4 Lsim = SimGridSRV.SampleLevel(SimSampler, float3(UVs[3] / GridSize.xy, 0), 0); //SimGridUAV.Load(UVs[3]);
+	float2 inverseResolution = 1.0 / float2(MaxCellX,MaxCellY);
+	float2 UV = (DispatchThreadId + 0.5) * inverseResolution;
 
-		 if (Usim.a == 1)
-		{
-			Velocity.xy = Usim.xy;
-			SimValue.xy = Usim.xy;
-		}
-		if (Dsim.a == 1)
-		{
-			Velocity.xy = Dsim.xy;
-			SimValue.xy = Dsim.xy;
-		}
-		if (Lsim.a == 1)
-		{
-			Velocity.xy = Lsim.xy;
-			SimValue.xy = Lsim.xy;
-		}
-		if (Rsim.a == 1)
-		{
-			Velocity.xy = Rsim.xy;
-			SimValue.xy = Rsim.xy;
-		}*/
-		float2 ReadIndex = float2(DispatchThreadId + 0.5) - Velocity * (dt / dx);
+	float2 v1 = SimGridSRV.SampleLevel(SimSampler, UV,0).xy;
+	float2 v2 = SimGridSRV.SampleLevel(SimSampler, UV - 0.5 * v1 * dt * inverseResolution,0).xy;
+	float2 v3 = SimGridSRV.SampleLevel(SimSampler, UV - 0.5 * v2 * dt * inverseResolution,0).xy;
+	float2 v4 = SimGridSRV.SampleLevel(SimSampler, UV - v3 * dt * inverseResolution,0).xy;
+	float2 OldVelocity = (1.0 * v1 + 2.0 * v2 + 2.0 * v3 + 1.0 * v4) / 6.0;
+    
+	float2 SamplePos = UV - OldVelocity * dt * inverseResolution;
+	float4 SampleData  = SimGridSRV.SampleLevel(SimSampler, SamplePos,0);
 
-		float Density = SimGridSRV.SampleLevel(SimSampler, float3(ReadIndex/ GridSize.xy, 0), 0).z; //
-		SimValue.z = clamp(Density / (dt * DensityDissipate + 1) - dt * 0.1 * DensityDissipate, 0, 100);
-
-
-		SimValue.a = EstimatedDensity;
-		SimGridUAV[DispatchThreadId] = SimValue;
-	}
-	else
-	{
-		int2 UVs[4] = {
-			DispatchThreadId + 0.5 + int2(0, 1),
-			DispatchThreadId + 0.5 + int2(0, -1),
-			DispatchThreadId + 0.5 + int2(-1, 0),
-			DispatchThreadId + 0.5 + int2(1, 0)
-		};
-		float4 Usim = SimGridUAV.Load(UVs[0]);
-		float4 Dsim = SimGridUAV.Load(UVs[1]);
-		float4 Rsim = SimGridUAV.Load(UVs[2]);
-		float4 Lsim = SimGridUAV.Load(UVs[3]);
-
-
-		float2 ReadIndex = float2(DispatchThreadId + 0.5) - SimValue.xy * (dt / dx);
-
-		float4 Advection = SimGridSRV.SampleLevel(SimSampler, float3((ReadIndex)/ GridSize.xy, 0), 0);
-
-		SimValue.x = clamp(Advection.x / (dt * VelocityDissipate + 1) - dt * 0.1 * VelocityDissipate, -1000, 1000);
-		SimValue.y = clamp(Advection.y / (dt * VelocityDissipate + 1) - dt * 0.1 * VelocityDissipate, -1000, 1000);
-
-
-		/*if (Usim.a == 1)
-		{
-			SimValue.xy = Usim.xy; // lerp(SimValue.xy,Usim.xy,0.5);
-		}
-		if (Dsim.a == 1)
-		{
-			SimValue.xy = Dsim.xy; //lerp(SimValue.xy,Dsim.xy,0.5);
-		}
-		if (Lsim.a == 1)
-		{
-			SimValue.xy = Lsim.xy; //lerp(SimValue.xy,Lsim.xy,0.5);
-		}
-		if (Rsim.a == 1)
-		{
-			SimValue.xy = Rsim.xy; //lerp(SimValue.xy,Rsim.xy,0.5);
-		}*/
-		SimGridUAV[DispatchThreadId] = SimValue;
-
-		PressureGridUAV[DispatchThreadId] = 0;
-	}
-
-}
-
-void PreVelocity(uint2 DispatchThreadId : SV_DispatchThreadID, uint2 GroupThreadId : SV_GroupThreadID)
-{
-	float4 SimValue = SimGridSRV.Load(int3(DispatchThreadId, 0));
-	float2 Velocity = SimValue.xy;
-	float Density = SimValue.z;
-	float2 Force = 0;
-	float Boundary = 0;
-
+	float2 Velocity = SampleData.xy;
 
 	float noiseScale = .05 * NoiseFrequency;
 	float noiseIntensity = NoiseIntensity;
@@ -291,51 +216,59 @@ void PreVelocity(uint2 DispatchThreadId : SV_DispatchThreadID, uint2 GroupThread
 
 	float2 CenterPoint =  float2(250,150);//float2(sin(Time*0.01),cos(Time*0.01))*100 +
 	float2 Dis = float2(DispatchThreadId) - CenterPoint;
+	float Density = SampleData.w;
+
+
+	// Add force.
+	Velocity += GravityScale * G;
+
+	// Circle barrier.
+	float2 BarrierPosition = float2(0.2, 0.5);
+	float2 ToBarrier = BarrierPosition - UV;
+	ToBarrier.x *= inverseResolution.y / inverseResolution.x;
+	float BarrierRadiusSq = 0.02;
+	float4 OutputData = float4(Velocity, 0.0, Density);
+
 	if (length(Dis) < 30)
 	{
 		Density += saturate(noiseX)*0.1; //RandFast(DispatchThreadId*0.2,Time);
 		Velocity = float2(noiseX * 10, -noiseY * 30);
 	}
+	OutputData.x = clamp(OutputData.x / (dt * VelocityDissipate + 1) - dt * 0.1 * VelocityDissipate, -1000, 1000);
+	OutputData.y = clamp(OutputData.y / (dt * VelocityDissipate + 1) - dt * 0.1 * VelocityDissipate, -1000, 1000);
+	OutputData.w = clamp(Density / (dt * DensityDissipate + 1) - dt * 0.1 * DensityDissipate, 0, 100);
 
-	float2 Grad = GetGradient(SimGridSRV, int2(DispatchThreadId), dx);
-	//float Curl = GetCurl(SimGridUAV, int2(DispatchThreadId), dx);
-	float GradCurlLength = length(Grad);
-
-	if (GradCurlLength > 1e-5)
+	if(dot(ToBarrier, ToBarrier) < BarrierRadiusSq)
 	{
-		Force += VorticityMult * dx * Grad / GradCurlLength;
+		OutputData = float4(0.0, 0.0, 999.0, 0.0);
 	}
 
-	Force += float2(0,G) * Density * GravityScale * 0.05;
-	float2 TurbulenceForce = float2(noiseX, noiseY);
-	Force += TurbulenceForce * noiseIntensity;
-	Force -= WorldVelocity.xz * float2(-1, 1) * Density * 0.5;
-	Velocity += Force * dt;
+    SimGridUAV[DispatchThreadId] = OutputData;
 
-	/*float2 CollisionPoint = float2(sin(Time*0.01),cos(Time*0.01))*50+250;
-	float Collistion = length(float2(DispatchThreadId + 0.5) - CollisionPoint);
-	if (Collistion < 20)
-	{
-		Boundary = 1;
-		//Density = 0;
-		float2 OutVelocity = normalize(float2(DispatchThreadId + 0.5) - CollisionPoint);
-		//Velocity =  OutVelocity + float2(sin(Time*0.1),cos(Time*0.1)) - float2(sin((Time -1)*0.1),cos((Time-1)*0.1))*-1;
-		Velocity =normalize(OutVelocity)*3;
-	}*/
+}
 
-	//Density = saturate(Density);
+void PreVelocity(uint2 DispatchThreadId : SV_DispatchThreadID, uint2 GroupThreadId : SV_GroupThreadID)
+{
+	int MaxCellX,MaxCellY;
+	PressureGridUAV.GetDimensions(MaxCellX,MaxCellY);
+	float2 UV = (DispatchThreadId + 0.5) / float2(MaxCellX,MaxCellY);
+	float2 GradPressure = GetGradient(PressureGridUAV, int2(DispatchThreadId), dx);
+	float4 SimValue = SimGridSRV.SampleLevel(SimSampler, UV,0);
+	float2 Velocity = SimValue.xy - GradPressure * dt;
+
 	int2 UVs[4] = {
-		DispatchThreadId + int2(0, 1),
-		DispatchThreadId + int2(0, -1),
-		DispatchThreadId + int2(-1, 0),
-		DispatchThreadId + int2(1, 0)
+		Wrap(DispatchThreadId  + int2(0, 1),float2(MaxCellX,MaxCellY)),
+		Wrap(DispatchThreadId  + int2(0, -1),float2(MaxCellX,MaxCellY)),
+		Wrap(DispatchThreadId  + int2(1, 0),float2(MaxCellX,MaxCellY)),
+		Wrap(DispatchThreadId  + int2(-1, 0),float2(MaxCellX,MaxCellY)),
 	};
-	float P_up = PressureGridUAV.Load(UVs[0]);
-	float P_down = PressureGridUAV.Load(UVs[1]);
-	float P_left = PressureGridUAV.Load(UVs[2]);
-	float P_right = PressureGridUAV.Load(UVs[3]);
-	float  EstimatedDensity = P_up + P_down + P_left + P_right - 4 * PressureGridUAV.Load(DispatchThreadId);
-	SimGridUAV[DispatchThreadId] = float4(Velocity.x, Velocity.y, Density, EstimatedDensity);
+	float EstimatedDensity1 = PressureGridUAV[UVs[0]];
+	float EstimatedDensity2 = PressureGridUAV[UVs[1]];
+	float EstimatedDensity3 = PressureGridUAV[UVs[2]];
+	float EstimatedDensity4 = PressureGridUAV[UVs[3]];
+	float EstimatedDensity = EstimatedDensity1 + EstimatedDensity2 + EstimatedDensity3 + EstimatedDensity4 + PressureGridUAV[DispatchThreadId];
+	SimGridUAV[DispatchThreadId] = float4(Velocity,EstimatedDensity,SimValue.w);
+
 }
 
 [numthreads(THREADGROUP_SIZEX, THREADGROUP_SIZEY, 1)]
@@ -347,18 +280,23 @@ void MainCS(uint2 DispatchThreadId : SV_DispatchThreadID, uint2 GroupThreadId : 
 	case PREVELOCITY:
 		PreVelocity(DispatchThreadId, GroupThreadId);
 		break;
+
 	case ADVECTION:
-		Advection(DispatchThreadId, GroupThreadId);
+		Advection(DispatchThreadId);
 		break;
+
 	case ITERATEPRESSURE:
 		IteratePressure(DispatchThreadId);
 		break;
+
 	case POISSONFILTER:
 		PoissonFilter(DispatchThreadId);
 		break;
+
 	case COMPUTEDIVERGENCE:
 		ComputeDivergence(DispatchThreadId);
 		break;
+
 	default:
 		break;
 	}
