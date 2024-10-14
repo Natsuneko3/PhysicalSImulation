@@ -303,15 +303,17 @@ void URenderAdapterBase::InitialPlaneMesh(FRHICommandList& RHICmdList)
 		2, 3, 1, 2, 1, 0
 	};
 
-	FRHIResourceCreateInfo CreateInfoVB(TEXT("PSPlaneMeshVertexBuffer"), &Vertices);
-	VertexBufferRHI = RHICmdList.CreateBuffer(Vertices.GetResourceDataSize(), BUF_Static,0, ERHIAccess::VertexOrIndexBuffer, CreateInfoVB);
+
 	TResourceArray<uint16, INDEXBUFFER_ALIGNMENT> IndexBuffer;
 	const uint32 NumIndices = UE_ARRAY_COUNT(SpriteIndices);
-	IndexBuffer.AddUninitialized(NumIndices);
+	IndexBuffer.SetNumUninitialized(NumIndices);
 	FMemory::Memcpy(IndexBuffer.GetData(), SpriteIndices, NumIndices * sizeof(uint16));
 
 	FRHIResourceCreateInfo CreateInfoIB(TEXT("PSPlaneMeshIndexBuffer"), &IndexBuffer);
-	IndexBufferRHI = RHICmdList.CreateBuffer( IndexBuffer.GetResourceDataSize(), BUF_Static, 0, ERHIAccess::VertexOrIndexBuffer,CreateInfoIB);
+	FRHIResourceCreateInfo CreateInfoVB(TEXT("PSPlaneMeshVertexBuffer"), &Vertices);
+	IndexBufferRHI = RHICmdList.CreateIndexBuffer( sizeof(uint16), sizeof(uint16) * NumIndices, BUF_Static, CreateInfoIB);
+	VertexBufferRHI = RHICmdList.CreateVertexBuffer(Vertices.GetResourceDataSize(), BUF_Static,  CreateInfoVB);
+
 	//IndexBufferRHI = RHICmdList.CreateIndexBuffer(sizeof(uint16), IndexBuffer.GetResourceDataSize(), BUF_Static, CreateInfoIB);
 	//RHICreateIndexBuffer(sizeof(uint16), IndexBuffer.GetResourceDataSize(), static_cast<uint32>(BUF_Static), CreateInfoIB);
 	NumPrimitives = 2;
@@ -346,7 +348,6 @@ void URenderAdapterBase::InitialCubeMesh(FRHICommandList& RHICmdList)
 	Vertices[3].UV = FVector2f(0.f, 0.f);
 
 	FRHIResourceCreateInfo CreateInfoVB(TEXT("PSCubeMeshVertexBuffer"), &Vertices);
-	VertexBufferRHI = RHICmdList.CreateBuffer(Vertices.GetResourceDataSize(), BUF_Static, 0, ERHIAccess::VertexOrIndexBuffer,CreateInfoVB) ;//RHICreateVertexBuffer();
 
 	// Setup index buffer
 	const uint16 Indices[] = {
@@ -376,8 +377,12 @@ void URenderAdapterBase::InitialCubeMesh(FRHICommandList& RHICmdList)
 	FMemory::Memcpy(IndexBuffer.GetData(), Indices, NumIndices * sizeof(uint16));
 
 	FRHIResourceCreateInfo CreateInfoIB(TEXT("PSCubeMeshIndexBuffer"), &IndexBuffer);
-	IndexBufferRHI = RHICmdList.CreateBuffer( IndexBuffer.GetResourceDataSize(), BUF_Static, 0, ERHIAccess::VertexOrIndexBuffer,CreateInfoIB);
+	//IndexBufferRHI = RHICmdList.CreateBuffer( IndexBuffer.GetResourceDataSize(), BUF_Static, 0, ERHIAccess::VertexOrIndexBuffer,CreateInfoIB);
 	//IndexBufferRHI = RHICmdList.CreateIndexBuffer(sizeof(uint16), IndexBuffer.GetResourceDataSize(), BUF_Static, CreateInfoIB);
+
+	IndexBufferRHI = RHICmdList.CreateIndexBuffer( 0, sizeof(uint16) * NumIndices, BUF_Static, ERHIAccess::VertexOrIndexBuffer,CreateInfoIB);
+	VertexBufferRHI = RHICmdList.CreateVertexBuffer(Vertices.GetResourceDataSize(), BUF_Static, ERHIAccess::VertexOrIndexBuffer,CreateInfoVB) ;//RHICreateVertexBuffer();
+
 	NumPrimitives = 12;
 	NumVertices = 8;
 }

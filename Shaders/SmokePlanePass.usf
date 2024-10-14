@@ -10,8 +10,8 @@ void MainVS(in float4 InPosition : ATTRIBUTE0,
 	out float2 UV : TEXCOORD0)
 {
 	float4 LocalPosition = InPosition* float4(100.0,100.0,0.0,1) ;//+float4(50,50,0,0);//+ float4(View.RelativeWorldCameraOrigin,0);
-	float4 World = mul(LocalPosition,LocalToWorld) ;
-	float4 WorldPos = mul( World, LWCHackToFloat(PrimaryView.WorldToClip));
+	//float4 World = mul(LocalPosition,LocalToWorld) ;
+	float4 WorldPos = mul( LocalPosition, LWCHackToFloat(PrimaryView.WorldToClip));
 
 	OutPosition = WorldPos ;//WorldPos
 	UV = InUV.xy;
@@ -20,7 +20,7 @@ void MainPS(in float4 SvPosition : SV_POSITION,
 	in float2 UV : TEXCOORD0,
 	out float4 OutColor : SV_Target0)
 {
-	float Density = SimulationTexture.SampleLevel(SimulationTextureSampler,UV,0).b;
+	float Density = SimulationTexture.SampleLevel(SimulationTextureSampler,UV,0).a;
 	/*float3 SceneColor = CalcSceneColor(UV);
 	float3 SceneColor1 = CalcSceneColor(UV + float2(0.001,0.001));
 	float3 SceneColor2 = CalcSceneColor(UV - float2(0.001,0.001));

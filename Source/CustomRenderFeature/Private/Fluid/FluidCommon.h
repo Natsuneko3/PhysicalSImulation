@@ -12,6 +12,7 @@ enum EShadertype
 	PreVel,
 	Advection,
 	IteratePressure,
+	PoissonFilter,
 	ComputeDivergence
 };
 

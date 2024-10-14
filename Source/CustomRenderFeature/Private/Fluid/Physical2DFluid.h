@@ -1,11 +1,13 @@
-#include "FluidCommon.h"
-#if COMPILEFLUID
-#pragma once
-#include "RenderAdapter.h"
 
+#pragma once
+#include "FluidCommon.h"
+#include "RenderAdapter.h"
+#include "Physical2DFluid.generated.h"
+UCLASS(NotBlueprintable, MinimalAPI,DisplayName="2dFluid")
 class UPhysical2DFluidSolver : public URenderAdapterBase
 {
 public:
+	GENERATED_BODY()
 	UPhysical2DFluidSolver();
 	~UPhysical2DFluidSolver();
 
@@ -29,4 +31,4 @@ private:
 	TRefCountPtr<IPooledRenderTarget> PressureTexturePool;
 
 };
-#endif
+
