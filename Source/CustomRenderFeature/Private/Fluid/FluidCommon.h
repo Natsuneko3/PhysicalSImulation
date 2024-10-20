@@ -7,14 +7,6 @@
 #define COMPILEFLUID 0
 DECLARE_STATS_GROUP(TEXT("CustomRenderFeature"), STATGROUP_CustomRenderFeature, STATCAT_Advanced);
 
-enum EShadertype
-{
-	PreVel,
-	Advection,
-	IteratePressure,
-	PoissonFilter,
-	ComputeDivergence
-};
 
 USTRUCT(BlueprintType)
 struct FPlandFluidParameters

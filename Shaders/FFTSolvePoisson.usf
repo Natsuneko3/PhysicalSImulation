@@ -63,10 +63,10 @@ void MainCS(uint3 DispatchThreadId : SV_DispatchThreadID,uint3 GroupThreadId : S
 	int ThreadIdx = GroupThreadId.x ;
 	bool bPoissonSolver = true;
 
-	int Mx = bTransformX ? NumCells.x  : NumCells.y;
+	int Mx = bTransformX ? NumCells.x  +1: NumCells.y+1;
 	int NumCols = Mx / 2; // requires a dispatch such that NumCols = THREADGROUP_SIZE
 
-	int My = bTransformX ? NumCells.y  : NumCells.x;
+	int My = bTransformX ? NumCells.y  +1: NumCells.x+1;
 
 
 	// constants.

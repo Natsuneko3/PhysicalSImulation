@@ -20,10 +20,12 @@ void MainPS(in float4 SvPosition : SV_POSITION,
 	in float2 UV : TEXCOORD0,
 	out float4 OutColor : SV_Target0)
 {
-	float Density = SimulationTexture.SampleLevel(SimulationTextureSampler,UV,0).x;
+	float Density = SimulationTexture.SampleLevel(SimulationTextureSampler,UV,0).w;
+	float3 SceneColor = CalcSceneColor(SvPositionToBufferUV(SvPosition));
 	/*float3 SceneColor = CalcSceneColor(UV);
 	float3 SceneColor1 = CalcSceneColor(UV + float2(0.001,0.001));
 	float3 SceneColor2 = CalcSceneColor(UV - float2(0.001,0.001));
 	float3 FinalColor = lerp(SceneColor,SceneColor.r + SceneColor1.g + SceneColor2.b,Density);*/
-	OutColor =Density;//float4(FinalColor,1);
+	float3 FinalColor = lerp(SceneColor,1,Density);
+	OutColor =float4(FinalColor,1);//Density;//float4(FinalColor,1);
 }

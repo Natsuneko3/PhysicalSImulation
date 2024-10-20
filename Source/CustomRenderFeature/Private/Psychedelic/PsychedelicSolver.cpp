@@ -166,7 +166,7 @@ void UPsychedelicSolver::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuild
 	{
 		FPPFluidCS::FParameters* PassParameters = GraphBuilder.AllocParameters<FPPFluidCS::FParameters>();
 		PassParameters->FluidParameter = FluidParameter;
-		PassParameters->FluidShaderType = PreVel;
+		PassParameters->FluidShaderType = 0;
 		PassParameters->SimGridSRV = SimulationTexture;
 		PassParameters->TranslucencyTexture = TranslucencyTexture;
 		PassParameters->SimGridUAV = GraphBuilder.CreateUAV(PreVelocityTexture); //SimUAV;
@@ -202,7 +202,7 @@ void UPsychedelicSolver::PrePostProcessPass_RenderThread(FRDGBuilder& GraphBuild
 		AdvectionPassParameters->TranslucencyTexture = TranslucencyTexture;
 		AdvectionPassParameters->SimGridSRV = PreVelocityTexture;
 		AdvectionPassParameters->SimGridUAV = GraphBuilder.CreateUAV(SimulationTexture);
-		AdvectionPassParameters->FluidShaderType = Advection;
+		AdvectionPassParameters->FluidShaderType = 1;
 		AdvectionPassParameters->DownScale = DownScale;
 		TShaderMapRef<FPPFluidCS> ComputeShader(ShaderMap);
 
